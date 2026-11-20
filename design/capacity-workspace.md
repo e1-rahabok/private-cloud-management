@@ -169,7 +169,9 @@ Path: `privatecloud.acme.com/capacity` (D-028).
   4. oversized VMs
   5. unused VMs
 
-  Inside each area, the largest VMs come first. Every row shows the capacity freed and its cost.
+  Inside each area, the largest VMs come first. Every row shows the capacity freed. Money is shown as **cost avoidance** (D-060):
+  - today's price of the new capacity that would no longer be needed, per location;
+  - counted only when it defers a purchase in the plan (3.8).
 - **Why:**
   - Twenty large VMs cut by 10 vCPUs each free as much as 100 small VMs cut by 2. They need 80 fewer change requests, and large VMs also hurt their neighbours (co-stop, migrations between sockets).
   - SP5: do not force developers to shrink. Show the CFO the cost of waste. The CFO holds the budget and makes each business line act. Money is the language that works.
@@ -178,6 +180,7 @@ Path: `privatecloud.acme.com/capacity` (D-028).
     - a powered-off VM frees disk only when deleted.
 
     Overstating the gain destroys trust in the next request.
+  - **Reclamation alone saves nothing.** It becomes money when it moves a cluster out of the next procurement round. That is the number IT Finance will accept.
 
 ### 3.12 Capacity sets reclamation policy; PCM carries it out
 

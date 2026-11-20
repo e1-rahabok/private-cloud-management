@@ -93,10 +93,17 @@ Every section must name its question. Anything that does not answer one of these
 
 - **Mockup:** cost against a public-cloud estimate, with a breakdown into people, hardware, facilities and software. Risk, as recovery time. Speed, as delivery time.
 - **Change:**
-  - **Cost:** the total, ROI and TCO (D-019). The four categories stay as the only breakdown; there are no line items.
+  - **Cost:** the total, ROI and TCO (D-019).
+    - The only breakdown is product, service and people (D-060). It replaces the mockup's four categories.
+    - There are no line items.
+    - The public-cloud comparison comes from FinOps (D-058). It covers the whole estate over the depreciation period, not one VM for one day.
     - Line items live in the Capacity workspace (D-019, Capacity design 3.8).
-  - **Recovery:** from Site Recovery Manager test results: the last test date, the recovery time achieved, and the target.
-    - The risk matrix is removed: PCM holds no risk register.
+  - **Site recovery (D-059):** from VMware Live Site Recovery (formerly Site Recovery Manager) test results:
+    - the last test date;
+    - the recovery time achieved, against the target;
+    - the share of protected VMs actually tested.
+
+    The card is labelled "site recovery" and does not claim backups. The risk matrix is removed: PCM holds no risk register.
   - **Speed:** delivery time from VCF Automation request timestamps.
 - **Why:**
   - The CIO defends totals upward. Line items lead to "why did memory cost X?", which is the Capacity team's conversation.
@@ -105,7 +112,9 @@ Every section must name its question. Anything that does not answer one of these
 
 ### 4.6 Waste is part of value
 
-- **Change:** the cost card shows **waste in money**: unused capacity and reclaimable VMs, from the Capacity workspace (Capacity design, 3.11).
+- **Change:** the cost card shows **cost avoided**, from the Capacity workspace (Capacity design, 3.11; D-060):
+  - purchases deferred by reclamation, valued at today's price;
+  - what is still reclaimable.
 - **Why:**
   - SP5: show the CFO the cost of waste. The CFO holds the budget and makes each business line act.
   - This page is how the CFO sees it.
@@ -146,10 +155,7 @@ Every section must name its question. Anything that does not answer one of these
 | Attack and breach data | Security after 1.0 (D-044). |
 | Mobile layout | Desktop first. A weekly email summary is a better mobile answer, after 1.0. |
 
-## 6. Open questions for the author
+## 6. Settled questions
 
-1. **Public-cloud comparison.** Who owns the public-cloud estimate, and how often is it updated?
-   - The mockup marks it as configured unit prices, refreshed quarterly.
-   - Proposal: Capacity owns it in 1.0, quarterly. FinOps takes it after 1.0.
-2. **Recovery card.** Is a Site Recovery Manager test result enough evidence for the board, or do customers expect other backup and recovery data, which is outside VMware?
-   - Proposal: SRM only in 1.0 (D-034).
+- Public-cloud comparison: owned by FinOps, maintained as an input to PCM in 1.0 (D-058).
+- Recovery card: site recovery test results only, labelled so that backup is not implied (D-059).

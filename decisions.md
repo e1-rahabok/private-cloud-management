@@ -62,6 +62,9 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-055 | 2026-11-20 | In release 1.0 the purchase plan is a document for IT Finance. PCM does not connect to procurement systems. | Procurement systems differ by customer and are slow to integrate. A clear document already removes most of the work. |
 | D-056 | 2026-11-20 | Release 1.0 assumes VMs are free to tenants (no chargeback). So the platform team may reclaim. | This is the most common case today (SP5). Price and chargeback come with FinOps after 1.0 (D-027). |
 | D-057 | 2026-11-20 | Storage capacity in release 1.0 covers vSAN and datastore space as vSphere sees it. External arrays come later. | Array capacity needs a vendor adapter per array. vSAN is in VCF already. |
+| D-058 | 2026-11-20 | The FinOps team owns the public-cloud comparison. In release 1.0 FinOps has no workspace (D-027), so it maintains the comparison as an input to PCM. The comparison covers the whole estate over the depreciation period, component by component. | Source: Cost n Price n Value. Comparing one VM for one day flatters whichever side picks the VM. The whole estate over 5 years, with each component marked included or excluded, is the honest comparison. |
+| D-059 | 2026-11-20 | The Executive recovery card shows site recovery test results only: VMware Live Site Recovery (formerly Site Recovery Manager) recovery plans, last test date, recovery time achieved and target, and the share of protected VMs tested. It is labelled site recovery. Backup is not claimed. | See Rationale. |
+| D-060 | 2026-11-20 | PCM follows the cost model in Cost n Price n Value. There is no VM cost: unit cost is on the provider (ESXi host, then cluster); price is on the consumer. Cost has three parts: product, service, people. Reclamation is cost avoidance, valued at today's price of new capacity in that location, and counted only when it defers a purchase. | See Rationale. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -249,4 +252,37 @@ Longer reasons for decisions that need them.
 - Code is cheap (D-010), but verification is not. Each workspace needs its numbers checked against the specification.
 - Four at once means four sets of mistakes found at the same time.
 - In this order, each step fixes the shared core before the next one depends on it.
+
+### D-059 The recovery card
+
+- The board asks "can we recover?". The honest answer from PCM's data is narrower: "the site recovery plans were tested on this date, and recovered in this time".
+- Site recovery test results are VMware data (D-034). Backup products are not, so PCM cannot prove backups.
+- **Labelling decides trust.** A card titled "Recovery" with a green status lets the board assume backups are covered too. When a ransomware event shows they were not, the page loses all credibility. A card titled "Site recovery tested" claims only what it shows.
+- **The share of protected VMs tested matters more than the last test date.** In large estates, the common gap is a recovery plan that was tested once and then grew by hundreds of VMs that were never tested.
+- An untested plan shows amber, however recent the last test. A test older than the policy period (for example 12 months) shows red.
+
+### D-060 The cost model
+
+Source: Cost n Price n Value (in `sources/`).
+
+**No VM cost**
+- Delete every VM today and the company saves nothing: the multi-year contracts are already paid.
+- So cost is never divided per VM. Unit cost belongs to the provider:
+  - CPU per physical unit, memory per GB, disk per GB;
+  - at the ESXi host, rolled up to the cluster.
+- Price belongs to the consumer, and is a separate number set by FinOps after 1.0 (D-027).
+- "Unallocated cost" does not exist. Unsold capacity lowers revenue; it does not create cost.
+
+**Three parts of cost**
+- **Product:** hardware and software, from vendor contracts.
+- **Service:** data centre facilities, managed services.
+- **People:** the fully loaded cost of everyone who designs, builds and runs the private cloud, including the share of IT leadership time.
+- The Executive cost breakdown uses these three. It replaces the mockup's four categories (people, hardware, facilities, software).
+
+**Reclamation is cost avoidance, not cost saving**
+- Deleting files saves nothing by itself. It becomes money only when it defers a purchase.
+- The value is today's price of the capacity not bought, not what the old hardware cost five years ago.
+  - Example: hardware bought for $3M five years ago is now replaced by a $1M equivalent. Reclamation that defers the purchase avoids $1M, not $3M.
+- It is counted per location. Spare memory in Singapore does not serve VMs in Frankfurt.
+- The Capacity waste page (Capacity design, 3.11) and the Executive cost card (Executive design, 4.6) show it this way.
 
