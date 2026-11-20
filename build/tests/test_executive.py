@@ -58,9 +58,14 @@ def make_catalog_test(t):
                     self.assertEqual(got["days"], rel_days(v))
                 else:
                     self.assertEqual(got[k], v, k)
-        elif entry == "safe.findings":
-            got = catalog.safe_findings(g["certificates_expiring"], g["ssh_or_shell_enabled"],
-                                        g["lockdown_off"], g["root_logins"], SETTINGS)
+        elif entry == "safe.ksi_percent":
+            self.assertEqual(catalog.ksi_status(g["vm_secured_time_percent"], SETTINGS), e["status"])
+        elif entry == "safe.vm_secured_time_percent":
+            got = catalog.vm_secured_time_percent(g["minutes_in_month_so_far"], g["unsecured_minutes"],
+                                                  g["unsecured_inside_maintenance_window"])
+            self.assertEqual(got, e)
+        elif entry == "fast.production_kpi":
+            got = catalog.fast_status(g["class_group_kpi"])
             for k, v in e.items():
                 self.assertEqual(got[k], v, k)
         elif entry == "recovery.site_recovery":
@@ -109,6 +114,12 @@ def make_story_test(t):
     def test(self):
         ds = generator.generate(NOW, seed=SPEC["seed"], enable=tuple(t.get("enable", [])))
         exp = dict(t["expect"])
+        if "rule" in exp and t["id"] == "ST-8":  # estate KSI above contract, card red
+            h = api.summary(ds)["health"]["safe"]["headline"]
+            self.assertGreaterEqual(h["value"], SETTINGS["safe.sla_contract_percent"])
+            self.assertLess(h["value"], 100.0)
+            self.assertEqual(h["status"], "red")
+            return
         if "rule" in exp:  # ST-7: same number in every place
             a = api.summary(ds)["scale"]["locations"]
             a = next(x for x in a if x["id"] == "sg")["decision"]
@@ -150,7 +161,7 @@ class SpecRules(unittest.TestCase):
         other = NOW + timedelta(days=137, hours=5)
         s = api.summary(generator.generate(other, seed=SPEC["seed"]))
         self.assertEqual(s["room_to_grow"]["estate_decision"]["date"]["days_from_now"], 30)
-        self.assertEqual(s["health"]["safe"]["headline"]["status"], "amber")
+        self.assertEqual(s["health"]["safe"]["headline"]["status"], "red")
 
 
 if __name__ == "__main__":

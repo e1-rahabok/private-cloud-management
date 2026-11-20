@@ -58,5 +58,7 @@ labels:
   site_recovery: Site recovery
   ssh_or_shell_enabled: Servers with remote admin access left open
   lockdown_off: Servers without the required access lock
-  root_logins: Logins with the highest admin rights
-  certificates_expiring: Security certificates expiring soon
+  root_logins_open: Logins with the highest admin rights, not yet explained
+  certificates_expired: Security certificates expired
+  vms_below_sla: Virtual machines below the security target this month
+  risk_certificates: Security certificates expiring soon

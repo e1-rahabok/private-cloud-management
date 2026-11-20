@@ -9,12 +9,12 @@ const getJSON = p => fetch(url(p)).then(r => { if (!r.ok) throw new Error(r.stat
 
 const LABEL = { up: 'Is it up?', fast: 'Is it fast?', safe: 'Is it safe?' };
 const CHIP = { green: 'Good', amber: 'Watch', red: 'Act now', in_plan: 'In the plan', no_data: 'No data',
-  on_track: 'On track', at_risk: 'At risk', missed: 'Missed' };
-const CHIP_CLASS = { on_track: 'green', at_risk: 'amber', missed: 'red' };
+  on_track: 'On track', at_risk: 'At risk', missed: 'Missed', yellow: 'Watch', orange: 'Act soon' };
+const CHIP_CLASS = { on_track: 'green', at_risk: 'amber', missed: 'red', yellow: 'amber', orange: 'red' };
 const RES = { compute: 'computing power', memory: 'working memory', storage: 'storage' };
-const SAFE_LABEL = { certificates_expiring: 'Security certificates expiring soon',
-  ssh_or_shell_enabled: 'Servers with remote admin access left open',
-  lockdown_off: 'Servers without the required access lock', root_logins: 'Logins with the highest admin rights' };
+const SAFE_LABEL = { ssh_or_shell_enabled: 'Servers with remote admin access left open',
+  lockdown_off: 'Servers without the required access lock', certificates_expired: 'Security certificates expired',
+  root_logins_open: 'Logins with the highest admin rights, not yet explained' };
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -122,7 +122,8 @@ async function selectTower(btn) {
 function renderHealth(s) {
   $('health-cards').innerHTML = ['up', 'fast', 'safe'].map(q => {
     const c = s.health[q], h = c.headline;
-    const head = q === 'safe' ? show(h, x => `${x} <small>open findings</small>`) : show(h, x => `${x.toFixed(2)}%`);
+    const head = q === 'fast' ? show(h, x => `${Math.round(x)} <small>out of 100</small>`)
+      : q === 'safe' ? show(h, x => `${x.toFixed(2)}% <small>this month</small>`) : show(h, x => `${x.toFixed(2)}%`);
     return `<article class="card"><h3>${LABEL[q]} ${chip(h.status)}</h3><div class="headline">${head}</div>
       ${h.meta.stale ? '' : lineSVG(c.sparkline_7d.points, 'spark')}
       <p class="sentence">${esc(c.sentence)}</p>
@@ -135,16 +136,26 @@ async function healthPanel(btn, days, refresh) {
   const q = btn.dataset.q;
   const detail = await fetch(url(`health/${q}`, `window_days=${days}`)).then(r => r.json());
   const names = { sg: 'Singapore', va: 'Virginia', fr: 'Frankfurt', tk: 'Tokyo', ld: 'London' };
+  const card = window.__summary.health[q];
   let body = '';
+  const switcher = `<div class="switch" role="group" aria-label="Window"><button type="button" data-days="7" aria-pressed="${days === 7}">7 days</button><button type="button" data-days="30" aria-pressed="${days === 30}">30 days</button></div>`;
   if (q === 'safe') {
-    const s = window.__summary.health.safe.safe_counts;
-    body += `<table><tbody>${Object.entries(s).map(([k, v]) => `<tr><td>${SAFE_LABEL[k]}</td><td>${show(v)}</td></tr>`).join('')}</tbody></table>`;
+    body += `<p class="sentence">The security target is ${card.sla_contract_percent}% of each month for every virtual machine. Our own target is 100%.</p>`;
+    body += `<table><tbody><tr><td>Virtual machines below the security target this month</td><td>${show(card.vms_below_sla)}</td></tr>`
+      + Object.entries(card.open_findings).map(([k, v]) => `<tr><td>${SAFE_LABEL[k]}</td><td>${show(v)}</td></tr>`).join('')
+      + `<tr><td>Security certificates expiring soon (a risk, not yet a breach)</td><td>${show(card.risk_certificates)}</td></tr></tbody></table>`;
+  } else if (q === 'fast') {
+    body += `<p class="sentence">Performance is a score, not a contract: there is no performance target.</p>`;
+    body += `<table><thead><tr><th>Class</th><th>Score out of 100</th><th>Status</th></tr></thead><tbody>`
+      + ['gold', 'silver', 'bronze'].map(c => `<tr><td>${c[0].toUpperCase() + c.slice(1)}</td><td>${show(card.class_kpi[c])}</td><td>${chip(card.class_kpi[c].status)}</td></tr>`).join('')
+      + `</tbody></table><p class="muted">${card.order_kept ? 'Gold scored above Silver, and Silver above Bronze, as promised.' : 'A lower class scored above a higher class.'}</p>`;
+    body += switcher + lineSVG(detail.series.points, 'chart', null, 220);
   } else {
-    body += `<div class="switch" role="group" aria-label="Window"><button type="button" data-days="7" aria-pressed="${days === 7}">7 days</button><button type="button" data-days="30" aria-pressed="${days === 30}">30 days</button></div>`;
-    body += lineSVG(detail.series.points, 'chart', detail.target ? detail.target.value : null, 220);
+    body += switcher + lineSVG(detail.series.points, 'chart', detail.target ? detail.target.value : null, 220);
     body += `<p class="muted">Dashed line: target ${detail.target.value}%.</p>`;
   }
-  body += `<table><thead><tr><th>Location</th><th>${q === 'safe' ? 'Open findings' : 'Value'}</th></tr></thead><tbody>${detail.by_location.map(r => `<tr><td>${names[r.location]}</td><td>${show(r.value, x => q === 'safe' ? x : `${x}%`)}</td></tr>`).join('')}</tbody></table>`;
+  const col = { up: 'Running', fast: 'Score out of 100', safe: 'Virtual machines below the security target' }[q];
+  body += `<table><thead><tr><th>Location</th><th>${col}</th></tr></thead><tbody>${detail.by_location.map(r => `<tr><td>${names[r.location]}</td><td>${show(r.value, x => q === 'up' ? `${x}%` : x)}</td></tr>`).join('')}</tbody></table>`;
   if (detail.events.length) body += `<ul class="events">${detail.events.map(e => `<li>${esc(e.text)}</li>`).join('')}</ul>`;
   else body += `<p class="muted">No notable events in this period.</p>`;
   if (refresh) btn.setAttribute('aria-expanded', 'false');

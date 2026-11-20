@@ -136,6 +136,11 @@ try {
   await shot.screenshot({ path: ROOT + 'build/screenshots/exec-full.png', fullPage: true });
   await shot.click('#value-cards button[data-card="site_recovery"]'); await shot.waitForTimeout(200);
   await shot.locator('#value').screenshot({ path: ROOT + 'build/screenshots/exec-site-recovery.png' });
+  await shot.goto(base); await shot.waitForSelector('body[data-ready="1"]');
+  await shot.click('#health-cards button[data-q="safe"]'); await shot.waitForTimeout(250);
+  await shot.locator('#health').screenshot({ path: ROOT + 'build/screenshots/exec-health-safe.png' });
+  await shot.click('#health-cards button[data-q="fast"]'); await shot.waitForTimeout(250);
+  await shot.locator('#health').screenshot({ path: ROOT + 'build/screenshots/exec-health-fast.png' });
   await shot.goto(base + '&enable=E-7'); await shot.waitForSelector('body[data-ready="1"]');
   await shot.locator('#scale').screenshot({ path: ROOT + 'build/screenshots/exec-stale-europe.png' });
 } finally {

@@ -60,31 +60,42 @@ def health_sentence(ds: dict, q: str) -> str:
     if q == "up":
         return f"Virtual machines were running {h['value']}% of the time they were meant to."
     if q == "fast":
-        return f"Virtual machines got the computing power they asked for {h['value']}% of the time."
+        order = ("Gold scored above Silver, and Silver above Bronze, as promised." if h["order_kept"]
+                 else "A lower class scored above a higher class, so the price difference is not being delivered.")
+        return f"Virtual machines scored {round(h['value'])} out of 100 on performance. {order}"
     parts = []
-    if h["certificates_expiring"]:
-        parts.append(f"{h['certificates_expiring']} security certificates expire within "
+    names = {lid: l["name"] for lid, l in ds["locations"].items()}
+    for lid, b in h["below_by_location"].items():
+        parts.append(f"{b['vms']} virtual machines in {names[lid]} fell below the security target this month: "
+                     f"remote admin access was left open on their servers for {b['hours']} hours.")
+    if h["certificates_expired"]:
+        parts.append(f"{h['certificates_expired']} security certificates have expired.")
+    if h["risk_certificates"]:
+        parts.append(f"{h['risk_certificates']} security certificates expire within "
                      f"{ds['settings']['safe.certificate_warning_days']} days.")
-    if h["ssh_or_shell_enabled"]:
-        parts.append(f"{h['ssh_or_shell_enabled']} servers have remote admin access left open.")
-    if h["lockdown_off"]:
-        parts.append(f"{h['lockdown_off']} servers are without the required access lock.")
-    if h["root_logins"]:
-        parts.append(f"{h['root_logins']} logins used the highest admin rights.")
-    return " ".join(parts) or "No open findings."
+    return " ".join(parts) or "No open findings this month."
 
 
 def health_card(ds: dict, q: str) -> dict:
     now, st, h = ds["now"], ds["settings"], ds["health"][q]
-    if q in ("up", "fast"):
-        status = catalog.band_status(h["value"], st[f"{q}.target_percent"], st[f"{q}.amber_margin_percent"])
-        defn = "up.availability_percent" if q == "up" else "fast.served_well_percent"
+    if q == "up":
+        status = catalog.band_status(h["value"], st["up.target_percent"], st["up.amber_margin_percent"])
+        defn = "up.availability_percent"
         card = {"headline": num(h["value"], defn, now, "vcf-operations", "percent", status)}
+    elif q == "fast":
+        defn = "fast.production_kpi"
+        card = {"headline": num(h["value"], defn, now, "vcf-operations", "score", h["status"]),
+                "class_kpi": {c: num(v, "fast.class_group_kpi", now, "vcf-operations", "score", catalog.kpi_band(v))
+                              for c, v in h["class_kpi"].items()},
+                "order_kept": h["order_kept"]}
     else:
-        defn = "safe.findings"
-        card = {"headline": num(h["total"], defn, now, "vcf-operations", "findings", h["status"]),
-                "safe_counts": {k: num(h[k], f"safe.{k}", now, "vcf-operations", "count")
-                                for k in ("certificates_expiring", "ssh_or_shell_enabled", "lockdown_off", "root_logins")}}
+        defn = "safe.ksi_percent"
+        card = {"headline": num(h["value"], defn, now, "vcf-operations", "percent", h["status"]),
+                "vms_below_sla": num(h["vms_below_sla"], "safe.vms_below_sla", now, "vcf-operations", "count"),
+                "sla_contract_percent": st["safe.sla_contract_percent"],
+                "open_findings": {k: num(h[k], f"safe.{k}", now, "vcf-operations", "count")
+                                  for k in ("ssh_or_shell_enabled", "lockdown_off", "certificates_expired", "root_logins_open")},
+                "risk_certificates": num(h["risk_certificates"], "safe.risk_certificates", now, "vcf-operations", "count")}
     card["sentence"] = health_sentence(ds, q)
     card["sparkline_7d"] = {"points": h["series7"], "meta": meta(defn, now, "vcf-operations")}
     return card
@@ -160,15 +171,15 @@ def location_detail(ds: dict, lid: str) -> dict:
                                       "percent", stale=loc["stale"]) for r in ("compute", "memory", "storage")},
         "health": {
             "up": "no_data" if loc["stale"] else catalog.band_status(by["up"]["by_location"][lid], st["up.target_percent"], st["up.amber_margin_percent"]),
-            "fast": "no_data" if loc["stale"] else catalog.band_status(by["fast"]["by_location"][lid], st["fast.target_percent"], st["fast.amber_margin_percent"]),
-            "safe": "no_data" if loc["stale"] else ("amber" if by["safe"]["by_location"].get(lid) else "green"),
+            "fast": "no_data" if loc["stale"] else ("green" if catalog.kpi_band(by["fast"]["by_location"][lid]) == "green" else "amber"),
+            "safe": "no_data" if loc["stale"] else ("red" if by["safe"]["by_location"].get(lid) else "green"),
         },
     }
 
 
 def health_detail(ds: dict, q: str, window_days: int = 7) -> dict:
     now, st, h = ds["now"], ds["settings"], ds["health"][q]
-    defn = {"up": "up.availability_percent", "fast": "fast.served_well_percent", "safe": "safe.findings"}[q]
+    defn = {"up": "up.availability_percent", "fast": "fast.production_kpi", "safe": "safe.vms_below_sla"}[q]
     pts = h["series30"] if (window_days == 30 and "series30" in h) else h["series7"]
     out = {"question": q, "series": {"points": pts, "meta": meta(defn, now, "vcf-operations")},
            "by_location": [{"location": lid,
@@ -176,8 +187,8 @@ def health_detail(ds: dict, q: str, window_days: int = 7) -> dict:
                                          ds["locations"][lid]["source"], stale=ds["locations"][lid]["stale"])}
                            for lid in ds["locations"]],
            "events": h.get("events", [])}
-    if q in ("up", "fast"):
-        out["target"] = num(st[f"{q}.target_percent"], f"setting {q}.target_percent", now, "settings", "percent")
+    if q == "up":
+        out["target"] = num(st["up.target_percent"], "setting up.target_percent", now, "settings", "percent")
     return out
 
 

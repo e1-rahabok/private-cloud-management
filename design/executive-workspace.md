@@ -43,7 +43,10 @@ Every section must name its question. Anything that does not answer one of these
 
 ## 4. What changes, and why
 
-### 4.1 "Is it secure?" becomes "Is it safe?", with platform hygiene only
+### 4.1 "Is it secure?" becomes "Is it safe?", measured as the SP5 Security SLA (D-073)
+
+- Superseded in part by `design/service-levels.md`: the hygiene checks below are the release 1.0 benchmark of the Security SLA, measured as unsecured time per VM per month. "Is it fast?" became a KPI with no target (D-072).
+
 
 - **Mockup:** firewall and intrusion events, for example "Attackers tried and failed".
 - **Change:** "Is it safe?" (D-035) shows VMware platform hygiene (D-049):

@@ -23,42 +23,29 @@ settings:
     owner: l2
     source: mockup
 
-  fast.target_percent:
-    description: Target share of production VM time served well (VM Performance green).
-    default: 99.0
-    unit: percent
-    owner: l2
-    source: "proposal; confirm with the author"
-
-  fast.amber_margin_percent:
-    description: Below target by at most this much shows amber; further below shows red.
-    default: 1.0
-    unit: percent
-    owner: l2
-    source: "proposal; confirm with the author"
-
   safe.certificate_warning_days:
-    description: A certificate expiring within this many days is a finding.
+    description: A certificate expiring within this many days is a risk, shown next to the Security SLA, not inside it. An expired certificate is unsecured time.
     default: 30
     unit: days
     owner: l2
     source: "SP5 object checks (private-cloud-explained): yellow at 1 to 30 days"
     decisions: [D-049]
 
-  safe.certificate_red_days:
-    description: A certificate expiring within this many days, or already expired, makes "Is it safe?" red.
-    default: 7
-    unit: days
+  safe.sla_contract_percent:
+    description: Security SLA in the contract, per VM per calendar month. The same for every class.
+    default: 99.95
+    unit: percent
     owner: l2
-    source: "proposal; confirm with the author"
-    decisions: [D-049]
+    source: "SP5 sla-metrics and class-of-service: contract value 99.95%, not 100%"
+    decisions: [D-073]
 
-  safe.root_login_window_days:
-    description: Root logins counted over this window.
-    default: 7
-    unit: days
+  safe.ksi_target_percent:
+    description: Internal key security indicator target.
+    default: 100
+    unit: percent
     owner: l2
-    source: "proposal; matches the Executive 7-day health window"
+    source: "SP5 sla-metrics: the internal KSI is 100%"
+    decisions: [D-073]
 
   capacity.procurement_lead_time_days:
     description: Time from order to usable capacity, per location.
@@ -74,7 +61,7 @@ settings:
     default: 30
     unit: days
     owner: capacity
-    source: "proposal; confirm with the author"
+    source: "confirmed by the author"
     decisions: [D-054]
 
   capacity.decide_soon_days:
@@ -98,7 +85,7 @@ settings:
     default: 95
     unit: percent
     owner: l2
-    source: "proposal; confirm with the author"
+    source: "confirmed by the author"
     decisions: [D-059]
 
   value.depreciation_years:

@@ -205,17 +205,36 @@ components:
     HealthCard:
       type: object
       properties:
-        headline: { $ref: "#/components/schemas/Number" }
+        headline:
+          $ref: "#/components/schemas/Number"
+          description: "up: up.availability_percent; fast: fast.production_kpi (0-100, no unit); safe: safe.ksi_percent"
         sentence: { type: string, description: "One plain sentence in Executive vocabulary" }
         sparkline_7d: { $ref: "#/components/schemas/Series" }
-        safe_counts:
+        class_kpi:
           type: object
-          description: Only for the safe card.
+          description: Only for the fast card. fast.class_group_kpi per class (D-072).
           properties:
-            certificates_expiring: { $ref: "#/components/schemas/Number" }
+            gold: { $ref: "#/components/schemas/Number" }
+            silver: { $ref: "#/components/schemas/Number" }
+            bronze: { $ref: "#/components/schemas/Number" }
+        order_kept:
+          type: boolean
+          description: Only for the fast card. Gold >= Silver >= Bronze.
+        vms_below_sla:
+          $ref: "#/components/schemas/Number"
+          description: Only for the safe card. safe.vms_below_sla (D-073).
+        sla_contract_percent: { type: number, description: "Only for the safe card. Setting safe.sla_contract_percent." }
+        open_findings:
+          type: object
+          description: Only for the safe card. safe.findings now.
+          properties:
             ssh_or_shell_enabled: { $ref: "#/components/schemas/Number" }
             lockdown_off: { $ref: "#/components/schemas/Number" }
-            root_logins: { $ref: "#/components/schemas/Number" }
+            certificates_expired: { $ref: "#/components/schemas/Number" }
+            root_logins_open: { $ref: "#/components/schemas/Number" }
+        risk_certificates:
+          $ref: "#/components/schemas/Number"
+          description: Only for the safe card. safe.risk_certificates.
 
     LocationDetail:
       type: object

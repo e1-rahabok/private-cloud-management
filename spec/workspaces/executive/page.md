@@ -76,9 +76,10 @@ api: /api/exec/summary → scale; /api/exec/locations/{id}
 ```yaml
 question: "Is it up? Is it fast? Is it safe?"
 role: executive
-cadence: [weekly]
-reads: [up.availability_percent, fast.served_well_percent, safe.findings]
+cadence: [weekly, monthly]
+reads: [up.availability_percent, fast.production_kpi, fast.class_group_kpi, safe.ksi_percent, safe.vms_below_sla, safe.findings, safe.risk_certificates]
 api: /api/exec/summary → health; /api/exec/health/{question}
+design: design/service-levels.md
 ```
 
 - **Three cards in the fixed order** up, fast, safe (D-035).
@@ -86,25 +87,33 @@ api: /api/exec/summary → health; /api/exec/health/{question}
   - the label from the vocabulary;
   - a status chip (design tokens);
   - a headline;
-  - a 7-day sparkline;
+  - a sparkline;
   - one sentence from `health.<q>.sentence`.
 
-| Card | Headline | Example sentence |
-|---|---|---|
-| Is it up? | `up.availability_percent`, one decimal place, against target | "Virtual machines were running 99.97% of the time they were meant to." |
-| Is it fast? | `fast.served_well_percent` | "Virtual machines got the computing power they asked for 99.4% of the time." |
-| Is it safe? | Total of `safe.findings` | "2 security certificates expire within 30 days. 3 servers have remote admin access left open." |
+| Card | Headline | Window | Example sentence |
+|---|---|---|---|
+| Is it up? | `up.availability_percent`, two decimal places | 7 days | "Virtual machines were running 99.97% of the time they were meant to." |
+| Is it fast? | `fast.production_kpi`, as "94 out of 100". No percent sign, no target line: performance has no SLA (D-072). | 7 days | "Virtual machines scored 94 out of 100 on performance. Gold scored above Silver, and Silver above Bronze, as promised." |
+| Is it safe? | `safe.ksi_percent`, two decimal places, "this month" | Calendar month to date (D-073) | "72 virtual machines in London fell below the security target this month: remote admin access was left open on their servers for 8 hours. 2 security certificates expire within 30 days." |
 
-- **Drill-down:**
-  - 7-day chart, with a switch to 30 days. No 1-hour view (Executive design, 4.3).
-  - The target as a dashed amber line.
+- **Drill-down: Is it up?** 7-day chart, with a switch to 30 days. Target as a dashed amber line. Values by location. Notable events.
+- **Drill-down: Is it fast?**
+  - The three class scores: Gold, Silver, Bronze.
+  - Whether the order is kept.
   - Values by location.
-  - Notable events in plain words.
-  - For "Is it safe?": the four counts with their labels.
+  - A 7-day or 30-day chart, with no target line.
+  - The sentence "Performance is a score, not a contract: there is no performance target."
+- **Drill-down: Is it safe?**
+  - Virtual machines below the security target this month, against the contract value of 99.95%.
+  - Open findings by check.
+  - Risk: certificates expiring soon.
+  - Values by location.
+  - The sentence "The security target is 99.95% of each month for every virtual machine. Our own target is 100%."
+- **No 1-hour view** (Executive design, 4.3).
 - **States:**
   - normal (green, amber, red);
-  - stale: the chip shows "No data" and the sparkline is hidden;
-  - empty (safe with 0 findings): "No open findings.";
+  - stale: the chip shows "No data", and the sparkline is hidden;
+  - empty: "Is it safe?" with no unsecured minute and no open finding shows "No open findings this month.";
   - loading;
   - error.
 

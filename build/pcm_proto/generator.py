@@ -15,6 +15,7 @@ import random
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import yaml
 
@@ -126,38 +127,77 @@ def generate(now: datetime, seed: int = 7, enable: tuple = ()) -> dict:
 
     # Health.
     up_level = bg["up.availability_percent"]["estate"]
-    fast_level = bg["fast.served_well_percent"]["estate"]
     health = {
         "up": {"value": up_level, "series7": series(rng, now, 7, 2, up_level, 0.02, ceil=100.0),
                "series30": series(rng, now, 30, 8, up_level, 0.02, ceil=100.0)},
-        "fast": {"value": fast_level, "series7": series(rng, now, 7, 2, fast_level, 0.3, ceil=100.0),
-                 "series30": series(rng, now, 30, 8, fast_level, 0.3, ceil=100.0)},
     }
-    for q in ("up", "fast"):
-        health[q]["by_location"] = {lid: round(health[q]["value"] + rng.uniform(-0.01, 0.02 if q == "up" else 0.3), 2)
-                                    for lid in locs}
-    cert_days, cert_events, ssh, ssh_events = [], [], 0, []
-    if "E-1" in active:
-        for c in active["E-1"]["plant"]["certificates_expiring"]:
-            d = (rel(c["expires"], now).date() - now.date()).days
-            cert_days.append(d)
-            where = {"fr": "Frankfurt", "sg": "Singapore"}[c["component"].split("-")[-2]]
-            cert_events.append({"at": now.isoformat(),
-                                "text": f"A security certificate on a management server in {where} expires in {d} days."})
+    health["up"]["by_location"] = {lid: round(up_level + rng.uniform(-0.01, 0.02), 2) for lid in locs}
+
+    # Production VMs per location and class (estate.yaml vms and cluster_layout).
+    vm_cfg, layout = est["vms"], est["cluster_layout"]["share_of_hosts"]
+    prod = {lid: {c: round(locs[lid]["hosts"] * layout[c] * vm_cfg["per_host_average"][c] * vm_cfg["production_share"])
+                  for c in CLASSES} for lid in locs}
+
+    # Fast: a KPI, not an SLA (D-072). Class group KPIs are planted; the VM KPI engine comes with L2.
+    ckpi = bg["fast.class_group_kpi"]
+    n_cls = {c: sum(prod[l][c] for l in locs) for c in CLASSES}
+    prod_kpi = round(sum(ckpi[c] * n_cls[c] for c in CLASSES) / sum(n_cls.values()), 1)
+    health["fast"] = {"value": prod_kpi, "class_kpi": dict(ckpi), **catalog.fast_status(ckpi)}
+    daily = lambda days: [{"t": (now - timedelta(days=days - 1 - i)).isoformat(),
+                           "v": round(prod_kpi + rng.uniform(-1.2, 1.2), 1)} for i in range(days)]
+    health["fast"]["series7"], health["fast"]["series30"] = daily(7), daily(30)
+    health["fast"]["by_location"] = {lid: round(prod_kpi + rng.uniform(-2.0, 1.5), 1) for lid in locs}
+
+    # Safe: Security SLA as unsecured time, calendar month to date in each location's time zone (D-073).
+    def month_minutes(lid):
+        tz = ZoneInfo(est["locations"][lid]["time_zone"])
+        local = now.astimezone(tz)
+        start = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return int((local - start).total_seconds() // 60)
+    cert_days, cert_events, ssh, ssh_events, below = [], [], 0, [], {}
+    e1 = active.get("E-1", {}).get("plant", {})
+    for c in e1.get("certificates_expiring", []):
+        d = (rel(c["expires"], now).date() - now.date()).days
+        cert_days.append(d)
+        where = {"fr": "Frankfurt", "sg": "Singapore"}[c["component"].split("-")[-2]]
+        cert_events.append({"at": now.isoformat(),
+                            "text": f"A security certificate on a management server in {where} expires in {d} days."})
+    unsecured_vm_minutes = 0
+    vm_secured = []
     if "N-4" in active:
         n4 = active["N-4"]
         ssh = n4["objects"]["hosts"]
-        hours = int((now - rel(n4["plant"]["ssh_enabled_since"], now)).total_seconds() // 3600)
-        ssh_events.append({"at": rel(n4["plant"]["ssh_enabled_since"], now).isoformat(),
-                           "text": f"{ssh} servers in London have had remote admin access left open for {hours} hours."})
-    e1 = active.get("E-1", {}).get("plant", {})
-    health["safe"] = catalog.safe_findings(cert_days, ssh, e1.get("lockdown_off", 0),
-                                           e1.get("root_logins_7d", 0), st)
-    health["safe"]["events"] = ssh_events + cert_events
-    health["safe"]["series7"] = [{"t": (now - timedelta(hours=2 * (83 - i))).isoformat(),
-                                  "v": 2 if i < 80 else health["safe"]["total"]} for i in range(84)]
-    health["safe"]["by_location"] = {"sg": 1 if cert_days else 0, "fr": 1 if cert_days else 0,
-                                     "ld": ssh, "va": 0, "tk": 0}
+        since = rel(n4["plant"]["ssh_enabled_since"], now)
+        minutes = int((now - since).total_seconds() // 60)
+        in_window = minutes if n4["plant"].get("inside_maintenance_window") else 0
+        mm = month_minutes(n4["objects"]["location"])
+        minutes, in_window = min(minutes, mm), min(in_window, mm)  # only this calendar month counts
+        pct = catalog.vm_secured_time_percent(mm, minutes, in_window) if mm else 100.0
+        n_vms = n4["objects"]["production_vms_on_hosts"]
+        vm_secured += [pct] * n_vms
+        unsecured_vm_minutes += (minutes - in_window) * n_vms
+        if pct < st["safe.sla_contract_percent"]:
+            below[n4["objects"]["location"]] = {"vms": n_vms, "hours": (minutes - in_window) // 60}
+        ssh_events.append({"at": since.isoformat(),
+                           "text": f"{ssh} servers in London have had remote admin access left open for {minutes // 60} hours, "
+                                   f"outside the maintenance window. {n_vms} virtual machines on them fell below the security target."})
+    total_vm_minutes = sum(sum(prod[l].values()) * month_minutes(l) for l in locs)
+    n_prod = sum(sum(prod[l].values()) for l in locs)
+    vm_secured += [100.0] * (n_prod - len(vm_secured))
+    ksi = round(100.0 * (total_vm_minutes - unsecured_vm_minutes) / total_vm_minutes, 4)
+    health["safe"] = {
+        "value": ksi, "status": catalog.ksi_status(vm_secured, st),
+        "vms_below_sla": sum(b["vms"] for b in below.values()), "below_by_location": below,
+        "ssh_or_shell_enabled": ssh, "lockdown_off": e1.get("lockdown_off", 0),
+        "certificates_expired": e1.get("certificates_expired", 0), "root_logins_open": e1.get("root_logins_open", 0),
+        "risk_certificates": len([d for d in cert_days if d <= st["safe.certificate_warning_days"]]),
+        "events": ssh_events + cert_events,
+    }
+    days_so_far = now.astimezone(timezone.utc).day
+    health["safe"]["series7"] = [{"t": (now - timedelta(days=days_so_far - 1 - i)).isoformat(),
+                                  "v": 100.0 if i < days_so_far - 1 else ksi} for i in range(days_so_far)]
+    health["safe"]["series30"] = health["safe"]["series7"]
+    health["safe"]["by_location"] = {lid: below.get(lid, {}).get("vms", 0) for lid in locs}
 
     # Value.
     cost = est["cost"]

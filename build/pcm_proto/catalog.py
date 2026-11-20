@@ -38,7 +38,7 @@ def location_decision(decisions: dict, in_plan_groups: set, now: datetime, setti
 
 
 def band_status(value: float, target: float, amber_margin: float) -> str:
-    """Status rule shared by up.availability_percent and fast.served_well_percent."""
+    """Status rule of up.availability_percent."""
     if value >= target:
         return "green"
     if value >= target - amber_margin:
@@ -46,20 +46,43 @@ def band_status(value: float, target: float, amber_margin: float) -> str:
     return "red"
 
 
-def safe_findings(cert_days: list, ssh_or_shell: int, lockdown_off: int, root_logins: int,
-                  settings: dict) -> dict:
-    """safe.findings. cert_days: days until expiry of each finding (negative = expired)."""
-    certs = [d for d in cert_days if d <= settings["safe.certificate_warning_days"]]
-    total = len(certs) + ssh_or_shell + lockdown_off + root_logins
-    if any(d <= settings["safe.certificate_red_days"] for d in certs):
+KPI_BANDS = ((75, "green"), (50, "yellow"), (25, "orange"), (0, "red"))
+
+
+def kpi_band(score: float) -> str:
+    """SP5 scoring bands: green 100-75, yellow 75-50, orange 50-25, red 25-0."""
+    for floor, band in KPI_BANDS:
+        if score >= floor:
+            return band
+    return "red"
+
+
+def fast_status(class_kpi: dict) -> dict:
+    """fast.production_kpi status (D-072). No target: SP5 bands and the class promise only."""
+    order_kept = class_kpi["gold"] >= class_kpi["silver"] >= class_kpi["bronze"]
+    lowest = kpi_band(min(class_kpi.values()))
+    if lowest in ("orange", "red"):
         status = "red"
-    elif total == 0:
-        status = "green"
-    else:
+    elif lowest == "yellow" or not order_kept:
         status = "amber"
-    return {"total": total, "status": status, "certificates_expiring": len(certs),
-            "ssh_or_shell_enabled": ssh_or_shell, "lockdown_off": lockdown_off,
-            "root_logins": root_logins}
+    else:
+        status = "green"
+    return {"status": status, "order_kept": order_kept}
+
+
+def vm_secured_time_percent(minutes_so_far: int, unsecured: int, unsecured_in_window: int) -> float:
+    """safe.vm_secured_time_percent: unsecured minutes inside maintenance windows do not count (D-073)."""
+    counted = unsecured - unsecured_in_window
+    return round(100.0 * (minutes_so_far - counted) / minutes_so_far, 2)
+
+
+def ksi_status(vm_secured: list, settings: dict) -> str:
+    """safe.ksi_percent status: red decided per VM against the contract (D-073)."""
+    if any(v < settings["safe.sla_contract_percent"] for v in vm_secured):
+        return "red"
+    if all(v >= settings["safe.ksi_target_percent"] for v in vm_secured):
+        return "green"
+    return "amber"
 
 
 def site_recovery(last_test_days_ago: int, recovery_minutes: int, target_minutes: int,

@@ -8,10 +8,10 @@ version: 1
 background:
   description: >
     Everything not in a story is mostly green (realism rule). No location other than the
-    ones below has a decision date within 90 days. Up and fast stay above target in all
-    locations.
+    ones below has a decision date within 90 days. Up stays above target in all locations.
+    Fast: every class group KPI is green, and Gold scores above Silver above Bronze (D-072).
   up.availability_percent: { estate: 99.97 }
-  fast.served_well_percent: { estate: 99.4 }
+  fast.class_group_kpi: { gold: 96.8, silver: 93.5, bronze: 88.2 }
   decision_dates_days_from_now: { va: 200, fr: 160, tk: 300, ld: 250 }
 
 stories:
@@ -56,28 +56,37 @@ stories:
     decisions: [D-060]
 
   N-4:
-    title: SSH left on in London
-    objects: { location: ld, hosts: 3 }
+    title: SSH left on in London, outside the maintenance window
+    objects: { location: ld, hosts: 3, production_vms_on_hosts: 72 }
     plant:
       ssh_enabled_since: "now - 8 hours"
+      inside_maintenance_window: false
     expect:
       safe.ssh_or_shell_enabled: 3
-    decisions: [D-049]
+      safe.vms_below_sla: 72
+    note: >
+      8 hours of unsecured time is far beyond the 21.6 minutes a month that 99.95% allows, so the 72
+      production VMs on those hosts are below the Security SLA for the month (D-073).
+    decisions: [D-049, D-073]
 
   E-1:
-    title: Health is up and fast, safe needs watching
+    title: Up and fast are fine; safe is red because the contract broke for 72 VMs
     depends_on: [N-4]
     plant:
       certificates_expiring:
         - { component: vcenter-fr-01, expires: "now + 21 days" }
         - { component: nsx-manager-sg-01, expires: "now + 26 days" }
+      certificates_expired: 0
       lockdown_off: 0
-      root_logins_7d: 0
+      root_logins_open: 0
     expect:
       up: { status: green, headline: 99.97 }
-      fast: { status: green, headline: 99.4 }
-      safe: { status: amber, headline: 5, certificates_expiring: 2, ssh_or_shell_enabled: 3 }
-    decisions: [D-035, D-049]
+      fast: { status: green, headline_between: [88.2, 96.8], order_kept: true }
+      safe: { status: red, vms_below_sla: 72, ksi_between: [99.95, 100.0], risk_certificates: 2, ssh_or_shell_enabled: 3 }
+    note: >
+      The estate KSI stays above 99.95%, yet the card is red: the rule is decided per VM (D-073). The 2
+      certificates are a risk, not unsecured time, so they do not count against the SLA.
+    decisions: [D-035, D-072, D-073]
 
   E-2:
     title: Singapore's date is already in the plan

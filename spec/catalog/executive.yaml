@@ -70,35 +70,76 @@ entries:
       the SLA number. Actual availability is shown in the drill-down only.
     decisions: [D-035]
 
-  fast.served_well_percent:
+  # "Is it fast?" is a KPI, not an SLA (design/service-levels.md, section 2; D-072).
+
+  fast.vm_daily_kpi:
     description: >
-      Share of production VM time in which the VM got the resources it asked for:
-      VM Performance (%) green.
-    formula: >
-      100 * (production VM 5-minute intervals with VM Performance green)
-          / (all production VM 5-minute intervals)
+      VM Performance (%) for one VM and one day: the 99th percentile of the day's 288 five-minute
+      scores, counted from the worst, so the 2 worst intervals are ignored.
+    formula: SP5 performance-kpi-design, section Reading a KPI over time. Never the day's average.
+    levels: "green 100-75, yellow 75-50, orange 50-25, red 25-0 (SP5 scoring; limits per metric in Agent E2 catalog thresholds-performance)"
+    decisions: [D-072]
+
+  fast.class_group_kpi:
+    description: Per class of service, the average of fast.vm_daily_kpi over production VMs in that class, over the window.
+    formula: "mean(fast.vm_daily_kpi) over production VMs of the class and days in the window"
     window: 7 days, drill-down 30 days
+    note: "SP5 kpi-vs-sla: a super metric that averages each group's KPI. Gold should score above Silver, Silver above Bronze."
+    decisions: [D-072]
+
+  fast.production_kpi:
+    description: The Executive headline. The average of fast.vm_daily_kpi over all production VMs in the window.
+    formula: "mean(fast.vm_daily_kpi) over production VMs and days in the window"
     status:
-      green: ">= setting fast.target_percent"
-      amber: ">= fast.target_percent - fast.amber_margin_percent"
-      red: "otherwise"
+      red: "the lowest fast.class_group_kpi is in the orange or red band (below 50)"
+      amber: "the lowest fast.class_group_kpi is in the yellow band (50 to below 75), or the order Gold >= Silver >= Bronze is broken"
+      green: "every fast.class_group_kpi is green (75 or more) and the order holds"
+    note: "No target and no SLA: SP5 says performance has no SLA. Only SP5 bands and the SP5 class promise are used."
+    decisions: [D-072]
+
+  # "Is it safe?" is a Security SLA, measured as unsecured time (design/service-levels.md, section 3; D-073).
+
+  safe.vm_secured_time_percent:
+    description: Security SLA reality for one VM in the current calendar month, in the VM's location time zone.
+    formula: >
+      (minutes in month so far - unsecured minutes outside maintenance windows) / minutes in month so far * 100.
+      A minute is unsecured when any 1.0 check fails for the VM or its surroundings (its ESXi host, vSAN
+      cluster and datastore, distributed switch and port group, and the vCenter and NSX Manager that manage
+      them): ESXi Shell or SSH running; lockdown mode off where required; a certificate expired; a root login
+      on the host not yet closed by L2 with a reason.
     note: >
-      Infrastructure performance only. Application response time is out of scope (D-030,
-      D-034). This replaces the mockup's response-time target.
-    decisions: [D-034, D-035]
+      The formula stays the same in phase 2; only the benchmark grows (full security configuration guide,
+      CIS, DISA, PCI DSS, Guest OS compliance). Maintenance windows come from the business calendar.
+    decisions: [D-049, D-073]
+
+  safe.ksi_percent:
+    description: Key security indicator. Production VM minutes secured this month, over all production VM minutes this month.
+    formula: "sum over production VMs of secured minutes / sum of minutes in month so far * 100"
+    status:
+      green: ">= setting safe.ksi_target_percent (100)"
+      red: "any production VM has safe.vm_secured_time_percent < setting safe.sla_contract_percent (99.95)"
+      amber: "otherwise"
+    note: >
+      Red is decided per VM, not by the estate figure: an estate KSI of 99.99% can hide 72 VMs exposed for
+      8 hours. Once a VM is below 99.95% in a month it cannot recover that month, so red holds to month end.
+    decisions: [D-073]
+
+  safe.vms_below_sla:
+    description: Count of production VMs with safe.vm_secured_time_percent below setting safe.sla_contract_percent this month.
+    decisions: [D-073]
 
   safe.findings:
-    description: Open platform hygiene findings (D-049). The Executive sees counts only.
+    description: Open findings now, by check. Shown in the sentence and the drill-down. The NOC sees the same counts (D-049).
     parts:
-      safe.certificates_expiring: "Certificates expiring within safe.certificate_warning_days, or expired"
-      safe.ssh_or_shell_enabled: "ESXi hosts with SSH or ESXi Shell enabled"
+      safe.ssh_or_shell_enabled: "ESXi hosts with SSH or ESXi Shell running outside a maintenance window"
       safe.lockdown_off: "ESXi hosts with lockdown mode off, where the standard requires it on"
-      safe.root_logins: "Root logins on ESXi hosts and VCF appliances within safe.root_login_window_days"
-    status:
-      green: "all parts are 0"
-      red: "any certificate expired or expiring within safe.certificate_red_days"
-      amber: "otherwise"
-    decisions: [D-044, D-049]
+      safe.certificates_expired: "Certificates already expired"
+      safe.root_logins_open: "Root logins not yet closed by L2 with a reason"
+    decisions: [D-049, D-073]
+
+  safe.risk_certificates:
+    description: Certificates expiring within setting safe.certificate_warning_days. A risk, not unsecured time.
+    decisions: [D-073]
 
   # ---------------------------------------------------------------- Room to grow
 

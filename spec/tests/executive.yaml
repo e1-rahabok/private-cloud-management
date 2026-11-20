@@ -36,14 +36,49 @@ catalog:
     reason: A date already past is red, not hidden.
 
   - id: CAT-5
-    entry: safe.findings
-    given: { certificates_expiring: [21, 26], ssh_or_shell_enabled: 3, lockdown_off: 0, root_logins: 0 }
-    expect: { status: amber, total: 5 }
+    entry: safe.ksi_percent
+    given: { vm_secured_time_percent: [100, 100, 99.97] }
+    expect: { status: amber }
+    reason: KSI below 100%, but every VM is still at or above the 99.95% contract.
 
   - id: CAT-6
-    entry: safe.findings
-    given: { certificates_expiring: [5], ssh_or_shell_enabled: 0, lockdown_off: 0, root_logins: 0 }
+    entry: safe.ksi_percent
+    given: { vm_secured_time_percent: [100, 100, 98.16] }
     expect: { status: red }
+    reason: One VM below the contract makes the card red, whatever the estate figure (D-073).
+
+  - id: CAT-13
+    entry: safe.ksi_percent
+    given: { vm_secured_time_percent: [100, 100, 100] }
+    expect: { status: green }
+
+  - id: CAT-14
+    entry: safe.vm_secured_time_percent
+    given: { minutes_in_month_so_far: 26105, unsecured_minutes: 480, unsecured_inside_maintenance_window: 0 }
+    expect: 98.16
+
+  - id: CAT-15
+    entry: safe.vm_secured_time_percent
+    given: { minutes_in_month_so_far: 26105, unsecured_minutes: 480, unsecured_inside_maintenance_window: 480 }
+    expect: 100.0
+    reason: SSH on during the agreed maintenance window is agreed change, not a breach.
+
+  - id: CAT-16
+    entry: fast.production_kpi
+    given: { class_group_kpi: { gold: 96.8, silver: 93.5, bronze: 88.2 } }
+    expect: { status: green, order_kept: true }
+
+  - id: CAT-17
+    entry: fast.production_kpi
+    given: { class_group_kpi: { gold: 90.0, silver: 92.0, bronze: 85.0 } }
+    expect: { status: amber, order_kept: false }
+    reason: All green, but Silver scores above Gold, so the price difference is not delivered.
+
+  - id: CAT-18
+    entry: fast.production_kpi
+    given: { class_group_kpi: { gold: 80.0, silver: 70.0, bronze: 45.0 } }
+    expect: { status: red, order_kept: true }
+    reason: Bronze is in the orange band.
 
   - id: CAT-7
     entry: recovery.site_recovery
@@ -85,8 +120,18 @@ story:
       api: /api/exec/summary
       health.up.headline.status: green
       health.fast.headline.status: green
-      health.safe.headline.status: amber
-      health.safe.headline.value: 5
+      health.fast.order_kept: true
+      health.safe.headline.status: red
+      health.safe.vms_below_sla.value: 72
+      health.safe.risk_certificates.value: 2
+      health.safe.open_findings.ssh_or_shell_enabled.value: 3
+
+  - id: ST-8
+    story: E-1
+    name: Estate KSI stays above the contract while the card is red
+    expect:
+      rule: health.safe.headline.value is at least 99.95 and below 100, and health.safe.headline.status is red.
+    decisions: [D-073]
 
   - id: ST-2
     story: E-2
