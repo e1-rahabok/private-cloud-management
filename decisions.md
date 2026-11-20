@@ -84,6 +84,8 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-077 | 2026-11-20 | "Is it up?" follows the SP5 Availability SLA: Operational Availability per VM per calendar month, against the class target (Gold 99.975%, Silver 99.95%, Bronze 99.9%). Downtime inside an approved change window does not count; downtime outside it counts, even when planned. PCM reads approved change windows from the ITSM change calendar through a connector, or from its own business calendar where no ITSM is connected. Actual Availability is shown in the drill-down. A VM breaches when its counted minutes exceed the allowance for the whole calendar month; the same rule now applies to the Security SLA. | See `design/service-levels.md`, section 4. |
 | D-078 | 2026-11-20 | Agent E2 is a service behind PCM: it owns the knowledge base, the reading plan, the flow executor and the model call, behind one HTTP endpoint (`POST /v1/answer`, Agent E2 `harness/answer_service.py`). PCM owns the data, the actions, the user's identity and every screen, and sends the question with the live facts and the role. The Agent E2 repository becomes part of PCM eventually. | See Rationale. |
 | D-079 | 2026-11-20 | Replace the trust ladder with policy as code. No "Make automatic" button and no promotion thresholds. The approval and rollback record per action type is evidence for L2, never a gate. L2 changes an action type's tier and guardrails through "Propose a policy change": versioned, replayed against recent history, owned (L2 in 1.0; the Operations Manager reviews after 1.0). Guardrails make automatic safe: blast-radius limits, maintenance windows, class-of-service conditions, automatic expiry and undo, and a service account scoped to the action type. | See Rationale. |
+| D-080 | 2026-11-20 | The prototype keeps what people and policies do in SQLite: the action record (append-only), the demand register, and workflow state. Synthetic metrics are generated from "now" and never stored. Plain SQL, so the schema ports to the product database. This does not choose the product database (PCM core, 5). | See Rationale. |
+
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -401,4 +403,29 @@ Source: Cost n Price n Value (in `sources/`).
 **The record per action type stays, as evidence only.** Approvals, rejections and rollbacks help L2 decide whether to propose a change. They never unlock anything by themselves.
 
 **Accountability (D-050) for automatic runs:** the second field is the policy owner and the policy version, for example "policy move-vms v2, owner l2-engineer-1". There is no approval record for an automatic run, because no one approved it: the policy did.
+
+### D-080 A small database for the prototype
+
+**The problem it solves**
+- The prototype kept everything people did in memory. A restart lost the demand register, escalations, published policies and the action record.
+- A lost action record is the worst of these: D-079 makes the record the evidence, and evidence that disappears on restart is not evidence.
+
+**Why SQLite**
+- It ships with Python: no server, no install, no account. One file in `var/`.
+- It is real SQL with constraints and triggers, so the database itself checks correctness:
+  - the action record refuses UPDATE and DELETE (append-only);
+  - a register entry needs a known kind, an owner, and at least one amount, none negative.
+- Tests run on an in-memory database, so they never touch working data.
+
+**What is stored, and what is not**
+- **Stored:** what people and policies do. Actions, acknowledgements, escalations, closures, proposals, published policies and thresholds, calendar entries, limits, demand register entries.
+- **Not stored:** synthetic metrics and planted stories. They are generated from "now" (D-067). Storing them would freeze the clock, and the stories would stop holding on another day.
+
+**Trade-offs, accepted for now**
+- Workflow state is one JSON document per name, not one table each. That keeps the prototype code close to what it was, so the time goes to functionality. The product gets proper tables.
+- One process writes. A second PCM server on the same file is not supported.
+- A reset for tests drops the action record. Nothing else can delete from it.
+
+**What it does not decide**
+- The product database stays open (PCM core, section 5). The schema uses only TEXT, INTEGER and REAL, and ISO 8601 times, so it ports to a relational product database without redesign. The append-only trigger has a direct equivalent there.
 

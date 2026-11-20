@@ -14,8 +14,9 @@ const avoided = vocab.split('avoided:')[1].split('labels:')[0].split('\n').map(l
   .filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
 
 // Agent E2 in mock mode: page tests must not depend on the network (D-076).
-const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_AGENT_E2_MODE: 'mock' } });
-await new Promise(r => setTimeout(r, 800));
+const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_AGENT_E2_MODE: 'mock', PCM_DB: ':memory:' } });
+// Wait until the server answers, not a fixed time: a slow start made the first request fail.
+for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/exec`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
 const BASE = `http://127.0.0.1:${PORT}`;
 const q = (extra = '') => `?now=${encodeURIComponent(NOW)}${extra}`;
 const reset = () => fetch(`${BASE}/api/noc/_reset`, { method: 'POST', body: '{}' });

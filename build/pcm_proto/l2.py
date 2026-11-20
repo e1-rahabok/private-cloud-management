@@ -14,20 +14,37 @@ from zoneinfo import ZoneInfo
 
 import yaml
 
-from . import agent_e2, generator, noc
+from . import agent_e2, generator, noc, store
 
 SPEC = Path(__file__).resolve().parents[2] / "spec"
 
 
 class State:
-    def __init__(self):
-        self.lock = threading.Lock()
-        self.reset()
+    """L2 workflow state, kept in the PCM database (store.py, D-080)."""
+    FIELDS = ("proposals", "closures", "calendar_added", "policies", "replays", "extra_approvals", "standards", "thresholds")
 
-    def reset(self):
+    def __init__(self):
+        self.lock = threading.RLock()
+        self.load()
+
+    def _defaults(self):
         self.proposals, self.closures, self.calendar_added = {}, {}, []
         self.policies, self.replays, self.extra_approvals = {}, {}, {}
         self.standards, self.thresholds = {}, {}
+
+    def load(self):
+        self._defaults()
+        for k, v in store.load_state("l2").items():
+            if k in self.FIELDS:
+                setattr(self, k, v)
+
+    def save(self):
+        store.save_state("l2", {k: getattr(self, k) for k in self.FIELDS})
+
+    def reset(self):
+        """Prototype and test reset only."""
+        self._defaults()
+        store.clear_state("l2")
 
 
 STATE = State()
@@ -342,6 +359,15 @@ def replay(now: datetime, tid: str, new_value: float, settings: dict, seed: int 
 # ---------------------------------------------------------------- actions
 
 def act(now: datetime, path: list, body: dict, enable=()) -> tuple[int, dict]:
+    """Every L2 action is saved to the PCM database before the answer goes back. L2 also changes NOC state."""
+    with noc.STATE.lock, STATE.lock:
+        out = _act(now, path, body, enable)
+        STATE.save()
+        noc.STATE.save()
+    return out
+
+
+def _act(now: datetime, path: list, body: dict, enable=()) -> tuple[int, dict]:
     st = generator.load_spec()["settings"]
     human = body.get("actor_human") or st["noc.actor_default"].replace("operator", "l2-engineer")
     rec = lambda a, target, reason, before, after, **k: noc.record(a, target, human, reason, before, after, now, **k)

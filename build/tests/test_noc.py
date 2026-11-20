@@ -9,6 +9,9 @@ import re
 import unittest
 from pathlib import Path
 
+import os
+os.environ["PCM_DB"] = ":memory:"  # tests never touch the working database
+
 import yaml
 
 import os

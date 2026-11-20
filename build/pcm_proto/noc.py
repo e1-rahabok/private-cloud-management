@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 import yaml
 
-from . import agent_e2, api, catalog, generator
+from . import agent_e2, api, catalog, generator, store
 
 SPEC = Path(__file__).resolve().parents[2] / "spec"
 SCREENS = ("changed", "up", "fast", "safe", "set_right")
@@ -39,13 +39,34 @@ SOPS = load_sops()
 # ---------------------------------------------------------------- state (action engine memory)
 
 class State:
+    """NOC workflow state, kept in the PCM database (store.py, D-080). The action record is its own table."""
+    FIELDS = ("acks", "escalated", "closed", "notes", "provisioning_stopped", "limits")
+
     def __init__(self):
-        self.lock = threading.Lock()
-        self.reset()
+        self.lock = threading.RLock()
+        self.load()
+
+    def _defaults(self):
+        self.acks, self.escalated, self.closed = {}, {}, {}
+        self.notes, self.provisioning_stopped, self.limits = [], set(), {}
+
+    def load(self):
+        self._defaults()
+        for k, v in store.load_state("noc").items():
+            if k in self.FIELDS:
+                setattr(self, k, set(v) if k == "provisioning_stopped" else v)
+        self.history = store.records()
+
+    def save(self):
+        store.save_state("noc", {k: sorted(getattr(self, k)) if k == "provisioning_stopped" else getattr(self, k)
+                                 for k in self.FIELDS})
 
     def reset(self):
-        self.acks, self.escalated, self.closed = {}, {}, {}
-        self.history, self.notes, self.provisioning_stopped, self.limits = [], [], set(), {}
+        """Prototype and test reset only."""
+        self._defaults()
+        self.history = []
+        store.clear_state("noc")
+        store.clear_records()
 
 
 STATE = State()
@@ -56,6 +77,7 @@ def record(action, target, actor_human, reason, before, after, now, actor_agent=
     rec = {"at": now.isoformat(), "action": action, "target": target, "incident": incident,
            "actor_agent": actor_agent, "actor_human": actor_human, "reason": reason,
            "before": before, "after": after, "expires_at": expires_at.isoformat() if expires_at else None}
+    store.append_record(rec)
     STATE.history.insert(0, rec)
     return rec
 
@@ -392,6 +414,14 @@ def shift_view(nd: dict) -> dict:
 # ---------------------------------------------------------------- actions (action engine, PCM core 3.7)
 
 def act(nd: dict, path: list, body: dict) -> tuple[int, dict]:
+    """Every action is saved to the PCM database before the answer goes back."""
+    with STATE.lock:
+        out = _act(nd, path, body)
+        STATE.save()
+    return out
+
+
+def _act(nd: dict, path: list, body: dict) -> tuple[int, dict]:
     now, st = nd["now"], nd["settings"]
     human = body.get("actor_human") or st["noc.actor_default"]
     agent = body.get("actor_agent")

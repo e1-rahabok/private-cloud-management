@@ -11,6 +11,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import os
+os.environ["PCM_DB"] = ":memory:"  # tests never touch the working database
+
 import yaml
 
 from build.pcm_proto import api, generator, l2, noc

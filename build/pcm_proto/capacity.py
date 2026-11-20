@@ -10,7 +10,9 @@ import math
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from . import generator
+import sqlite3
+
+from . import generator, store
 
 CLASSES = ("gold", "silver", "bronze")
 RESOURCES = ("compute", "memory", "storage")
@@ -56,12 +58,20 @@ def close_month(d: datetime, month: int) -> bool:
 
 
 class State:
-    """Demand register entries added on the page (in memory, prototype)."""
-    def __init__(self):
-        self.reset()
+    """Demand register entries added on the page, in the PCM database (table demand_register, D-080).
+    Planted story entries (C-4) stay synthetic: they are generated from "now", never stored."""
+
+    @property
+    def added(self) -> list:
+        out = []
+        for r in store.rows("SELECT * FROM demand_register ORDER BY id"):
+            g = r.pop("cluster_group")
+            out.append({**r, "group": g, "date": datetime.fromisoformat(r["date"]), "added": datetime.fromisoformat(r["added"])})
+        return out
 
     def reset(self):
-        self.added = []
+        """Prototype and test reset only."""
+        store.execute("DELETE FROM demand_register")
 
 
 STATE = State()
@@ -401,11 +411,20 @@ def add_demand(now: datetime, body: dict, enable=()) -> tuple[int, dict]:
         return 400, {"error": "date must be YYYY-MM-DD"}
     if d.tzinfo is None:
         d = d.replace(tzinfo=now.tzinfo)
-    entry = {"id": f"dr-{len(STATE.added) + 1:03d}", "kind": body["kind"], "source": body.get("source") or "",
-             "group": body["group"], "date": d, "added": now, "owner": body["owner"],
-             "compute_threads": float(body.get("compute_threads") or 0), "memory_gb": float(body.get("memory_gb") or 0),
-             "storage_tb": float(body.get("storage_tb") or 0)}
-    STATE.added.append(entry)
+    try:
+        amounts = {k: float(body.get(k) or 0) for k in ("compute_threads", "memory_gb", "storage_tb")}
+    except ValueError:
+        return 400, {"error": "amounts must be numbers"}
+    n = store.rows("SELECT COUNT(*) AS n FROM demand_register")[0]["n"]
+    entry = {"id": f"dr-{n + 1:03d}", "kind": body["kind"], "source": body.get("source") or "",
+             "group": body["group"], "date": d, "added": now, "owner": body["owner"], **amounts}
+    try:
+        store.execute("INSERT INTO demand_register (id, kind, source, cluster_group, date, added, owner, compute_threads, memory_gb, storage_tb) "
+                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      (entry["id"], entry["kind"], entry["source"], entry["group"], d.isoformat(), now.isoformat(), entry["owner"],
+                       amounts["compute_threads"], amounts["memory_gb"], amounts["storage_tb"]))
+    except sqlite3.IntegrityError:
+        return 400, {"error": "An entry needs at least one amount, none negative: threads, GB or TB."}
     g = next(x for x in groups_view(now, enable)["groups"] if x["id"] == body["group"])
     return 200, {"entry": _reg(entry), "group": g}
 

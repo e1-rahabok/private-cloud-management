@@ -32,6 +32,8 @@ Options, in the page URL or on the API:
 | `screen=fast` | Wall only: show one screen without rotating, for a wall with one display per screen (D-041). |
 | `rotate=5` | Wall only, prototype and test: rotate every 5 seconds instead of 60. |
 
+**Database (D-080):** what people and policies do is kept in SQLite at `var/pcm.sqlite`, so it survives a restart. Set `PCM_DB` to use another file. Tests use `PCM_DB=:memory:`. To start clean, stop the server and delete the file. Synthetic metrics are generated from "now", never stored.
+
 ## Test
 
 ```bash
@@ -64,6 +66,10 @@ python3 -m unittest build.tests.test_capacity -v
 
 ```bash
 node build/tests/capacity.page.test.mjs
+```
+
+```bash
+python3 -m unittest build.tests.test_store -v
 ```
 
 The page test needs Node and Playwright with Chromium. It also writes the review screenshots to `screenshots/`.
@@ -141,6 +147,19 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 - TK-Silver showed "Good" next to a peak warning. It now shows an amber "Peak warning" chip.
 - A new register entry pulled VA-Silver's decision date into the past, shown as a plain date. It now says "overdue since".
 
+## Results: Database
+
+| Level | Tests | Result |
+|---|---|---|
+| Catalog | DB-1 to DB-4 | 4 passed |
+| Page | DBP-1 | 1 passed |
+
+- The action record refuses UPDATE and DELETE.
+- After a restart: the escalation, the published policy v2, the register entry and every record are still there. The decision date is unchanged.
+- The database refuses a register entry with no amount, a negative amount or an unknown kind.
+- Only three tables. The planted OpenShift entry stays synthetic.
+- Page tests now wait until the server answers. A fixed 0.8-second wait made the Executive page test fail once.
+
 ## Agent E2 (D-076)
 
 - Agent E2 drafts on the NOC incident page through one OpenAI-compatible client (`pcm_proto/agent_e2.py`, standard library only).
@@ -178,7 +197,7 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 | Reject asks for its reason in a browser dialog | Prototype | A proper form on the page |
 | The ITSM change calendar connector is simulated by story U-1 | No ITSM in the prototype | Build the read connector; verify on the live system (D-062) |
 | L2 cannot yet reclassify a downtime as customer-caused | Specified (D-077) | Add to the L2 pages |
-| Capacity: the register lives in memory | Entries added on the page vanish on restart | PCM database (PCM core) |
+| Workflow state is one JSON document per name | Fine for the prototype | One table each in the product database |
 | Capacity: planning values per class and host costs are proposals | Numbers not yet confirmed | Author to confirm the settings marked proposal |
 
 ## Layout
@@ -197,6 +216,7 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 | `pcm_proto/capacity.py` | Capacity engine: usable capacity, forecast, decision dates, purchase plan, reclamation, what-if |
 | `web/l2/` | The L2 pages |
 | `web/capacity/` | The Capacity pages |
+| `pcm_proto/store.py` | The prototype database (SQLite): action record, demand register, workflow state |
 | `pcm_proto/agent_e2.py` | Agent E2 client: drafts, vocabulary check, fallback |
 | `tests/` | Catalog and story tests (Python), page tests (Playwright) |
 | `screenshots/` | Screenshots for review, written by the page test |

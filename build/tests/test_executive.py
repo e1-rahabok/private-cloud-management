@@ -12,6 +12,9 @@ import unittest
 from datetime import timedelta
 from pathlib import Path
 
+import os
+os.environ["PCM_DB"] = ":memory:"  # tests never touch the working database
+
 import yaml
 
 from build.pcm_proto import api, catalog, generator

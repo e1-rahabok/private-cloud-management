@@ -230,6 +230,7 @@ The core is everything the four workspaces share: data, definitions, engines, id
 
 - The database, the language and the UI framework are not chosen here.
 - The prototype runs on synthetic data and needs none of them at scale.
+- The prototype keeps what people and policies do in SQLite (D-080). That is a prototype choice, not the product database.
 - The choice is made once the API check (section 4) shows the real data volumes and access patterns.
 - Rule for the choice: boring, proven, easy for AI to generate and for customers to run on premises (D-004). For example, a well-known open-source relational database with a time-series extension, before anything exotic.
 

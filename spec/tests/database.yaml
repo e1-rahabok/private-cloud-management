@@ -1,0 +1,22 @@
+# Acceptance tests for the prototype database (D-080). Each test fixes its own clock (D-067).
+version: 1
+now: "2026-10-19T10:05:00+08:00"
+
+catalog:
+  - id: DB-1
+    name: The action record is append-only
+    expect: { update_refused: true, delete_refused: true }
+  - id: DB-2
+    name: What people do survives a restart
+    given: "escalate inc-fr-s-02 on the NOC; publish policy move_vms_between_clusters v2 on L2; add a demand entry for VA-Silver; restart"
+    expect: { escalated: inc-fr-s-02, policy_version: 2, register_entries: 1, records_at_least: 3, decision_unchanged: true }
+  - id: DB-3
+    name: The database refuses a register entry with no amount or a negative one
+    expect: { no_amount: 400, negative_amount: 400, unknown_kind: 400 }
+  - id: DB-4
+    name: Synthetic data is generated, never stored
+    expect: { planted_c4_entry_in_table: false, tables: [action_record, demand_register, workflow_state] }
+
+page:
+  - id: DBP-1
+    rule: A demand entry added on /capacity/demand is still there after the PCM server restarts.

@@ -14,6 +14,7 @@ The reasons behind each item are in [`../design/`](../design) and [`../decisions
 | `design-system/` | Tokens, colour roles, components | Markdown |
 | `workspaces/` | One file per page | Markdown with a YAML header |
 | `data/` | Synthetic ACME estate and stories | YAML |
+| `database/` | The prototype database schema (D-080) | SQL |
 | `tests/` | Acceptance tests | YAML |
 
 ## Rules for builders

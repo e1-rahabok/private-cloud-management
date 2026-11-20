@@ -15,8 +15,9 @@ const vocab = readFileSync(ROOT + 'spec/catalog/vocabulary/executive.yaml', 'utf
 const avoided = vocab.split('avoided:')[1].split('labels:')[0].split('\n')
   .map(l => l.trim()).filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
 
-const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit' });
-await new Promise(r => setTimeout(r, 800));
+const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DB: ':memory:' } });
+// Wait until the server answers, not a fixed time: a slow start made the first request fail.
+for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/exec`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
 
 const results = [];
 const check = (id, ok, detail = '') => { results.push({ id, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'} ${id}${detail ? ' - ' + detail : ''}`); };

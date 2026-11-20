@@ -2,7 +2,8 @@
 // GENERATED from spec/tests/capacity.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/capacity.page.test.mjs
 import { spawn } from 'node:child_process';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 const { chromium } = createRequire(import.meta.url)('playwright');
 
@@ -10,8 +11,14 @@ const ROOT = new URL('../../', import.meta.url).pathname;
 const PORT = 8769;
 const NOW = readFileSync(ROOT + 'spec/tests/capacity.yaml', 'utf8').match(/^now:\s*"([^"]+)"/m)[1];
 const avoided = readFileSync(ROOT + 'spec/catalog/vocabulary/capacity.yaml', 'utf8').match(/^avoided:\s*\[(.*)\]/m)[1].split(',').map(s => s.trim());
-const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit' });
-await new Promise(r => setTimeout(r, 800));
+// A database file of its own, so the test can restart the server and check what survived (DBP-1).
+const DBDIR = mkdtempSync(tmpdir() + '/pcm-');
+const start = async () => {
+  const s = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DB: DBDIR + '/pcm.sqlite' } });
+  for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/capacity`); return s; } catch { await new Promise(r => setTimeout(r, 200)); } }
+  return s;
+};
+let server = await start();
 const BASE = `http://127.0.0.1:${PORT}`;
 const q = `?now=${encodeURIComponent(NOW)}`;
 const reset = () => fetch(`${BASE}/api/noc/_reset${q}`, { method: 'POST', body: '{}' });
@@ -72,6 +79,13 @@ try {
   const rows = await page.locator('[data-entry]').count();
   check('demand-add', rows === 2 && added.includes('VA-Silver'), added);
 
+  // DBP-1 the entry survives a restart of the PCM server
+  server.kill(); await new Promise(r => server.on('exit', r));
+  server = await start();
+  await go('/capacity/demand');
+  const kept = await page.locator('[data-entry="dr-001"]').count();
+  check('DBP-1', kept === 1, kept ? 'dr-001 still in the register after restart' : 'entry lost on restart');
+
   const foreign = [...hosts].filter(h => h !== `127.0.0.1:${PORT}`);
   check('KPG-6', !ids.length && !fails.length && !foreign.length,
     ids.length ? `decision IDs ${[...new Set(ids)]}` : fails.slice(0, 4).join(' | ') || (foreign.length ? `requests to ${foreign}` : 'no decision ID; contrast ok; no foreign request'));
@@ -85,7 +99,7 @@ try {
     await shot.screenshot({ path: ROOT + `build/screenshots/${name}.png`, fullPage: true });
   }
 } finally {
-  await browser.close(); await reset().catch(() => {}); server.kill();
+  await browser.close(); await reset().catch(() => {}); server.kill(); rmSync(DBDIR, { recursive: true, force: true });
 }
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length} passed, ${failed.length} failed`);
