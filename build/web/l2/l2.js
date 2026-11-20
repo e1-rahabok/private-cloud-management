@@ -18,9 +18,9 @@ const page = document.body.dataset.page;
 const main = document.getElementById('main');
 
 function nav() {
-  const cur = { index: '/l2', escalations: '/l2/escalations', investigate: '/l2', configuration: '/l2/configuration', context: '/l2/context', authoring: '/l2/authoring' }[page];
+  const cur = { index: '/l2', weekly: '/l2/weekly', monthly: '/l2/monthly', escalations: '/l2/escalations', investigate: '/l2', configuration: '/l2/configuration', inventory: '/l2/inventory', context: '/l2/context', authoring: '/l2/authoring' }[page];
   const link = (h, t) => `<a href="${href(h)}"${cur === h ? ' aria-current="page"' : ''}>${t}</a>`;
-  document.getElementById('nav').innerHTML = `<header class="top"><span class="name">L2 Platform</span><nav aria-label="L2">${link('/l2', 'Today')}${link('/l2/escalations', 'Escalations')}${link('/l2/configuration', 'Configuration')}${link('/l2/context', 'Calendar')}${link('/l2/authoring', 'Thresholds')}</nav><span class="time" id="time"></span></header>`;
+  document.getElementById('nav').innerHTML = `<header class="top"><span class="name">L2 Platform</span><nav aria-label="L2">${link('/l2', 'Today')}${link('/l2/weekly', 'Weekly')}${link('/l2/monthly', 'Monthly')}${link('/l2/escalations', 'Escalations')}${link('/l2/configuration', 'Configuration')}${link('/l2/inventory', 'Inventory')}${link('/l2/context', 'Calendar')}${link('/l2/authoring', 'Thresholds')}</nav><span class="time" id="time"></span></header>`;
 }
 
 // ---------------------------------------------------------------- /l2: daily check result
@@ -213,6 +213,110 @@ async function authoring(msg = '') {
   }));
 }
 
+// ---------------------------------------------------------------- /l2/weekly
+const KIND = { slow_drift: 'Slow drift', hidden_in_average: 'Hidden in the average', configuration_drift: 'Configuration drift' };
+const MEASURE = { urgent_alerts: ['Urgent alerts', 'down'], repeated_escalations: ['Repeated escalations', 'down'], found_by_check_percent: ['Found by a check first (%)', 'up'], diagnose_known_minutes: ['Minutes to diagnose a known problem', 'down'] };
+// fromMin: start the bars just below the smallest value, so a slow trend is visible.
+const bars = (vals, fromMin) => { const hi = Math.max(...vals), lo = fromMin ? Math.min(...vals) - (hi - Math.min(...vals)) * 0.25 : 0; const r = (hi - lo) || 1;
+  return `<div class="bars" aria-hidden="true">${vals.map(v => `<span style="height:${Math.max(3, 100 * (v - lo) / r)}%"></span>`).join('')}</div>`; };
+async function weekly(msg = '') {
+  const d = await getJSON('weekly');
+  document.getElementById('time').textContent = `Run ${fmtTime(d.run.started_at)} to ${fmtTime(d.run.finished_at)} · ${d.run.region}`;
+  const m = Object.entries(MEASURE).map(([k, [label, good]]) => {
+    const now = d.measures.week[k], last = d.measures.last_week[k];
+    const better = now === last ? null : (good === 'down' ? now < last : now > last);
+    return `<div class="verdict ${better === null ? '' : better ? 'green' : 'amber'}" data-measure="${k}"><h2>${esc(label)}</h2><div class="big2">${now}</div><div class="muted">${last} last week${better === null ? '' : better ? ', better' : ', worse'}</div></div>`;
+  }).join('');
+  const f = d.findings.length ? d.findings.map(x => `<div class="finding wide" data-weekly="${x.id}"><span class="chip ${x.kind === 'configuration_drift' ? 'no_data' : 'amber'}">${KIND[x.kind]}</span><div>
+      <div class="chain">${x.parent_chain.map(esc).join(' › ')}</div><strong>${esc(x.object)}</strong>: ${esc(x.summary)}<div class="muted">${esc(x.cause)}</div>
+      ${x.evidence && x.evidence.nightly ? bars(x.evidence.nightly, true) + `<div class="muted">Last 7 nights, % used: ${x.evidence.nightly.join(', ')}</div>` : ''}
+      ${x.assigned ? `<div class="explained" data-assigned>Assigned to ${esc(x.assigned.owner)}: ${esc(x.assigned.action)}</div>`
+        : `<form class="inline assign" data-f="${x.id}"><label>Owner<input type="text" name="owner"></label><label>Action<input type="text" name="action" size="40"></label><button class="act" type="submit">Assign</button></form>`}
+    </div><div></div></div>`).join('') : '<p class="muted">The week shows nothing the daily check did not.</p>';
+  const s = d.slipped_alerts.length ? `<table><thead><tr><th>Object</th><th>Alert</th><th>Raised</th><th>What would have caught it</th></tr></thead><tbody>${d.slipped_alerts.map(a => `<tr><td>${esc(a.object)}</td><td>${esc(a.title)}</td><td>${fmtTime(a.raised)}</td><td>${esc(a.would_have_caught_it)} <a class="link" href="${href('/l2/authoring')}">Change the check rule</a></td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Every alert this week was predicted.</p>';
+  main.innerHTML = `<h1>Weekly check</h1><p class="muted">PCM ran it early Sunday, when load is lowest. ${esc(d.run.review)} It shows only what a day cannot.</p>
+    <div class="msg" role="status">${esc(msg)}</div>
+    <h2>This week's measures</h2><div class="verdicts four">${m}</div>
+    <h2>Patterns a day cannot show</h2>${f}
+    <h2>Alerts that slipped through</h2>${s}`;
+  main.querySelectorAll('form.assign').forEach(fm => fm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const r = await postJSON(`weekly/${fm.dataset.f}/assign`, Object.fromEntries(new FormData(fm)));
+    await weekly(r.status === 200 ? 'Assigned.' : r.body.error);
+    document.body.dataset.assign = String(r.status);
+  }));
+}
+
+// ---------------------------------------------------------------- /l2/monthly
+const DSTATE = { done: ['green', 'Done'], open: ['no_data', 'Open'], overdue: ['red', 'Overdue'] };
+const GSTATE = { on_track: ['green', 'On track'], at_risk: ['amber', 'At risk'], missed: ['red', 'Missed'] };
+async function monthly(msg = '') {
+  const d = await getJSON('monthly');
+  const fmtDay = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const dec = d.decisions.length ? `<table><thead><tr><th>Decision</th><th>Owner</th><th>Due</th><th>State</th><th></th></tr></thead><tbody>${d.decisions.map(x => `<tr data-decision="${x.id}"><td>${esc(x.what)}</td><td>${esc(x.owner)}</td><td>${fmtDay(x.due)}</td>
+      <td><span class="chip ${DSTATE[x.state][0]}">${DSTATE[x.state][1]}</span></td><td>${x.done ? `<span class="muted">by ${esc(x.done.by)}, ${fmtDay(x.done.at)}</span>` : `<button type="button" class="act secondary" data-done="${x.id}">Mark done</button>`}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">No decision is open.</p>';
+  const goals = d.goals.map(g => `<tr data-goal="${g.id}"><td>${esc(g.title)}</td><td>${bars(g.months.map(p => p.v), true)}</td><td class="num">${g.months[g.months.length - 1].v}</td>
+      <td class="num">${g.projected_year_end}</td><td class="num">${g.direction === 'at_most' ? 'at most' : 'at least'} ${g.target}</td><td><span class="chip ${GSTATE[g.status][0]}">${GSTATE[g.status][1]}</span></td></tr>`).join('');
+  const b = d.baselines, BL = { urgent_alerts: 'Urgent alerts', repeated_escalations: 'Repeated escalations', found_by_check_percent: 'Found by a check first (%)', diagnose_known_minutes: 'Minutes to diagnose a known problem', slipped_alerts: 'Alerts that slipped through' };
+  const base = Object.entries(BL).map(([k, l]) => `<div class="verdict"><h2>${l}</h2>${bars(b[k])}<div class="muted">${b.months[0]} to ${b.months[11]}: ${b[k][0]} to ${b[k][11]}</div></div>`).join('');
+  const reps = d.repeated_escalations.map(r => `<tr data-rep="${r.type}"><td>${esc(r.title)}</td><td class="num">${r.last_12m}</td><td>${r.loop_closed ? `<span class="chip green">Loop closed</span> ${esc(r.closed_by)}` : '<span class="chip amber">Still open</span> No check rule or SOP yet'}</td></tr>`).join('');
+  const cfg = Object.entries(d.configuration).map(([k, n]) => `<div class="row"><span>${GROUP[k]}</span><strong>${n}</strong></div>`).join('');
+  const c = d.capacity;
+  main.innerHTML = `<h1>Monthly review, ${esc(d.month)}</h1><p class="muted">For the team meeting, on one screen. Prepared by PCM.</p><div class="msg" role="status">${esc(msg)}</div>
+    <h2>Last month's decisions</h2>${dec}
+    <h2>Goals for the year</h2><table><thead><tr><th>Goal</th><th>This year</th><th class="num">This month</th><th class="num">Year-end projection</th><th class="num">Target</th><th>Status</th></tr></thead><tbody>${goals}</tbody></table>
+    <h2>Baselines: one year</h2><div class="verdicts five">${base}</div>
+    <h2>Repeated escalations</h2><table><thead><tr><th>Problem</th><th class="num">Last 12 months</th><th>Loop</th></tr></thead><tbody>${reps}</tbody></table>
+    <div class="cols2"><div><h2>Configuration risk</h2><div class="card">${cfg}</div></div>
+    <div><h2>Capacity outlook</h2><div class="card"><div class="row"><span>Next purchase round closes</span><strong>${fmtDay(c.next_round_closes)}</strong></div>
+      <div class="row"><span>Groups in the round</span><strong>${c.groups_in_round.map(esc).join(', ') || 'none'}</strong></div>
+      <div class="row"><span>Peak warnings</span><strong>${c.peak_warnings.map(esc).join(', ') || 'none'}</strong></div>
+      <div class="row"><span>Waste</span><strong>${c.waste.map(esc).join(', ') || 'none'}</strong></div>
+      <p class="muted">From the Capacity team's weekly work.</p></div></div></div>
+    <h2>Decisions for next month</h2><form class="inline" id="dec"><label>Decision<input type="text" name="what" size="50"></label><label>Owner<input type="text" name="owner"></label><label>Due<input type="text" name="due" placeholder="YYYY-MM-DD"></label><button class="act" type="submit">Record</button></form>`;
+  main.querySelectorAll('[data-done]').forEach(btn => btn.addEventListener('click', async () => {
+    const r = await postJSON(`monthly/decisions/${btn.dataset.done}/done`, {}); monthly(r.status === 200 ? 'Marked done.' : r.body.error);
+  }));
+  document.getElementById('dec').addEventListener('submit', async e => {
+    e.preventDefault();
+    const r = await postJSON('monthly/decisions', Object.fromEntries(new FormData(e.target)));
+    await monthly(r.status === 200 ? `Recorded as ${r.body.id}.` : r.body.error);
+    document.body.dataset.decision = String(r.status);
+  });
+}
+
+// ---------------------------------------------------------------- /l2/inventory
+const EXPL = { pcm_action: 'PCM action record', change_window: 'Approved change window', request: 'Self-service request', drs: 'DRS', l2_expected: 'Expected, recorded by L2' };
+const CTYPE = { created: 'Created', deleted: 'Deleted', powered_off: 'Powered off', moved: 'Moved', resized: 'Resized', limit_set: 'Limit set', provisioning_closed: 'Closed to new VMs', provisioning_opened: 'Opened to new VMs', setting_changed: 'Setting changed' };
+async function inventory(msg = '') {
+  const days = QS.get('days') || '7';
+  const d = await getJSON('inventory', `days=${days}`);
+  const n0 = v => Number(v).toLocaleString('en-US');
+  const counts = `<table><thead><tr><th>Location</th><th class="num">Hosts</th><th class="num">Clusters</th><th class="num">VMs</th><th class="num">Datastores</th><th class="num">VMs, net change</th></tr></thead><tbody>${d.counts.map(c => `<tr><td>${esc(c.name)}</td><td class="num">${n0(c.hosts)}</td><td class="num">${n0(c.clusters)}</td><td class="num">${n0(c.vms)}</td><td class="num">${n0(c.datastores)}</td><td class="num">${c.vms_change >= 0 ? '+' : ''}${n0(c.vms_change)}</td></tr>`).join('')}</tbody></table>`;
+  const un = d.unexplained.length ? d.unexplained.map(c => `<div class="finding wide" data-change="${c.id}"><span class="chip red">Unexplained</span><div>
+      <strong>${esc(c.object)}</strong>: ${esc(CTYPE[c.type] || c.type)}. ${esc(c.detail)}<div class="chain">${fmtTime(c.at)} · by ${esc(c.by)} through ${esc(c.via)} · ${esc(c.environment)}${c.class ? ', ' + esc(c.class) : ''}</div>
+      <div class="muted">No PCM action, change window, request or DRS explains it.</div>
+      <form class="inline expect" data-c="${c.id}"><label>Why was it expected?<input type="text" name="reason" size="50"></label><button class="act secondary" type="submit">This was expected</button></form></div><div></div></div>`).join('')
+    : '<p class="muted">Every change in this window is explained.</p>';
+  const rows = Object.entries(d.explained_by_type).map(([t, by]) => `<tr><td>${CTYPE[t]}</td><td>${Object.entries(by).map(([e, n]) => `${n0(n)} by ${EXPL[e]}`).join('; ')}</td></tr>`).join('');
+  const pcm = d.pcm_actions.length ? `<table><thead><tr><th>When</th><th>Object</th><th>Change</th><th>Done by</th><th>Accountable</th></tr></thead><tbody>${d.pcm_actions.map(c => `<tr data-pcm="${esc(c.object)}"><td>${fmtTime(c.at)}</td><td>${esc(c.object)}</td><td>${esc(CTYPE[c.type] || c.type)}: ${esc(c.detail)}</td><td>${esc(c.agent || 'person')}</td><td>${esc(c.by)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">No PCM action changed the estate in this window.</p>';
+  const exp = d.expected_by_l2.length ? `<ul>${d.expected_by_l2.map(c => `<li data-expected="${c.id}"><strong>${esc(c.object)}</strong>: ${esc(c.detail)}. Expected: ${esc(c.expected.reason)} (${esc(c.expected.by)})</li>`).join('')}</ul>` : '';
+  const sw = ['7', '30'].map(x => `<a class="link" href="${href('/l2/inventory')}${PASS ? '&' : '?'}days=${x}"${x === days ? ' aria-current="page"' : ''}>${x} days</a>`).join(' · ');
+  main.innerHTML = `<h1>Inventory and changes</h1><p class="muted">Window: ${sw}. Every change is matched to what explains it; only the unexplained are listed one by one.</p><div class="msg" role="status">${esc(msg)}</div>
+    <h2>Unexplained changes</h2>${un}
+    <h2>What exists</h2>${counts}
+    <h2>Explained changes, counted</h2><table><thead><tr><th>Change</th><th>Explained by</th></tr></thead><tbody>${rows}</tbody></table>
+    <h2>Changes by PCM</h2>${pcm}${exp ? '<h2>Expected, recorded by L2</h2>' + exp : ''}`;
+  main.querySelectorAll('form.expect').forEach(fm => fm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const r = await postJSON(`inventory/${fm.dataset.c}/expected`, Object.fromEntries(new FormData(fm)));
+    await inventory(r.status === 200 ? 'Recorded as expected.' : r.body.error);
+    document.body.dataset.expected = String(r.status);
+  }));
+}
+
 nav();
-const RUN = { index: daily, escalations, investigate, configuration, context, authoring };
+const RUN = { index: daily, weekly, monthly, escalations, investigate, configuration, inventory, context, authoring };
 RUN[page]().then(() => { document.body.dataset.ready = '1'; }).catch(() => { main.innerHTML = '<p>Could not load data. Try again later.</p>'; document.body.dataset.ready = 'error'; });

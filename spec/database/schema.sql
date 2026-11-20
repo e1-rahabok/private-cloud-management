@@ -37,6 +37,17 @@ CREATE TABLE IF NOT EXISTS demand_register (
   CHECK (compute_threads + memory_gb + storage_tb > 0)
 );
 
+-- Decisions of the monthly review (D-043): what, owner and due date, all required.
+-- Done marks live in workflow state, for planted and stored decisions alike.
+CREATE TABLE IF NOT EXISTS team_decision (
+  id     TEXT PRIMARY KEY,
+  made   TEXT NOT NULL,
+  what   TEXT NOT NULL CHECK (what <> ''),
+  owner  TEXT NOT NULL CHECK (owner <> ''),
+  due    TEXT NOT NULL CHECK (due <> ''),
+  by     TEXT NOT NULL
+);
+
 -- Workflow state: acknowledgements, escalations, closures, proposals, published policies and thresholds,
 -- calendar entries, limits. One JSON document per name. A prototype shortcut: the product gets one table each.
 CREATE TABLE IF NOT EXISTS workflow_state (

@@ -68,6 +68,7 @@ vms:
 
 datastores:
   tb_per_host: 40
+  average_tb: 64                       # for the datastore count in the detailed inventory
 
 # Load pattern of a bank, in each location's local time (D-065).
 load_pattern:

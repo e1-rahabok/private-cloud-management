@@ -237,6 +237,34 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
   - A confident wrong answer from an LLM at L2 level spreads: it becomes an SOP that L1 runs at 03:00.
   - Grounding in the knowledge base plus a human approval keeps the knowledge correct.
 
+### 3.17 Considerations from the weekly, monthly and inventory build
+
+- **The weekly check shows only what a day cannot.**
+  - Decision: no daily finding is repeated. The weekly page has three kinds of finding: slow drift, a peak hidden in an average, configuration drift.
+  - Why: L2 also does architecture and engineering (D-046). An hour spent re-reading the daily findings is an hour lost. Repeating them also teaches people to skim.
+  - **Slow drift:** a metric that moves the same way on at least 5 of 6 night-to-night steps, by at least 10% in total. One night of +1.4% is noise; seven in a row is a straight line to full. Example: a snapshot left by a backup job grows with every write until the datastore fills.
+  - **Hidden in the average:** one vCPU or one virtual disk at its red line while the VM total is green. A VM-level alert never fires, because the average dilutes one instance by the number of instances. Examples:
+    - one vCPU at 97% in an 8-vCPU VM averaging 14%: a single-threaded process, where more vCPUs will not help;
+    - one log disk at 38 ms while the VM averages 4 ms.
+  - The second example is also the alert that slipped through. The weekly check explains it and names the check rule that would have caught it. That closes the loop the daily check left open.
+- **A weekly finding needs an owner and an action.**
+  - Decision: "Assign" refuses either one alone. Unassigned findings sort first.
+  - Why: D-042 says each finding goes to L2 with an owner and an action. A finding with only an owner gets read, not done.
+- **The monthly pack opens with last month's decisions.**
+  - Decision: the first section is the decision register with its states: overdue, open, done. Recording a decision needs what, an owner and a due date. Decisions are a table in the PCM database.
+  - Why: a meeting that starts with new topics never checks the old ones. In the synthetic story, the overdue decision on backup snapshots is the cause of this week's slow drift. The room sees both on one screen.
+- **Goals and the capacity outlook are read, not recomputed.**
+  - Decision: the goal projection is the CIO page's number. The capacity outlook is the Capacity workspace's own: groups in the round, peak warnings, waste.
+  - Why: two numbers for one goal end the meeting in an argument about which is right. L2 does not plan capacity (D-014).
+- **A repeated escalation's loop closes only with a detection.**
+  - Decision: a problem type shows "Loop closed" only when an RCA added a check rule or an SOP.
+  - Why: the L2 measure is fewer repeats, not faster closures (L2 design, 2). Closing FR-S-02 with a new class-of-service check rule closes the class-mismatch loop on the monthly page at once.
+- **Detailed inventory: explained changes are counted, unexplained ones are listed.**
+  - Decision: each change is matched in a fixed order: the PCM action record, an approved change window, a VCF Automation request, DRS. Unmatched changes are listed one by one, production and Gold first. "This was expected" needs a reason.
+  - Why: an estate of 1,200 hosts makes tens of thousands of changes a week, most of them DRS moves. A list of all of them is unreadable. The question L2 asks is "is it expected?", so the page answers it and shows only the exceptions.
+  - The PCM action record comes first: PCM's own changes, including automatic policy runs, are never flagged as unexplained, and they show both identity fields (D-050).
+  - Example: a CPU limit set directly in vCenter on a production Gold VM, outside any window. No request, no PCM action. This is the change that causes "slow" complaints weeks later.
+
 ## 4. Pages
 
 | Path | Job | Main question |

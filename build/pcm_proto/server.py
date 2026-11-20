@@ -80,6 +80,15 @@ def l2_get(rest, now, enable, query):
         return l2.configuration(now, enable)
     if rest == ["calendar"]:
         return l2.calendar(now, enable)
+    if rest == ["weekly"]:
+        return l2.weekly(now, enable)
+    if rest == ["monthly"]:
+        return l2.monthly(now, enable)
+    if rest == ["inventory"]:
+        days = int(query.get("days", ["7"])[0])
+        if days not in (7, 30):
+            raise ValueError("days must be 7 or 30")
+        return l2.inventory(now, days, enable)
     if rest == ["thresholds"]:
         return [{"id": k, **v, **l2.STATE.thresholds.get(k, {})} for k, v in l2.THRESHOLDS.items()]
     if len(rest) == 3 and rest[0] == "thresholds" and rest[2] == "replay" and rest[1] in l2.THRESHOLDS:
@@ -115,7 +124,7 @@ def capacity_get(rest, now, enable, query):
 
 PAGES = {"/capacity": "/capacity/index.html", "/capacity/clusters": "/capacity/clusters.html", "/capacity/demand": "/capacity/demand.html",
          "/capacity/what-if": "/capacity/what-if.html", "/capacity/plan": "/capacity/plan.html", "/capacity/waste": "/capacity/waste.html",
-         "/l2": "/l2/index.html", "/l2/escalations": "/l2/escalations.html", "/l2/configuration": "/l2/configuration.html",
+         "/l2": "/l2/index.html", "/l2/weekly": "/l2/weekly.html", "/l2/monthly": "/l2/monthly.html", "/l2/inventory": "/l2/inventory.html", "/l2/escalations": "/l2/escalations.html", "/l2/configuration": "/l2/configuration.html",
          "/l2/context": "/l2/context.html", "/l2/authoring": "/l2/authoring.html","/exec": "/exec/index.html", "/noc": "/noc/index.html", "/noc/wall": "/noc/wall.html",
          "/noc/alerts": "/noc/alerts.html", "/noc/shift": "/noc/shift.html"}
 

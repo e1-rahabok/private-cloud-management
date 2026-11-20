@@ -21,7 +21,8 @@ SPEC = Path(__file__).resolve().parents[2] / "spec"
 
 class State:
     """L2 workflow state, kept in the PCM database (store.py, D-080)."""
-    FIELDS = ("proposals", "closures", "calendar_added", "policies", "replays", "extra_approvals", "standards", "thresholds")
+    FIELDS = ("proposals", "closures", "calendar_added", "policies", "replays", "extra_approvals", "standards", "thresholds",
+              "weekly_assigned", "decisions_done", "inventory_expected")
 
     def __init__(self):
         self.lock = threading.RLock()
@@ -31,6 +32,7 @@ class State:
         self.proposals, self.closures, self.calendar_added = {}, {}, []
         self.policies, self.replays, self.extra_approvals = {}, {}, {}
         self.standards, self.thresholds = {}, {}
+        self.weekly_assigned, self.decisions_done, self.inventory_expected = {}, {}, {}
 
     def load(self):
         self._defaults()
@@ -45,6 +47,7 @@ class State:
         """Prototype and test reset only."""
         self._defaults()
         store.clear_state("l2")
+        store.execute("DELETE FROM team_decision")
 
 
 STATE = State()
@@ -488,4 +491,251 @@ def _act(now: datetime, path: list, body: dict, enable=()) -> tuple[int, dict]:
             STATE.thresholds[tid] = {"value": float(body["value"]), "version": cur["version"] + 1}
             rec("publish_threshold", tid, body.get("reason", ""), str(cur["value"]), str(body["value"]))
             return 200, STATE.thresholds[tid]
+        if path[:1] == ["weekly"] and len(path) == 3 and path[2] == "assign":
+            fid = path[1]
+            if fid not in {f["id"] for f in weekly(now, enable)["findings"]}:
+                return 404, {"error": "no such finding"}
+            if not body.get("owner") or not body.get("action"):
+                return 400, {"error": "A weekly finding needs an owner and an action."}
+            STATE.weekly_assigned[fid] = {"owner": body["owner"], "action": body["action"], "by": human, "at": now.isoformat()}
+            rec("assign_weekly_finding", fid, body["action"], "open", f"assigned to {body['owner']}")
+            return 200, STATE.weekly_assigned[fid]
+        if path == ["monthly", "decisions"]:
+            return add_decision(now, body, human, rec)
+        if path[:2] == ["monthly", "decisions"] and len(path) == 4 and path[3] == "done":
+            did = path[2]
+            if did not in {d["id"] for d in decisions(now, enable)}:
+                return 404, {"error": "no such decision"}
+            STATE.decisions_done[did] = {"by": human, "at": now.isoformat()}
+            rec("decision_done", did, "", "open", "done")
+            return 200, {"state": "done"}
+        if path[:1] == ["inventory"] and len(path) == 3 and path[2] == "expected":
+            cid = path[1]
+            if cid not in {c["id"] for c in inventory(now, 30, enable)["unexplained"]}:
+                return 404, {"error": "no unexplained change with that id"}
+            if not body.get("reason"):
+                return 400, {"error": "A reason is required: it says why the change was expected."}
+            STATE.inventory_expected[cid] = {"reason": body["reason"], "by": human, "at": now.isoformat()}
+            rec("change_expected", cid, body["reason"], "unexplained", "expected")
+            return 200, {"explanation": "l2_expected"}
     return 404, {"error": "unknown action"}
+
+
+# ---------------------------------------------------------------- weekly check (D-042)
+
+def is_drift(nightly: list, min_steps: int = 5, min_change: float = 0.10) -> bool:
+    """l2.weekly_check drift rule: same direction on at least 5 of the 6 steps, total change at least 10% of night 1."""
+    steps = [b - a for a, b in zip(nightly, nightly[1:])]
+    same = max(sum(1 for d in steps if d > 0), sum(1 for d in steps if d < 0))
+    change = abs(nightly[-1] - nightly[0]) / abs(nightly[0]) if nightly[0] else 0.0
+    return same >= min_steps and change >= min_change
+
+
+def is_hidden(peak: float, red: float, vm_status: str) -> bool:
+    """l2.weekly_check hidden rule: one instance at or above red at peak while the VM total is green."""
+    return peak >= red and vm_status == "green"
+
+
+def last_sunday_run(now: datetime, tz: str = "Asia/Singapore") -> datetime:
+    local = now.astimezone(ZoneInfo(tz))
+    d = local - timedelta(days=(local.weekday() + 1) % 7)
+    run = d.replace(hour=2, minute=0, second=0, microsecond=0)
+    return run if run <= local else run - timedelta(days=7)
+
+
+def _bg_l2():
+    return generator.load_spec()["stories"]["background"]["l2"]
+
+
+def weekly(now: datetime, enable=()) -> dict:
+    act, bg = stories(enable), _bg_l2()
+    f = []
+    if "L-8" in act:
+        p, o = act["L-8"]["plant"], act["L-8"]["objects"]
+        n = p["nightly_used_percent"]
+        rate = (n[-1] - n[0]) / (len(n) - 1)
+        days_full = int((100 - n[-1]) / rate) if rate > 0 else None
+        f.append({"id": "w-sg-ds-11", "kind": "slow_drift", "object": o["datastore"], "parent_chain": ["Singapore", o["cluster"], o["datastore"]],
+                  "summary": f"Used space up {sum(1 for a, b in zip(n, n[1:]) if b > a)} of 6 nights, {n[0]}% to {n[-1]}%. "
+                             f"At this rate it is full in about {days_full} days.",
+                  "cause": f"On {o['vm']}: {p['cause']}.", "evidence": {"nightly": n, "unit": "% used"},
+                  "drift": is_drift(n), "days_to_full": days_full})
+    for sid, fid, chain in (("L-9", "w-sg-db-044", ["Singapore", "SG-G-01", "sg-db-044"]),
+                            ("L-5", "w-va-db-033", ["Virginia", "va-db-033"])):
+        if sid not in act:
+            continue
+        h = act[sid]["plant"]["hidden_in_average"]
+        unit = "ms" if h["metric"] == "disk_latency_ms" else "%"
+        what = "latency" if unit == "ms" else "usage"
+        f.append({"id": fid, "kind": "hidden_in_average", "object": chain[-1], "parent_chain": chain,
+                  "summary": f"{h['instance']}: peak {what} {h['peak']} {unit}, red at {h['red']} {unit}, while the VM average is {h['vm_average']} {unit}.",
+                  "cause": act[sid]["plant"].get("cause", "The VM-level number averages this instance away, so no VM alert fires.")
+                           .rstrip(".") + ".",
+                  "evidence": h, "hidden": is_hidden(h["peak"], h["red"], "green")})
+    if "L-10" in act:
+        o, d = act["L-10"]["objects"], act["L-10"]["plant"]["drift"]
+        f.append({"id": "w-ld-b-01", "kind": "configuration_drift", "object": o["cluster"], "parent_chain": ["London", o["cluster"]],
+                  "summary": f"{d['behind_peers']} hosts ({', '.join(o['hosts'])}) are behind the other {d['peers']} on ESXi patches.",
+                  "cause": "Hosts at different patch levels in one cluster behave differently under vMotion and HA, and hide known bugs.",
+                  "evidence": d})
+    for x in f:
+        x["cause"] = x["cause"][:1].upper() + x["cause"][1:]
+        x["assigned"] = STATE.weekly_assigned.get(x["id"])
+    f.sort(key=lambda x: (x["assigned"] is not None, ["slow_drift", "hidden_in_average", "configuration_drift"].index(x["kind"])))
+    slipped = []
+    if "L-5" in act:
+        sl = act["L-5"]["plant"]["slipped"]
+        slipped.append({"object": sl["object"], "title": sl["title"], "raised": generator.rel(sl["raised"], now).isoformat(),
+                        "caught_by": "hidden_in_average" if "L-5" in act else None, "finding": "w-va-db-033",
+                        "would_have_caught_it": "A check rule on each virtual disk's latency, not the VM average."})
+    run = last_sunday_run(now)
+    return {"run": {"kind": "weekly", "region": "Asia Pacific", "started_at": run.isoformat(),
+                    "finished_at": (run + timedelta(hours=3, minutes=10)).isoformat(), "review": "About 1 hour."},
+            "measures": {"week": bg["week"], "last_week": bg["last_week"]}, "findings": f, "slipped_alerts": slipped}
+
+
+# ---------------------------------------------------------------- monthly review (D-043)
+
+def decision_state(due: datetime, done: bool, now: datetime) -> str:
+    """l2.team_decision: done, overdue (open past its due date) or open."""
+    return "done" if done else "overdue" if due < now else "open"
+
+
+def decisions(now: datetime, enable=()) -> list:
+    act = stories(enable)
+    out = []
+    for d in (act["L-12"]["plant"]["decisions"] if "L-12" in act else []):
+        done = STATE.decisions_done.get(d["id"]) or ({"by": d["done_by"], "at": generator.rel(d["done"], now).isoformat()} if d.get("done") else None)
+        out.append({"id": d["id"], "what": d["what"], "owner": d["owner"], "made": generator.rel(d["made"], now).isoformat(),
+                    "due": generator.rel(d["due"], now).isoformat(), "done": done})
+    for r in store.rows("SELECT * FROM team_decision ORDER BY id"):
+        out.append({**{k: r[k] for k in ("id", "what", "owner", "made", "due")}, "done": STATE.decisions_done.get(r["id"])})
+    for d in out:
+        d["state"] = decision_state(datetime.fromisoformat(d["due"]), bool(d["done"]), now)
+    return sorted(out, key=lambda d: (["overdue", "open", "done"].index(d["state"]), d["due"]))
+
+
+def add_decision(now: datetime, body: dict, human: str, rec) -> tuple[int, dict]:
+    if not all(body.get(k) for k in ("what", "owner", "due")):
+        return 400, {"error": "A decision needs what, an owner and a due date."}
+    try:
+        due = datetime.fromisoformat(body["due"])
+    except ValueError:
+        return 400, {"error": "due must be YYYY-MM-DD"}
+    if due.tzinfo is None:
+        due = due.replace(hour=18, tzinfo=now.tzinfo)
+    n = store.rows("SELECT COUNT(*) AS n FROM team_decision")[0]["n"]
+    did = f"d-{n + 1:03d}"
+    store.execute("INSERT INTO team_decision (id, made, what, owner, due, by) VALUES (?, ?, ?, ?, ?, ?)",
+                  (did, now.isoformat(), body["what"], body["owner"], due.isoformat(), human))
+    rec("record_decision", did, body["what"], "-", f"owner {body['owner']}, due {due.date().isoformat()}")
+    return 200, {"id": did, "state": decision_state(due, False, now)}
+
+
+def _month_label(now: datetime, back: int) -> str:
+    y, m = now.year, now.month - back
+    while m < 1:
+        y, m = y - 1, m + 12
+    return f"{y}-{m:02d}"
+
+
+def monthly(now: datetime, enable=()) -> dict:
+    from . import capacity
+    ds = generator.generate(now, enable=enable)
+    bg = _bg_l2()
+    goals = []
+    for g in ds["goals"]:
+        jan = bg["goal_january"][g["id"]]
+        line = lambda m: round(jan + (g["current"] - jan) * (m - 1) / 11)  # m: month of this year; counts and whole percent
+        goals.append({**g, "months": [{"month": f"{now.year}-{m:02d}", "v": line(m)} for m in range(1, now.month + 1)],
+                      "projected_year_end": g["current"]})
+    by_id = {g["id"]: g for g in ds["goals"]}
+    line12 = lambda gid: [round(bg["goal_january"][gid] + (by_id[gid]["current"] - bg["goal_january"][gid]) * (now.month - 11 + i - 1) / 11)
+                          for i in range(12)]
+    months = [_month_label(now, 11 - i) for i in range(12)]
+    closure = STATE.closures.get("inc-fr-s-02")
+    reps = []
+    for r in bg["repeated_escalations"]:
+        closed = r["closed_by"]
+        if r["type"] == "class_mismatch" and closure and closure.get("detection") in ("new_check_rule", "new_sop"):
+            closed = f"Check rule added this month: {closure['detection_note']}"
+        reps.append({**r, "closed_by": closed, "loop_closed": bool(closed)})
+    cfg = configuration(now, enable)
+    week = capacity.week(now, enable)
+    return {"now": now.isoformat(), "month": _month_label(now, 0), "decisions": decisions(now, enable), "goals": goals,
+            "baselines": {"months": months, "urgent_alerts": line12("g-alerts"), "found_by_check_percent": line12("g-found-first"),
+                          "repeated_escalations": bg["repeated_escalations_12m"], "diagnose_known_minutes": bg["diagnose_known_minutes_12m"],
+                          "slipped_alerts": bg["slipped_alerts_12m"]},
+            "repeated_escalations": reps,
+            "configuration": {k: len(v) for k, v in cfg["groups"].items()},
+            "capacity": {"next_round_closes": week["next_round_closes"], "groups_in_round": week["groups_in_round"],
+                         "peak_warnings": [g["id"] for g in week["peak_warnings"]], "waste": [g["id"] for g in week["waste"]]}}
+
+
+# ---------------------------------------------------------------- detailed inventory (D-020)
+
+EXPLANATION_ORDER = ("pcm_action", "change_window", "request", "drs", "l2_expected")
+CHANGE_ACTIONS = {"time_boxed_limit": "limit_set", "stop_provisioning": "provisioning_closed", "reopen_provisioning": "provisioning_opened",
+                  "move_vms_between_clusters": "moved", "set_host_setting": "setting_changed"}
+# Hourly rates per location are the NOC's expected counts (noc.CHANGE_TYPES); each type's usual explanation.
+USUAL = {"created": {"request": 1.0}, "deleted": {"request": 1.0}, "powered_off": {"request": 0.7, "change_window": 0.3},
+         "moved": {"drs": 1.0}, "resized": {"request": 1.0}}
+HOURLY = {"created": 6, "deleted": 2, "powered_off": 3, "moved": 40, "resized": 1}
+
+
+def explain(matches) -> str | None:
+    """l2.change_explanation: the first explanation in the fixed order, or None (unexplained)."""
+    return next((e for e in EXPLANATION_ORDER if e in set(matches)), None)
+
+
+def inventory(now: datetime, days: int = 7, enable=()) -> dict:
+    nd = noc.build(now, enable)
+    ds, est, act = nd["ds"], generator.load_spec()["estate"], stories(enable)
+    start = now - timedelta(days=days)
+    layout, per = est["cluster_layout"]["share_of_hosts"], est["vms"]["per_host_average"]
+    rng = random.Random(f"inventory-{now.date()}-{days}")
+    counts, daily_totals, by_type = [], [], {t: {} for t in HOURLY}
+    for lid, loc in ds["locations"].items():
+        vms = round(sum(loc["hosts"] * layout[c] * per[c] for c in per))
+        created = deleted = 0
+        for d in range(days):
+            for t, h in HOURLY.items():
+                n = max(0, round(h * 24 * rng.uniform(0.85, 1.15)))
+                created += n if t == "created" else 0
+                deleted += n if t == "deleted" else 0
+                for e, share in USUAL[t].items():
+                    by_type[t][e] = by_type[t].get(e, 0) + round(n * share)
+        counts.append({"location": lid, "name": loc["name"], "hosts": loc["hosts"],
+                       "clusters": sum(1 for c in nd["clusters"] if c["location"] == lid),
+                       "vms": vms, "datastores": round(loc["hosts"] * est["datastores"]["tb_per_host"] / est["datastores"]["average_tb"]),
+                       "vms_change": created - deleted})
+    for d in range(days):
+        day = (now - timedelta(days=days - 1 - d)).date().isoformat()
+        daily_totals.append({"day": day, **{t: round(HOURLY[t] * 24 * len(ds["locations"]) * random.Random(f"{day}-{t}").uniform(0.9, 1.1)) for t in HOURLY}})
+    # PCM's own actions, from the action record: explained, listed with both identity fields.
+    pcm = []
+    for r in noc.STATE.history:
+        if r["action"] in CHANGE_ACTIONS and datetime.fromisoformat(r["at"]) >= start:
+            pcm.append({"id": f"rec-{r['action']}-{r['target']}", "at": r["at"], "object": r["target"], "type": CHANGE_ACTIONS[r["action"]],
+                        "detail": r["after"], "by": r["actor_human"], "agent": r.get("actor_agent"), "via": "PCM",
+                        "explanation": explain({"pcm_action"})})
+    unexplained, expected = [], []
+    if "L-11" in act:
+        c = act["L-11"]["plant"]["change"]
+        at = generator.rel(c["at"], now)
+        if at >= start:
+            unexplained.append({"id": c["id"], "at": at.isoformat(), "object": act["L-11"]["objects"]["vm"], "type": c["type"], "detail": c["detail"],
+                                "by": c["by"], "via": c["via"], "environment": c["environment"], "class": c["class"], "count": 1})
+    if "N-3" in act:
+        p = act["N-3"]["plant"]
+        unexplained.append({"id": "chg-tk-deleted", "at": generator.rel(p["deleted_within"], now).isoformat(), "object": "Tokyo",
+                            "type": "deleted", "detail": f"{p['deleted_last_hour']} VMs deleted in one hour; {p['expected_deleted']} expected",
+                            "by": p["by"], "via": p["via"], "environment": "unknown", "class": None, "count": p["deleted_last_hour"]})
+    for c in list(unexplained):
+        if c["id"] in STATE.inventory_expected:
+            unexplained.remove(c)
+            expected.append({**c, "explanation": "l2_expected", **{"expected": STATE.inventory_expected[c["id"]]}})
+    unexplained.sort(key=lambda c: (c["environment"] != "production", c["class"] != "gold", c["at"]), reverse=False)
+    return {"now": now.isoformat(), "days": days, "counts": counts, "daily": daily_totals,
+            "explained_by_type": by_type, "pcm_actions": pcm, "expected_by_l2": expected, "unexplained": unexplained}
+

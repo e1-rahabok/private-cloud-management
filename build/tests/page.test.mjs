@@ -37,13 +37,16 @@ try {
     const texts = [await page.innerText('body')];
     const n = await page.locator('button.more, button.tower').count();
     for (let i = 0; i < n; i++) {
-      await page.locator('button.more, button.tower').nth(i).click(); await page.waitForTimeout(150);
+      const btn = page.locator('button.more, button.tower').nth(i);
+      const q = await btn.getAttribute('data-q');
+      await btn.click();
+      // Wait for this panel, not a fixed time: a fixed wait read the previous panel (flaky before).
+      if (q) await page.waitForSelector(`body[data-panel="${q}-7"]`, { timeout: 5000 }).catch(() => {});
+      else await page.waitForLoadState('networkidle');
       texts.push(await page.innerText('body'));
-      for (const days of ['30', '7']) {
-        const sw = page.locator(`.switch button[data-days="${days}"]`);
-        if (await sw.count()) {
-          const q = (await page.getAttribute('body', 'data-panel') || '').split('-')[0];
-          await sw.first().click();
+      if (q && await page.isVisible('#health-panel .switch')) {
+        for (const days of ['30', '7']) {
+          await page.click(`#health-panel .switch button[data-days="${days}"]`);
           await page.waitForSelector(`body[data-panel="${q}-${days}"]`);
           texts.push(await page.innerText('body'));
         }
@@ -93,7 +96,8 @@ try {
   // PG-5 site recovery label and footnote
   await load();
   const label = await page.innerText('#value-cards article:nth-child(2) h3');
-  await page.click('#value-cards button[data-card="site_recovery"]'); await page.waitForTimeout(200);
+  await page.click('#value-cards button[data-card="site_recovery"]');
+  await page.waitForFunction(() => document.querySelector('#value-panel').innerText.includes('Site recovery'), null, { timeout: 5000 }).catch(() => {});
   const srPanel = await page.innerText('#value-panel');
   check('PG-5', label.startsWith('Site recovery') && srPanel.includes('Backups are not included.'), label.split('\n')[0]);
 

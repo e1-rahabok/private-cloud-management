@@ -33,7 +33,7 @@ try {
   await go('/noc/alert/inc-fr-s-02'); await page.click('button[data-escalate]'); await page.waitForTimeout(300);
 
   const texts = [];
-  for (const p of ['/l2', '/l2/escalations', '/l2/investigate/sg-app-117', '/l2/investigate/FR-S-02', '/l2/configuration', '/l2/context', '/l2/authoring']) {
+  for (const p of ['/l2', '/l2/weekly', '/l2/monthly', '/l2/inventory', '/l2/escalations', '/l2/investigate/sg-app-117', '/l2/investigate/FR-S-02', '/l2/configuration', '/l2/context', '/l2/authoring']) {
     await go(p); texts.push(await page.innerText('body'));
   }
   await go('/l2/escalations'); await page.click('button[data-rca]'); await page.waitForSelector('body[data-agent]'); texts.push(await page.innerText('body'));
@@ -59,6 +59,30 @@ try {
   const replayText = await page.innerText('#replay');
   const pubAfter = await page.isDisabled('#publish');
   check('LPG-10', noAuto && pubBefore && !pubAfter && /18/.test(replayText), replayText.trim());
+
+  // LPG-11 weekly: Assign needs an owner and an action
+  await go('/l2/weekly');
+  await page.fill('form.assign[data-f="w-sg-ds-11"] input[name="owner"]', 'l2-engineer-1');
+  await page.click('form.assign[data-f="w-sg-ds-11"] button'); await page.waitForSelector('body[data-assign="400"]');
+  const err = await page.innerText('.msg');
+  await page.fill('form.assign[data-f="w-sg-ds-11"] input[name="owner"]', 'l2-engineer-1');
+  await page.fill('form.assign[data-f="w-sg-ds-11"] input[name="action"]', 'Remove the backup snapshot on sg-app-301');
+  await page.click('form.assign[data-f="w-sg-ds-11"] button'); await page.waitForSelector('body[data-assign="200"]');
+  const assigned = await page.innerText('[data-weekly="w-sg-ds-11"]');
+  check('LPG-11', /owner and an action/.test(err) && assigned.includes('Assigned to l2-engineer-1'), `${err} / ${assigned.split('\n').pop()}`);
+
+  // LPG-12 monthly opens with last month's decisions
+  await go('/l2/monthly');
+  const firstH2 = await page.innerText('main h2');
+  const snap = await page.innerText('[data-decision="d-snapshots"]');
+  check('LPG-12', firstH2 === "Last month's decisions" && snap.includes('Overdue'), `${firstH2}; ${snap.replace(/\s+/g, ' ')}`);
+
+  // LPG-13 inventory: ld-db-021 first among unexplained; DRS moves only counted
+  await go('/l2/inventory');
+  const firstChange = await page.getAttribute('[data-change]', 'data-change');
+  const listed = await page.$$eval('[data-change] strong', els => els.map(e => e.parentElement.innerText));
+  const moves = listed.filter(t => /: Moved\./.test(t)).length;
+  check('LPG-13', firstChange === 'chg-ld-db-021' && moves === 0 && listed.length === 2, `first unexplained: ${firstChange}; ${listed.length} listed; moves listed: ${moves}`);
 
   await go('/l2/escalations');
   const escText = await page.innerText('[data-escalation="inc-fr-s-02"]');
@@ -95,7 +119,7 @@ try {
     return fails;
   });
   const fails = [];
-  for (const p of ['/l2', '/l2/escalations', '/l2/investigate/sg-app-117', '/l2/configuration', '/l2/context', '/l2/authoring']) { await go(p); fails.push(...(await contrast()).map(f => `${p}: ${f}`)); }
+  for (const p of ['/l2', '/l2/weekly', '/l2/monthly', '/l2/inventory', '/l2/escalations', '/l2/investigate/sg-app-117', '/l2/configuration', '/l2/context', '/l2/authoring']) { await go(p); fails.push(...(await contrast()).map(f => `${p}: ${f}`)); }
   const foreign = [...hosts].filter(h => h !== `127.0.0.1:${PORT}`);
   check('LPG-7', !fails.length && !foreign.length, fails.slice(0, 4).join(' | ') || 'contrast ok; no foreign request');
 
@@ -109,6 +133,10 @@ try {
   await shot.screenshot({ path: ROOT + 'build/screenshots/l2-investigate-guest-os.png', fullPage: true });
   await shot.goto(BASE + '/l2/escalations' + q); await shot.waitForSelector('body[data-ready="1"]');
   await shot.screenshot({ path: ROOT + 'build/screenshots/l2-escalation.png', fullPage: true });
+  for (const [p, name] of [['/l2/weekly', 'l2-weekly'], ['/l2/monthly', 'l2-monthly'], ['/l2/inventory', 'l2-inventory']]) {
+    await shot.goto(BASE + p + q); await shot.waitForSelector('body[data-ready="1"]');
+    await shot.screenshot({ path: ROOT + `build/screenshots/${name}.png`, fullPage: true });
+  }
   await shot.goto(BASE + '/l2/authoring' + q); await shot.waitForSelector('body[data-ready="1"]');
   await shot.fill('input[name="value"]', '60'); await shot.click('form[data-t] button[type="submit"]'); await shot.waitForSelector('body[data-replayed]');
   await shot.screenshot({ path: ROOT + 'build/screenshots/l2-threshold-replay.png', fullPage: true });

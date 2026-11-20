@@ -40,3 +40,18 @@ paths:
     get: { summary: "Query value=<new value>. Alerts the current and the new value would have raised over l2.replay_days days." }
   /api/l2/thresholds/{id}/publish:
     post: { summary: "Publish a new value. Version increments; recorded in the action history." }
+  /api/l2/weekly:
+    get: { summary: "Latest weekly check run: the four measures against last week, pattern findings with owner and action, slipped alerts with what would have caught them (l2.weekly_check)." }
+  /api/l2/weekly/{finding}/assign:
+    post: { summary: "Body: owner and action, both required (400 otherwise). Kept in the PCM database." }
+  /api/l2/monthly:
+    get: { summary: "The monthly review pack: last month's decisions, goals, 12-month baselines, repeated escalations, configuration risk, the capacity outlook." }
+  /api/l2/monthly/decisions:
+    post: { summary: "Record a decision: what, owner, due (YYYY-MM-DD), all required (400 otherwise)." }
+  /api/l2/monthly/decisions/{id}/done:
+    post: { summary: "Mark a decision done; records who and when." }
+  /api/l2/inventory:
+    get: { summary: "Query days=7 or 30. Counts per location; changes per type and day by explanation; unexplained changes one by one (l2.change_explanation)." }
+  /api/l2/inventory/{change}/expected:
+    post: { summary: "Body: reason, required. The change then counts as explained by L2." }
+

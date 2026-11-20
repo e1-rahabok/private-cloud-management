@@ -22,6 +22,18 @@ catalog:
     entry: l2.threshold_replay
     given: { threshold: th-cluster-perf-red, current: 50, new: 60 }
     expect: { days: 30, new_at_least_current: true }
+  - id: LCAT-4
+    entry: l2.weekly_check
+    given: { drift: [10, 11, 12, 12.5, 14, 15, 16], noise: [10, 12, 9, 11, 10, 12, 11], hidden: { peak: 97, red: 90, vm_status: green } }
+    expect: { drift: true, noise: false, hidden: true }
+  - id: LCAT-5
+    entry: l2.team_decision
+    given: { open_past_due: true }
+    expect: { state: overdue }
+  - id: LCAT-6
+    entry: l2.change_explanation
+    given: "a change that matches both the PCM action record and a request"
+    expect: { explanation: pcm_action }
 
 story:
   - id: LST-1
@@ -57,6 +69,39 @@ story:
   - id: LST-8
     name: Same numbers as the NOC and the CIO
     expect: { rule: "The FR-S-02 score on /api/l2/daily equals the wall's FR-S-02 tile; the SSH finding count equals the CIO page's." }
+  - id: LST-9
+    name: The weekly check shows what the daily check cannot
+    stories: [L-5, L-8, L-9, L-10]
+    expect:
+      kinds: { SG-DS-11: slow_drift, sg-db-044: hidden_in_average, va-db-033: hidden_in_average, LD-B-01: configuration_drift }
+      none_repeats_a_daily_finding: true
+      slipped_va_db_033_caught_by: hidden_in_average
+  - id: LST-10
+    name: A weekly finding needs an owner and an action
+    expect: { without_action: 400, with_both: 200, kept_after_restart: true }
+  - id: LST-11
+    name: The monthly review opens with last month's decisions, and goals match the CIO page
+    stories: [L-12, E-5]
+    expect:
+      decisions: { d-cos-check: open, d-snapshots: overdue, d-ld-logs: done }
+      decision_without_owner: 400
+      projection_equals_cio_goal: true
+  - id: LST-12
+    name: A repeated escalation closes its loop only with a detection
+    stories: [N-1, L-1]
+    expect: { class_mismatch_closed_before: false, class_mismatch_closed_after_rca: true }
+  - id: LST-13
+    name: Every change is explained, or listed
+    stories: [L-11, N-3]
+    expect:
+      unexplained_first: chg-ld-db-021
+      tokyo_deletions_unexplained: true
+      noc_stop_provisioning_explained_by: pcm_action
+      expected_without_reason: 400
+      expected_with_reason_explained_by: l2_expected
+  - id: LST-14
+    name: The monthly capacity outlook is the Capacity workspace's own
+    expect: { groups_in_round_equal_capacity_week: true }
 
 page:
   - id: LPG-1
@@ -84,4 +129,11 @@ page:
   - id: LPG-10
     rule: The daily page has no "Make automatic" button; "Propose a policy change" shows Publish disabled until Replay has run.
     decisions: [D-079]
+
+  - id: LPG-11
+    rule: On /l2/weekly, Assign without an action shows an error; with an owner and an action the finding shows "Assigned".
+  - id: LPG-12
+    rule: /l2/monthly opens with last month's decisions; d-snapshots shows "Overdue".
+  - id: LPG-13
+    rule: /l2/inventory lists ld-db-021 first among unexplained changes, and no DRS move one by one.
 

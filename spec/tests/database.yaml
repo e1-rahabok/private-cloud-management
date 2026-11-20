@@ -15,7 +15,7 @@ catalog:
     expect: { no_amount: 400, negative_amount: 400, unknown_kind: 400 }
   - id: DB-4
     name: Synthetic data is generated, never stored
-    expect: { planted_c4_entry_in_table: false, tables: [action_record, demand_register, workflow_state] }
+    expect: { planted_c4_entry_in_table: false, tables: [action_record, demand_register, team_decision, workflow_state] }
 
 page:
   - id: DBP-1

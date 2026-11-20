@@ -18,6 +18,20 @@ background:
       out later. Stories below change single groups.
     silver_memory_trend_run_out_days: { sg: 150, va: 340, fr: 330, tk: 470, ld: 370 }
     in_use_percent_now: { compute: 62, memory: 80, storage: 60 }
+  l2:
+    note: >
+      The four L2 outcomes (L2 design, 2). Goals run in a straight line from their January value to the
+      projected year-end of story E-5, so the monthly review and the CIO page read one projection.
+    goal_january: { g-alerts: 320, g-versions: 72, g-found-first: 38 }
+    week: { urgent_alerts: 46, repeated_escalations: 1, found_by_check_percent: 62, diagnose_known_minutes: 14 }
+    last_week: { urgent_alerts: 49, repeated_escalations: 0, found_by_check_percent: 58, diagnose_known_minutes: 22 }
+    diagnose_known_minutes_12m: [48, 44, 41, 39, 35, 31, 30, 26, 24, 22, 19, 16]
+    slipped_alerts_12m: [14, 13, 13, 11, 12, 10, 9, 9, 8, 7, 6, 5]
+    repeated_escalations_12m: [1, 1, 0, 2, 1, 1, 0, 1, 0, 1, 0, 1]
+    repeated_escalations:
+      - { type: class_mismatch, title: "Bronze VM placed in a Silver cluster", last_12m: 4, closed_by: null, story: N-1 }
+      - { type: snapshot_left_by_backup, title: "Datastore filled by a snapshot a backup left behind", last_12m: 3, closed_by: "SOP added in May" }
+      - { type: ntp_after_rebuild, title: "Host clock drifts after a rebuild", last_12m: 2, closed_by: null }
 
 stories:
 
@@ -201,6 +215,8 @@ stories:
       deleted_within: "now - 10 minutes"
       expected_deleted: 2
       planned: false
+      by: "svc-decom@tk.acme.internal"
+      via: "vCenter API"
     expect:
       wall.changed.tk.deleted.status: red
       incident: { root_object: tk, kind: wall_finding, severity: red, escalation_route: platform }
@@ -279,7 +295,9 @@ stories:
     title: An alert the check did not predict
     plant:
       slipped: { object: va-db-033, title: "VM waiting for resources", raised: "now - 4 days" }
-    expect: { slipped_alerts: 1 }
+      hidden_in_average: { instance: "scsi0:2 (transaction log disk)", metric: disk_latency_ms, peak: 38, vm_average: 4, red: 20 }
+    expect: { slipped_alerts: 1, weekly_caught_by: hidden_in_average }
+    note: "The VM-level latency average hid one disk at its limit. The weekly check reads each virtual disk."
 
   L-6:
     title: Quarter-end close explains rising load
@@ -296,6 +314,48 @@ stories:
     plant: { batch_overrun_minutes: 40, datastore_latency_trend: rising }
     expect: { finding: { verdict: present_health, severity: amber, pillar: performance } }
     note: "An insight before the batch window runs into the start of business (SP5 prevention window)."
+
+  # ---------------------------------------------------------------- Weekly, monthly and inventory stories
+
+  L-8:
+    title: A snapshot a backup left behind grows every night
+    objects: { datastore: SG-DS-11, vm: sg-app-301, cluster: SG-S-02 }
+    plant:
+      nightly_used_percent: [71.0, 72.4, 73.9, 75.3, 76.6, 78.1, 79.5]
+      cause: "a snapshot created by the backup job 9 days ago, never removed; it grows with every write"
+    expect: { weekly_kind: slow_drift, in_daily: false }
+    note: "A day shows +1.4%. A week shows a straight line to full in about 2 weeks."
+
+  L-9:
+    title: One vCPU at its limit inside a quiet VM
+    objects: { vm: sg-db-044, cluster: SG-G-01 }
+    plant:
+      hidden_in_average: { instance: "vCPU 0 of 8", metric: vcpu_usage_percent, peak: 97, vm_average: 14, red: 90 }
+      cause: "a single-threaded process; more vCPUs will not help"
+    expect: { weekly_kind: hidden_in_average }
+
+  L-10:
+    title: Three hosts behind their cluster on ESXi patches
+    objects: { cluster: LD-B-01, hosts: [ld-esx-201, ld-esx-202, ld-esx-203] }
+    plant: { drift: { setting: esxi_patch, behind_peers: 3, peers: 9 } }
+    expect: { weekly_kind: configuration_drift }
+
+  L-11:
+    title: A CPU limit set directly in vCenter, outside any change window
+    objects: { vm: ld-db-021, location: ld }
+    plant:
+      change: { id: chg-ld-db-021, at: "now - 2 days", type: limit_set, detail: "CPU limit 4,000 MHz", by: "admin@ld.acme.internal", via: vCenter, environment: production, class: gold }
+    expect: { explanation: unexplained, listed_first: true }
+
+  L-12:
+    title: Last month's team decisions
+    plant:
+      decisions:
+        - { id: d-cos-check, what: "Add a class-of-service check on VM placement", owner: l2-engineer-2, made: "now - 30 days", due: "now + 10 days" }
+        - { id: d-snapshots, what: "Remove backup snapshots older than 3 days every night", owner: l2-engineer-1, made: "now - 30 days", due: "now - 5 days" }
+        - { id: d-ld-logs, what: "Move London batch log disks to the all-flash datastore", owner: storage-lead, made: "now - 30 days", due: "now - 12 days", done: "now - 14 days", done_by: storage-lead }
+    expect: { d-cos-check: open, d-snapshots: overdue, d-ld-logs: done }
+    note: "d-snapshots overdue, and the snapshot story L-8 is the cost of it: the review sees both."
 
   # ---------------------------------------------------------------- Availability SLA stories (D-077)
 

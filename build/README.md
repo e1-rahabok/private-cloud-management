@@ -108,16 +108,22 @@ Third build: the three gaps from the first review are fixed in the specification
 
 ## Results: L2
 
-Six of the nine L2 pages in this build: Today (daily check), Escalations, Investigate, Configuration, Calendar, Thresholds. Weekly, monthly and detailed inventory follow in the next L2 build.
+All nine L2 pages: Today (daily check), Weekly, Monthly, Escalations, Investigate, Configuration, Inventory, Calendar, Thresholds.
 
 | Level | Tests | Result |
 |---|---|---|
-| Catalog | LCAT-1 to LCAT-3 | 3 passed |
-| Story | LST-1 to LST-8, the RCA draft record, ask-why and no-promotion checks | 12 passed |
-| Page | LPG-1 to LPG-10 | 10 passed |
+| Catalog | LCAT-1 to LCAT-6 | 6 passed |
+| Story | LST-1 to LST-14, the RCA draft record, ask-why and no-promotion checks | 18 passed |
+| Page | LPG-1 to LPG-13 | 13 passed |
 
 - **The escalation loop works across workspaces.** The NOC escalates FR-S-02. L2 sees it with raw counters and drafts the root cause analysis with Agent E2. L2 closes it with a cause, a fix and a detection decision, and the NOC incident closes too.
 - **Live RCA draft, 2026-11-20 (Gemma 4 31B through the gateway):** grounded in the evidence. It separates what is proven from the fix, and reports only what L1 did. The wording is stiff.
+
+**Weekly, monthly and inventory (second L2 build):**
+- **Weekly** shows only what a day cannot: a snapshot growing 7 nights in a row (full in about 14 days), one vCPU at 97% in a VM averaging 14%, one log disk at 38 ms in a VM averaging 4 ms, three hosts behind on patches. The slipped alert on va-db-033 is explained by its log disk.
+- **Monthly** opens with last month's decisions: the snapshot decision is overdue, and it is the cause of this week's drift. Goal projections are the CIO page's numbers. The capacity outlook is the Capacity workspace's own.
+- **Inventory** counts the explained changes and lists only the unexplained: a CPU limit set directly in vCenter on a production Gold VM, and the 40 Tokyo deletions. PCM's own actions are explained by the action record.
+- **Found in review and fixed:** long chips overlapped the text; trend bars started at zero, so a 12% drift looked flat; alert counts showed decimals.
 
 **Policy as code (D-079):** the trust ladder is gone. Action policies (tier and guardrails, versioned, owned) decide what runs automatically. The approval record is evidence only. "Propose a policy change" replays against history before Publish. The L-4 move runs automatically under v2, with the policy owner and version as its accountable party and no approval record.
 
@@ -159,6 +165,7 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 - The database refuses a register entry with no amount, a negative amount or an unknown kind.
 - Only three tables. The planted OpenShift entry stays synthetic.
 - Page tests now wait until the server answers. A fixed 0.8-second wait made the Executive page test fail once.
+- The Executive page test was still flaky. It opened each panel, waited a fixed 150 ms, then looked for the 7/30-day switch, and sometimes found the previous panel's switch. It now waits for the panel it opened. Three runs in a row pass.
 
 ## Agent E2 (D-076)
 
@@ -193,7 +200,7 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 | Limits record their expiry, but nothing removes them at expiry | No clock runs in the prototype | The action engine runs expiries (PCM core, 3.7) |
 | No sign-in: every action is by `operator-1` | Prototype | Single sign-on (PCM core, 3.10) |
 | "Is it up?" and "Is it set right?" have no planted story | Always green | Add stories with L2 |
-| L2 weekly, monthly and detailed inventory pages | Not built yet | Next L2 build |
+| Weekly and monthly measures, repeated escalations and goal history are planted | No alert or escalation history engine yet | Compute them from the action record and alert history |
 | Reject asks for its reason in a browser dialog | Prototype | A proper form on the page |
 | The ITSM change calendar connector is simulated by story U-1 | No ITSM in the prototype | Build the read connector; verify on the live system (D-062) |
 | L2 cannot yet reclassify a downtime as customer-caused | Specified (D-077) | Add to the L2 pages |

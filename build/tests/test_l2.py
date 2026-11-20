@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import re
 import unittest
+from datetime import timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -134,6 +135,84 @@ class Story(Base):
             code, out = l2.act(NOW, ["escalations", "inc-fr-s-02", "agent"], {})
         self.assertEqual(code, 200)
         self.assertEqual(out["record"]["actor_agent"], "agent-e2")
+
+
+class Review(Base):
+    def test_LCAT_4_weekly_rules(self):
+        g, e = T["LCAT-4"]["given"], T["LCAT-4"]["expect"]
+        self.assertEqual(l2.is_drift(g["drift"]), e["drift"])
+        self.assertEqual(l2.is_drift(g["noise"]), e["noise"])
+        self.assertEqual(l2.is_hidden(g["hidden"]["peak"], g["hidden"]["red"], g["hidden"]["vm_status"]), e["hidden"])
+
+    def test_LCAT_5_decision_state(self):
+        self.assertEqual(l2.decision_state(NOW - timedelta(days=1), False, NOW), T["LCAT-5"]["expect"]["state"])
+        self.assertEqual(l2.decision_state(NOW + timedelta(days=1), False, NOW), "open")
+        self.assertEqual(l2.decision_state(NOW - timedelta(days=1), True, NOW), "done")
+
+    def test_LCAT_6_explanation_order(self):
+        self.assertEqual(l2.explain({"request", "pcm_action"}), T["LCAT-6"]["expect"]["explanation"])
+        self.assertIsNone(l2.explain(set()))
+
+    def test_LST_9_weekly_shows_what_a_day_cannot(self):
+        e = T["LST-9"]["expect"]
+        w = l2.weekly(NOW)
+        self.assertEqual({f["object"]: f["kind"] for f in w["findings"]}, e["kinds"])
+        daily_objects = {f["object"] for f in l2.daily(NOW)["findings"]}
+        self.assertFalse(daily_objects & {f["object"] for f in w["findings"]})
+        self.assertEqual(w["slipped_alerts"][0]["caught_by"], e["slipped_va_db_033_caught_by"])
+        self.assertEqual(w["run"]["started_at"][:10], "2026-10-18")  # the Sunday before
+
+    def test_LST_10_assign_needs_owner_and_action(self):
+        e = T["LST-10"]["expect"]
+        self.assertEqual(l2.act(NOW, ["weekly", "w-sg-ds-11", "assign"], {"owner": "l2-engineer-1"})[0], e["without_action"])
+        self.assertEqual(l2.act(NOW, ["weekly", "w-sg-ds-11", "assign"], {"owner": "l2-engineer-1", "action": "Remove the snapshot"})[0], e["with_both"])
+        l2.STATE.load()
+        f = next(x for x in l2.weekly(NOW)["findings"] if x["id"] == "w-sg-ds-11")
+        self.assertEqual(f["assigned"]["owner"], "l2-engineer-1")
+        self.assertEqual(l2.weekly(NOW)["findings"][-1]["id"], "w-sg-ds-11")  # assigned ones go last
+
+    def test_LST_11_monthly(self):
+        e = T["LST-11"]["expect"]
+        m = l2.monthly(NOW)
+        self.assertEqual({d["id"]: d["state"] for d in m["decisions"]}, e["decisions"])
+        self.assertEqual(m["decisions"][0]["id"], "d-snapshots")
+        cio = {g["id"]: g["current"]["value"] for g in api.summary(generator.generate(NOW))["goals"]}
+        self.assertEqual({g["id"]: g["projected_year_end"] for g in m["goals"]}, cio)
+        self.assertEqual(l2.act(NOW, ["monthly", "decisions"], {"what": "x", "due": "2026-11-30"})[0], e["decision_without_owner"])
+        code, out = l2.act(NOW, ["monthly", "decisions"], {"what": "Per-disk latency check rule", "owner": "l2-engineer-1", "due": "2026-11-30"})
+        self.assertEqual((code, out["state"]), (200, "open"))
+        self.assertEqual(l2.act(NOW, ["monthly", "decisions", "d-snapshots", "done"], {})[0], 200)
+        states = {d["id"]: d["state"] for d in l2.monthly(NOW)["decisions"]}
+        self.assertEqual((states["d-snapshots"], states[out["id"]]), ("done", "open"))
+
+    def test_LST_12_repeated_escalation_loop(self):
+        e = T["LST-12"]["expect"]
+        rep = lambda: next(r for r in l2.monthly(NOW)["repeated_escalations"] if r["type"] == "class_mismatch")["loop_closed"]
+        self.assertEqual(rep(), e["class_mismatch_closed_before"])
+        noc.act(noc.build(NOW), ["incidents", "inc-fr-s-02", "escalate"], {})
+        l2.act(NOW, ["escalations", "inc-fr-s-02", "close"], {"root_cause": "Bronze batch VM in a Silver cluster", "corrective_action": "Move it",
+                                                              "detection": "new_check_rule", "detection_note": "Class check on placement"})
+        self.assertEqual(rep(), e["class_mismatch_closed_after_rca"])
+
+    def test_LST_13_changes_explained_or_listed(self):
+        e = T["LST-13"]["expect"]
+        inv = l2.inventory(NOW, 7)
+        self.assertEqual(inv["unexplained"][0]["id"], e["unexplained_first"])
+        self.assertIn("chg-tk-deleted", [c["id"] for c in inv["unexplained"]])
+        self.assertEqual(noc.act(noc.build(NOW), ["actions", "stop_provisioning"], {"target": "FR-S-02", "incident": "inc-fr-s-02"})[0], 200)
+        pcm = l2.inventory(NOW, 7)["pcm_actions"]
+        self.assertEqual([(c["object"], c["explanation"], c["by"]) for c in pcm], [("FR-S-02", e["noc_stop_provisioning_explained_by"], "operator-1")])
+        self.assertNotIn("FR-S-02", [c["object"] for c in l2.inventory(NOW, 7)["unexplained"]])
+        self.assertEqual(l2.act(NOW, ["inventory", "chg-tk-deleted", "expected"], {})[0], e["expected_without_reason"])
+        self.assertEqual(l2.act(NOW, ["inventory", "chg-tk-deleted", "expected"], {"reason": "Decommissioning project, request filed late"})[0], 200)
+        inv = l2.inventory(NOW, 7)
+        self.assertEqual([c["explanation"] for c in inv["expected_by_l2"]], [e["expected_with_reason_explained_by"]])
+        self.assertNotIn("chg-tk-deleted", [c["id"] for c in inv["unexplained"]])
+        self.assertTrue(all(isinstance(n, int) for by in inv["explained_by_type"].values() for n in by.values()))
+
+    def test_LST_14_capacity_outlook_is_capacitys(self):
+        from build.pcm_proto import capacity
+        self.assertEqual(l2.monthly(NOW)["capacity"]["groups_in_round"], capacity.week(NOW)["groups_in_round"])
 
 
 class AskWhy(Base):
