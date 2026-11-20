@@ -42,9 +42,10 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-036 | 2026-11-20 | The NOC wall rotates through 5 screens, each titled as a question: **What changed?** (inventory), **Is it up?**, **Is it fast?**, **Is it safe?** (security and compliance together, VMware only), **Is it set right?** (configuration). This changes the 6-screen order in D-032. | Follows D-035: L1 does not need the split between security and compliance. Compliance changes slowly; a compliance drift that happens now is a safety event. Fewer screens means a shorter cycle, so red stays off screen for less time. |
 | D-037 | 2026-11-20 | The Operations Manager role has no workspace in release 1.0. | Scope control. The four workspaces come first. |
 | D-038 | 2026-11-20 | The Guest OS is in scope, limited to Windows and Linux at the OS level. Applications inside the Guest OS are out. macOS is out. | IT owns the OS build standard (SP5 People: OS teams). Applications belong to their owners (D-034). macOS on ESXi is rare in enterprises. See Rationale. |
-| D-039 | 2026-11-20 | The daily check is run by PCM, not by a person. It runs at the start and the end of each region's business day. The reviewer gets a verdict in under 1 minute when nothing needs a human. The owner is Platform (L2), not L1. | See Rationale. |
+| D-039 | 2026-11-20 | The daily check is run by PCM, not by a person. It runs before the start and before the end of each region's business day. Platform (L2) owns the review, not L1. The human review takes about 10 minutes when there is no problem. | See Rationale. |
 | D-040 | 2026-11-20 | L1 acts only through SOP buttons in PCM, never through vCenter. The L1 action set is small, reversible and set by class of service. | See Rationale. |
 | D-041 | 2026-11-20 | Wall behaviour: a fixed status strip on every screen; red interrupts the rotation until acknowledged; stale data turns the wall grey, never green; with five or more displays, nothing rotates. | See Rationale. |
+| D-042 | 2026-11-20 | PCM also runs the weekly check, a deeper analysis. It runs when load is low, by default Sunday early morning in each region's local time. Platform (L2) reviews the result in about 1 hour. | The weekly check loads the systems it reads. See Rationale. |
 
 ## Rationale
 
@@ -62,18 +63,20 @@ Longer reasons for decisions that need them.
 
 ### D-039 The daily check
 
-**What the two sources say**
-- The SP5 source says the check takes about 1 minute.
-- The Agent E2 knowledge base says about 5 minutes.
-- Both are right for different setups:
-  - 5 minutes is a person walking VCF Operations dashboards top down: clusters, then hosts, then VMs.
-  - 1 minute is a person reading the verdict of a check that has already run.
-- PCM is built for the second case, as SP5 itself describes: a script runs from 08:00 to 09:00, a human expert reviews at 09:00, and the environment is prepared for the day by 10:00.
+**Time budget**
+- Human time follows the SP5 24-hour timeline: daily check 10 minutes, weekly check 1 hour, monthly review 1 day. The NOC live screen is always on.
+- PCM's run happens before that, in the hour before 09:00. The human starts from results, not from raw dashboards.
+- The 10 minutes are for judgement, not for walking the estate:
+  - read the verdicts (present health, risk, efficiency);
+  - read the alert trend;
+  - weigh the day's business context;
+  - approve or reject the fixes PCM proposes (D-029).
+- When the check finds a problem, the 10 minutes end and troubleshooting starts. That takes as long as the problem needs.
 
-**Why the 5-minute manual walk does not scale**
-- At 6,000 hosts, 300 clusters and 100,000 VMs, nobody walks the estate by hand in 5 minutes.
-- What makes the walk possible at all is the KPI models: 0–100%, worst first, built from the worst VM and the 90th percentile, never from averages.
-- Once the models exist, a machine can walk them. The person then reads only the exceptions.
+**Why PCM runs it, not a person**
+- At 6,000 hosts, 300 clusters and 100,000 VMs, nobody walks the estate by hand in 10 minutes.
+- The walk is possible only through the KPI models: 0–100%, worst first, built from the worst VM and the 90th percentile, never from averages.
+- Once the models exist, a machine can walk them. The person reads only the exceptions. SP5 describes this: a script runs from 08:00 to 09:00, the expert reviews at 09:00, and the environment is prepared for the day by 10:00.
 
 **Why the owner is Platform (L2), not L1**
 - The check produces insight, not alerts.
@@ -87,13 +90,9 @@ Longer reasons for decisions that need them.
   - Fixing an emerging problem at 17:00 prevents a page at 02:00.
 - A global enterprise runs both checks in each region's local time, because business load and change windows follow local time.
 
-**Under 1 minute**
-- This target applies when nothing needs a human.
-- If the check finds a problem, the review takes as long as the problem needs. That time is troubleshooting, not checking.
-
-**Each run also checks the alerts that slipped through**
-- It lists the alerts from the previous period that the check did not predict.
-- This is SP5's weekly improvement loop, run every day.
+**Each run also lists the alerts that slipped through**
+- It shows the alerts from the previous period that the check did not predict.
+- This is SP5's weekly improvement loop, applied every day.
 - Over months, fewer alerts slip through.
 
 ### D-040 L1 actions
@@ -154,3 +153,24 @@ Longer reasons for decisions that need them.
 - A wall that is often red teaches the room to ignore red.
 - Red on the wall is only for what L1 can act on the same day (SP5).
 - Everything else goes to the daily check (D-039) or to an alert.
+
+### D-042 The weekly check
+
+**Why it loads the systems it reads**
+- It covers a week of 5-minute data per object, not one day. That is about 2,000 points per metric per object.
+- It reads per-instance metrics, for example each virtual disk and each vCPU, not just per-VM totals. These are the leading indicators SP5 uses for insight.
+- It scans the full configuration of every object against the baseline. That means many vCenter and NSX API calls.
+- It scans a week of logs.
+- In a large estate this is millions of data points, and heavy API load on VCF Operations and vCenter.
+  - vCenter is not just a data source. It also runs DRS, HA and provisioning. Slowing it during business hours slows operations.
+
+**Why Sunday early morning, configurable**
+- It is the lowest business load in most regions.
+- It is also when backups and patching usually run, because of the same low load. PCM must not compete with them.
+- So the schedule is set per region and avoids that region's backup and maintenance windows. Sunday early morning is only the default.
+
+**What it adds over the daily check**
+- Patterns a day cannot show: weekly cycles, slow drifts, VMs that are slightly worse every day.
+- A review of the alerts that slipped through all week, used to improve the checks.
+- Each finding goes to L2 with an owner and an action.
+
