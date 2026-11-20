@@ -1,0 +1,179 @@
+# Acceptance tests for the Executive workspace (D-070, section 4).
+# Three levels: catalog (maths), story (end to end with a fixed "now"), page (spec rules).
+# Every test fixes its own clock (D-067). Dates are written relative to that "now".
+
+version: 1
+now: "2026-10-19T10:05:00+08:00"   # any fixed time works; stories are relative to it
+seed: 7
+
+catalog:
+
+  - id: CAT-1
+    entry: capacity.decision_date
+    given: { run_out_date: "now + 150 days", procurement_lead_time_days: 120 }
+    expect: "now + 30 days"
+
+  - id: CAT-2
+    entry: capacity.location_decision
+    given:
+      decision_dates: { SG-Silver.memory: "now + 30 days", SG-Gold.compute: "now + 200 days" }
+      next_round_groups: [SG-Silver]
+    expect: { date: "now + 30 days", resource: memory, in_plan: true, status: in_plan }
+
+  - id: CAT-3
+    entry: capacity.location_decision
+    given:
+      decision_dates: { VA-Bronze.compute: "now + 20 days" }
+      next_round_groups: []
+    expect: { status: red }
+
+  - id: CAT-4
+    entry: capacity.location_decision
+    given:
+      decision_dates: { VA-Bronze.compute: "now - 5 days" }
+      next_round_groups: []
+    expect: { status: red }
+    reason: A date already past is red, not hidden.
+
+  - id: CAT-5
+    entry: safe.findings
+    given: { certificates_expiring: [21, 26], ssh_or_shell_enabled: 3, lockdown_off: 0, root_logins: 0 }
+    expect: { status: amber, total: 5 }
+
+  - id: CAT-6
+    entry: safe.findings
+    given: { certificates_expiring: [5], ssh_or_shell_enabled: 0, lockdown_off: 0, root_logins: 0 }
+    expect: { status: red }
+
+  - id: CAT-7
+    entry: recovery.site_recovery
+    given: { last_test_days_ago: 120, recovery_minutes: 22, target_minutes: 30, protected_vms: 1800, vms_in_test: 1580 }
+    expect: { status: amber, share_tested_percent: 87.8 }
+
+  - id: CAT-8
+    entry: recovery.site_recovery
+    given: { last_test_days_ago: 400, recovery_minutes: 20, target_minutes: 30, protected_vms: 100, vms_in_test: 100 }
+    expect: { status: red }
+
+  - id: CAT-9
+    entry: value.public_cloud_comparison
+    given: { cost_annual: 39000000, depreciation_years: 5, public_cloud_estimate: 310000000 }
+    expect: { tco: 195000000, difference_percent: 37.1 }
+
+  - id: CAT-10
+    entry: goals.status
+    given: { target: 95, direction: at_least, projected_year_end: 88 }
+    expect: at_risk
+    reason: Misses by 7, which is within 10% of the target (9.5).
+
+  - id: CAT-11
+    entry: up.availability_percent
+    given: { value: 99.92, target: 99.95, amber_margin: 0.05 }
+    expect: { status: amber }
+
+  - id: CAT-12
+    entry: scale.compute_cores
+    given: estate.yaml
+    expect: 68280
+    reason: "269x64 + 67x40 + 210x64 + 90x40 + 198x64 + 66x40 + 126x64 + 42x40 + 42x64 + 90x40"
+
+story:
+
+  - id: ST-1
+    story: E-1
+    expect:
+      api: /api/exec/summary
+      health.up.headline.status: green
+      health.fast.headline.status: green
+      health.safe.headline.status: amber
+      health.safe.headline.value: 5
+
+  - id: ST-2
+    story: E-2
+    expect:
+      api: /api/exec/summary
+      room_to_grow.estate_decision.location: sg
+      room_to_grow.estate_decision.resource: memory
+      room_to_grow.estate_decision.in_plan: true
+      room_to_grow.estate_decision.date.days_from_now: 30
+      room_to_grow.estate_decision.date.status: in_plan
+
+  - id: ST-3
+    story: E-3
+    expect:
+      api: /api/exec/value/site_recovery
+      site_recovery[location=fr].status: amber
+      site_recovery[location=fr].share_tested_percent.value: 87.8
+      summary.value.site_recovery_status: amber
+
+  - id: ST-4
+    story: [E-4, C-6]
+    expect:
+      api: /api/exec/value/cost
+      cost.cost_avoided_ytd.value: 1200000
+      cost.cost_avoidable_next_round.value: 1800000
+
+  - id: ST-5
+    story: E-5
+    expect:
+      api: /api/exec/summary
+      goals[id=g-alerts].status: on_track
+      goals[id=g-versions].status: at_risk
+      goals[id=g-found-first].status: on_track
+
+  - id: ST-6
+    story: E-7
+    enable: [E-7]
+    expect:
+      api: /api/exec/summary
+      scale.locations[id=fr].stale: true
+      scale.locations[id=ld].stale: true
+      scale.locations[id=sg].stale: false
+
+  - id: ST-7
+    name: Same number in every place
+    expect:
+      rule: >
+        capacity.location_decision for sg returned by /api/exec/summary, /api/exec/locations/sg
+        and /api/exec/capacity is identical, including meta.definition_version.
+    reason: One number, one definition (PCM core, 1).
+
+page:
+
+  - id: PG-1
+    rule: Every section of /exec has question, role and cadence in its spec header.
+    source: spec/workspaces/executive/page.md
+    decisions: [D-052]
+
+  - id: PG-2
+    rule: No word from catalog/vocabulary/executive.yaml "avoided" appears in the visible text of /exec, in any state.
+    decisions: [D-051]
+
+  - id: PG-3
+    rule: The word "Live" does not appear in the header.
+    decisions: [D-041]
+    reason: Executive design, 4.2.
+
+  - id: PG-4
+    rule: With story E-7 on, the Frankfurt and London towers render in the stale colour with "No data", and no stale value is shown as a number.
+    decisions: [D-041]
+
+  - id: PG-5
+    rule: The site recovery card's label is "Site recovery", and its drill-down shows "Backups are not included."
+    decisions: [D-059]
+
+  - id: PG-6
+    rule: The word "saving" or "savings" does not appear anywhere on /exec.
+    decisions: [D-060]
+
+  - id: PG-7
+    rule: The room-to-grow headline with status in_plan uses the in_plan chip ("In the plan"), not amber or red.
+    decisions: [D-054]
+
+  - id: PG-8
+    rule: At most one drill-down panel per section is open at a time; each has a Close button.
+    source: mockup rule
+
+  - id: PG-9
+    rule: Text contrast is at least 4.5:1, and every status colour has a text label.
+    source: design-system/tokens.md

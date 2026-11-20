@@ -1,0 +1,306 @@
+openapi: 3.1.0
+info:
+  title: PCM API, Executive part
+  version: "1"
+  description: >
+    One contract for synthetic data and real collection (PCM core, 3.13).
+    Every value carries its metadata (PCM core, 3.5). Pages read values and never compute them
+    (spec README, rule 1). Other workspaces add their paths when their turn comes (D-053).
+
+paths:
+
+  /api/exec/summary:
+    get:
+      summary: Everything the Executive page shows at its first level.
+      parameters:
+        - $ref: "#/components/parameters/now"
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExecSummary" }
+
+  /api/exec/locations/{location_id}:
+    get:
+      summary: One location, opened from its tower (drill-down level 2).
+      parameters:
+        - { name: location_id, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/now"
+      responses:
+        "200":
+          description: Location detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LocationDetail" }
+
+  /api/exec/health/{question}:
+    get:
+      summary: Drill-down of one health question.
+      parameters:
+        - { name: question, in: path, required: true, schema: { enum: [up, fast, safe] } }
+        - { name: window_days, in: query, schema: { enum: [7, 30], default: 7 } }
+        - $ref: "#/components/parameters/now"
+      responses:
+        "200":
+          description: Health detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthDetail" }
+
+  /api/exec/capacity:
+    get:
+      summary: Room to grow, per location (drill-down level 2).
+      parameters:
+        - $ref: "#/components/parameters/now"
+      responses:
+        "200":
+          description: Capacity detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CapacityDetail" }
+
+  /api/exec/value/{card}:
+    get:
+      summary: Drill-down of one value card.
+      parameters:
+        - { name: card, in: path, required: true, schema: { enum: [cost, site_recovery, speed] } }
+        - $ref: "#/components/parameters/now"
+      responses:
+        "200":
+          description: Value detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValueDetail" }
+
+components:
+
+  parameters:
+    now:
+      name: now
+      in: query
+      required: false
+      description: >
+        The clock (D-067). Omitted: the present time. Tests always pass it.
+        Accepted only by the synthetic data server; the real API ignores it.
+      schema: { type: string, format: date-time }
+
+  schemas:
+
+    Meta:
+      type: object
+      required: [definition, definition_version, as_of, source, stale]
+      properties:
+        definition: { type: string, description: "Catalog entry ID, e.g. capacity.location_decision" }
+        definition_version: { type: integer }
+        as_of: { type: string, format: date-time }
+        source: { type: string, description: "e.g. vcf-ops-apj, finops-input, live-site-recovery" }
+        stale:
+          type: boolean
+          description: >
+            True when as_of is older than two collection cycles. Pages show grey with
+            "No data", never the value (D-041).
+
+    Status:
+      type: string
+      enum: [green, amber, red, in_plan, no_data]
+
+    Number:
+      type: object
+      required: [value, meta]
+      properties:
+        value: { type: [number, "null"] }
+        unit: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        meta: { $ref: "#/components/schemas/Meta" }
+
+    DateValue:
+      type: object
+      required: [value, meta]
+      properties:
+        value: { type: [string, "null"], format: date }
+        days_from_now: { type: [integer, "null"] }
+        status: { $ref: "#/components/schemas/Status" }
+        meta: { $ref: "#/components/schemas/Meta" }
+
+    Series:
+      type: object
+      required: [points, meta]
+      properties:
+        points:
+          type: array
+          items:
+            type: object
+            properties:
+              t: { type: string, format: date-time }
+              v: { type: [number, "null"] }
+        meta: { $ref: "#/components/schemas/Meta" }
+
+    ExecSummary:
+      type: object
+      required: [updated_at, scale, health, room_to_grow, value, goals]
+      properties:
+        updated_at: { type: string, format: date-time }
+        scale:
+          type: object
+          properties:
+            compute_cores: { $ref: "#/components/schemas/Number" }
+            memory_tb: { $ref: "#/components/schemas/Number" }
+            storage_tb: { $ref: "#/components/schemas/Number" }
+            in_use_percent:
+              type: object
+              properties:
+                compute: { $ref: "#/components/schemas/Number" }
+                memory: { $ref: "#/components/schemas/Number" }
+                storage: { $ref: "#/components/schemas/Number" }
+            locations:
+              type: array
+              items: { $ref: "#/components/schemas/LocationSummary" }
+        health:
+          type: object
+          properties:
+            up: { $ref: "#/components/schemas/HealthCard" }
+            fast: { $ref: "#/components/schemas/HealthCard" }
+            safe: { $ref: "#/components/schemas/HealthCard" }
+        room_to_grow:
+          type: object
+          properties:
+            estate_decision: { $ref: "#/components/schemas/Decision" }
+            next_round_closes_on: { $ref: "#/components/schemas/DateValue" }
+        value:
+          type: object
+          properties:
+            cost_annual: { $ref: "#/components/schemas/Number" }
+            tco: { $ref: "#/components/schemas/Number" }
+            public_cloud_difference_percent: { $ref: "#/components/schemas/Number" }
+            cost_avoided_ytd: { $ref: "#/components/schemas/Number" }
+            site_recovery_status: { $ref: "#/components/schemas/Status" }
+            site_recovery_summary: { type: string }
+            delivery_hours: { $ref: "#/components/schemas/Number" }
+            delivery_hours_year_ago: { $ref: "#/components/schemas/Number" }
+        goals:
+          type: array
+          items: { $ref: "#/components/schemas/Goal" }
+
+    LocationSummary:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        share_percent: { $ref: "#/components/schemas/Number" }
+        compute_cores: { $ref: "#/components/schemas/Number" }
+        in_use_percent: { $ref: "#/components/schemas/Number" }
+        decision: { $ref: "#/components/schemas/Decision" }
+        stale: { type: boolean }
+
+    Decision:
+      type: object
+      properties:
+        location: { type: string }
+        cluster_group: { type: string, description: "Not shown on the Executive page; for traceability" }
+        resource: { enum: [compute, memory, storage] }
+        date: { $ref: "#/components/schemas/DateValue" }
+        in_plan: { type: boolean }
+
+    HealthCard:
+      type: object
+      properties:
+        headline: { $ref: "#/components/schemas/Number" }
+        sentence: { type: string, description: "One plain sentence in Executive vocabulary" }
+        sparkline_7d: { $ref: "#/components/schemas/Series" }
+        safe_counts:
+          type: object
+          description: Only for the safe card.
+          properties:
+            certificates_expiring: { $ref: "#/components/schemas/Number" }
+            ssh_or_shell_enabled: { $ref: "#/components/schemas/Number" }
+            lockdown_off: { $ref: "#/components/schemas/Number" }
+            root_logins: { $ref: "#/components/schemas/Number" }
+
+    LocationDetail:
+      type: object
+      properties:
+        location: { $ref: "#/components/schemas/LocationSummary" }
+        memory_tb: { $ref: "#/components/schemas/Number" }
+        storage_tb: { $ref: "#/components/schemas/Number" }
+        in_use_by_resource:
+          type: object
+          properties:
+            compute: { $ref: "#/components/schemas/Number" }
+            memory: { $ref: "#/components/schemas/Number" }
+            storage: { $ref: "#/components/schemas/Number" }
+        health:
+          type: object
+          properties:
+            up: { $ref: "#/components/schemas/Status" }
+            fast: { $ref: "#/components/schemas/Status" }
+            safe: { $ref: "#/components/schemas/Status" }
+
+    HealthDetail:
+      type: object
+      properties:
+        question: { enum: [up, fast, safe] }
+        series: { $ref: "#/components/schemas/Series" }
+        target: { $ref: "#/components/schemas/Number" }
+        by_location:
+          type: array
+          items:
+            type: object
+            properties:
+              location: { type: string }
+              value: { $ref: "#/components/schemas/Number" }
+        events:
+          type: array
+          description: Notable events in the window, in plain words.
+          items:
+            type: object
+            properties:
+              at: { type: string, format: date-time }
+              text: { type: string }
+
+    CapacityDetail:
+      type: object
+      properties:
+        locations:
+          type: array
+          description: Sorted by decision date, earliest first.
+          items: { $ref: "#/components/schemas/Decision" }
+        next_round_closes_on: { $ref: "#/components/schemas/DateValue" }
+
+    ValueDetail:
+      type: object
+      properties:
+        card: { enum: [cost, site_recovery, speed] }
+        cost:
+          type: object
+          properties:
+            product: { $ref: "#/components/schemas/Number" }
+            service: { $ref: "#/components/schemas/Number" }
+            people: { $ref: "#/components/schemas/Number" }
+            public_cloud_estimate: { $ref: "#/components/schemas/Number" }
+            cost_avoided_ytd: { $ref: "#/components/schemas/Number" }
+            cost_avoidable_next_round: { $ref: "#/components/schemas/Number" }
+        site_recovery:
+          type: array
+          items:
+            type: object
+            properties:
+              location: { type: string }
+              last_test_at: { $ref: "#/components/schemas/DateValue" }
+              recovery_minutes: { $ref: "#/components/schemas/Number" }
+              target_minutes: { $ref: "#/components/schemas/Number" }
+              share_tested_percent: { $ref: "#/components/schemas/Number" }
+              status: { $ref: "#/components/schemas/Status" }
+        speed:
+          type: object
+          properties:
+            series_12m: { $ref: "#/components/schemas/Series" }
+
+    Goal:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        current: { $ref: "#/components/schemas/Number" }
+        target: { type: number }
+        status: { enum: [on_track, at_risk, missed] }

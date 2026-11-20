@@ -106,7 +106,7 @@ Each story is one or more objects with a planted condition, and the expected res
 | C-2 | Cluster group TK-Gold: 60% capacity remaining for 9 months, slow growth | Dark grey, waste. Not green (Capacity design, 3.3). |
 | C-3 | Year-end close: December in Virginia, March in Tokyo | A 90-day forecast misses both; the 13-month forecast catches them and moves the decision dates of VA-Silver and TK-Silver earlier (Capacity design, 3.5). Two different year-ends prove the forecast follows each location's own calendar. |
 | C-4 | Demand register: an OpenShift migration wave of 800 VMs to Frankfurt in May | FR-Silver's run-out date moves earlier. The register shows the owner (Capacity design, 3.6). |
-| C-5 | 140 older hosts in London reach end of depreciation within 12 months | The what-if shows that replacing them with the new standard covers London's growth without expansion (Capacity design, 3.9). |
+| C-5 | 90 older hosts in London, most of its fleet, reach end of depreciation within 12 months | The what-if shows that replacing them with the new standard covers London's growth without expansion (Capacity design, 3.9). |
 | C-6 | Reclamation: 300 powered-off VMs, 900 idle VMs, 60 large oversized VMs | Shown easiest first, largest first. Cost avoidance counts only the purchase it defers: SG-Silver moves out of the purchase round (D-060). |
 
 ### Executive

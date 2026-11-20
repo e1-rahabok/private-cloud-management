@@ -1,0 +1,125 @@
+# PCM object model, part needed by the Executive workspace.
+# VMware objects, not a vendor-neutral model (PCM core, 3.1).
+# Each workspace adds the objects it needs when its turn comes (D-053, D-070 section 7).
+
+version: 1
+
+objects:
+
+  region:
+    description: A group of locations served by one VCF Operations instance.
+    fields:
+      id: { type: string, example: apj }
+      name: { type: string, example: Asia Pacific }
+      vcf_operations_instance: { type: ref, to: vcf_operations_instance }
+    decisions: [D-009, D-064]
+
+  location:
+    description: A physical site. The unit the Executive sees (Executive design, 4.9).
+    fields:
+      id: { type: string, example: sg }
+      name: { type: string, example: Singapore }
+      region: { type: ref, to: region }
+      time_zone: { type: string, example: Asia/Singapore }
+      financial_year_end_month: { type: integer, example: 12, note: "Tokyo is 3 (D-065)" }
+    decisions: [D-009, D-065]
+
+  vcf_operations_instance:
+    description: One VCF Operations. PCM reads through it and has no collectors of its own.
+    fields:
+      id: { type: string }
+      region: { type: ref, to: region }
+      last_successful_read: { type: datetime }
+    decisions: [D-064]
+
+  vcf_instance:
+    description: One VCF instance. One per location in the ACME estate.
+    fields:
+      id: { type: string }
+      location: { type: ref, to: location }
+    decisions: [D-009]
+
+  cluster:
+    description: A vSphere cluster. The unit of capacity (Capacity design, 3.1).
+    fields:
+      id: { type: string, example: SG-S-04, note: "location - class initial - number" }
+      location: { type: ref, to: location }
+      class_of_service: { type: enum, values: [gold, silver, bronze, mixed, management, edge] }
+      cluster_group: { type: ref, to: cluster_group, optional: true, note: "Management and edge clusters have no group" }
+      hosts: { type: list, of: host }
+    decisions: [D-012]
+
+  cluster_group:
+    description: >
+      Clusters in one location with the same class of service, which can take each
+      other's workload. Capacity decisions are made per group (Capacity design, 3.1).
+    fields:
+      id: { type: string, example: SG-Silver }
+      location: { type: ref, to: location }
+      class_of_service: { type: enum, values: [gold, silver, bronze] }
+      clusters: { type: list, of: cluster }
+    decisions: [D-054]
+
+  host:
+    description: An ESXi host.
+    fields:
+      id: { type: string }
+      cluster: { type: ref, to: cluster }
+      generation: { type: enum, values: [current, previous] }
+      cores: { type: integer, note: "Physical cores. Used for licensing (D-061)" }
+      threads: { type: integer, note: "Physical threads. Unit of CPU capacity and cost (D-061)" }
+      memory_gb: { type: integer, note: "DRAM" }
+      depreciation_end: { type: date }
+    decisions: [D-061]
+
+  datastore:
+    description: A datastore, including vSAN. Space as seen by vSphere (D-057).
+    fields:
+      id: { type: string }
+      location: { type: ref, to: location }
+      capacity_tb: { type: number }
+
+  vm:
+    description: A virtual machine. The Executive never sees a single VM (Executive design, section 5).
+    fields:
+      id: { type: string }
+      cluster: { type: ref, to: cluster }
+      environment: { type: enum, values: [production, non_production] }
+      protected_by: { type: list, of: recovery_plan, optional: true }
+
+  recovery_plan:
+    description: A site recovery plan in VMware Live Site Recovery (D-059).
+    fields:
+      id: { type: string }
+      protected_location: { type: ref, to: location }
+      recovery_location: { type: ref, to: location }
+      target_recovery_minutes: { type: integer }
+    decisions: [D-059]
+
+  recovery_test:
+    description: One test run of a recovery plan.
+    fields:
+      plan: { type: ref, to: recovery_plan }
+      run_at: { type: datetime }
+      recovery_minutes: { type: integer }
+      vms_in_test: { type: list, of: vm, note: "The VMs actually recovered in this test" }
+    decisions: [D-059]
+
+  goal:
+    description: A goal for the year, held in PCM and reviewed monthly (D-043).
+    fields:
+      id: { type: string }
+      title: { type: string, note: "Plain words, Executive vocabulary (D-051)" }
+      metric: { type: ref, to: catalog_entry }
+      target: { type: number }
+      direction: { type: enum, values: [at_most, at_least] }
+      year: { type: integer }
+    decisions: [D-043]
+
+  procurement_round:
+    description: One of the twice-yearly purchase rounds (Capacity design, 3.8).
+    fields:
+      id: { type: string }
+      closes_on: { type: date }
+      cluster_groups_in_plan: { type: list, of: cluster_group }
+    decisions: [D-054, D-055]

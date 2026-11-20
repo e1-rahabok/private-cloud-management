@@ -1,0 +1,62 @@
+# Executive vocabulary (D-051). A page test scans all visible text of /exec against
+# these lists. Matching is case-insensitive, on whole words.
+# Customers may change the lists (D-051). Changes go through the specification.
+
+version: 1
+workspace: executive
+
+allowed:
+  - server
+  - storage
+  - network
+  - data centre
+  - application
+  - backup
+  - recovery
+  - site recovery
+  - outage
+  - capacity
+  - cost
+  - upgrade
+  - version
+  - virtual machine
+  - VM
+  - processor cores
+  - certificate
+
+avoided:
+  - ESXi
+  - vSAN
+  - NSX
+  - DRS
+  - HA
+  - vCPU
+  - IOPS
+  - latency
+  - contention
+  - cluster
+  - host
+  - datastore
+  - resource pool
+  - RTO
+  - RPO
+  - snapshot
+  - SSH
+  - lockdown
+
+labels:
+  # Plain labels used instead of technical terms.
+  compute: Computing power
+  memory: Working memory
+  storage: Storage
+  location: Location
+  up: Is it up?
+  fast: Is it fast?
+  safe: Is it safe?
+  decision_date: Order by
+  in_plan: In the plan
+  site_recovery: Site recovery
+  ssh_or_shell_enabled: Servers with remote admin access left open
+  lockdown_off: Servers without the required access lock
+  root_logins: Logins with the highest admin rights
+  certificates_expiring: Security certificates expiring soon

@@ -1,0 +1,224 @@
+# Catalog entries read by the Executive workspace.
+# One number, one definition (PCM core, 1). Pages name these IDs; they never hold a formula.
+# Each entry: what it measures, the formula, its inputs, its status rule, and its decisions.
+# Plain-language labels are in the page spec; these definitions use technical terms.
+
+version: 1
+
+entries:
+
+  # ---------------------------------------------------------------- Scale
+
+  scale.compute_cores:
+    description: Physical CPU cores in the estate or a location. Shown as "computing power".
+    formula: sum(host.cores) over hosts in scope
+    unit: cores
+    note: >
+      Cores, not threads, on the Executive page: the CIO's audience can picture a core,
+      and the VCF licence counts cores (Executive design, 4.8). Capacity and cost use
+      threads (D-061).
+    decisions: [D-051, D-061]
+
+  scale.memory_tb:
+    description: DRAM in the estate or a location. Shown as "working memory".
+    formula: sum(host.memory_gb) / 1024 over hosts in scope
+    unit: TB
+
+  scale.storage_tb:
+    description: Datastore capacity in the estate or a location, as vSphere sees it.
+    formula: sum(datastore.capacity_tb) over datastores in scope
+    unit: TB
+    decisions: [D-057]
+
+  scale.in_use_percent:
+    description: >
+      Share of usable capacity in use, per resource (compute, memory, storage),
+      in the estate or a location.
+    formula: >
+      Compute and memory: Cluster Consumption (%) per cluster, weighted by the cluster's
+      usable capacity, over clusters in scope.
+      Storage: used space / capacity over datastores in scope.
+    inputs: [cluster.consumption_percent, cluster.usable_capacity]
+    note: >
+      Against usable capacity, not total: usable already removes HA and maintenance hosts
+      (Capacity design, 3.2). Shown for scale only; the decision comes from
+      capacity.decision_date, never from this percentage.
+    decisions: [D-014]
+
+  scale.location_share_percent:
+    description: A location's share of the estate's compute cores.
+    formula: scale.compute_cores(location) / scale.compute_cores(estate) * 100
+    unit: percent
+
+  # ---------------------------------------------------------------- Health (D-035)
+
+  up.availability_percent:
+    description: >
+      Operational availability of production VMs over the window: the share of time they
+      were running when they were meant to run. Planned downtime in the business calendar
+      is excluded.
+    formula: >
+      100 * (sum of production VM minutes running, excluding planned downtime)
+          / (sum of production VM minutes expected to run)
+    window: 7 days, drill-down 30 days
+    status:
+      green: ">= setting up.target_percent"
+      amber: ">= up.target_percent - up.amber_margin_percent"
+      red: "otherwise"
+    note: >
+      SP5: operational availability accounts for HA design and scheduled downtime, and is
+      the SLA number. Actual availability is shown in the drill-down only.
+    decisions: [D-035]
+
+  fast.served_well_percent:
+    description: >
+      Share of production VM time in which the VM got the resources it asked for:
+      VM Performance (%) green.
+    formula: >
+      100 * (production VM 5-minute intervals with VM Performance green)
+          / (all production VM 5-minute intervals)
+    window: 7 days, drill-down 30 days
+    status:
+      green: ">= setting fast.target_percent"
+      amber: ">= fast.target_percent - fast.amber_margin_percent"
+      red: "otherwise"
+    note: >
+      Infrastructure performance only. Application response time is out of scope (D-030,
+      D-034). This replaces the mockup's response-time target.
+    decisions: [D-034, D-035]
+
+  safe.findings:
+    description: Open platform hygiene findings (D-049). The Executive sees counts only.
+    parts:
+      safe.certificates_expiring: "Certificates expiring within safe.certificate_warning_days, or expired"
+      safe.ssh_or_shell_enabled: "ESXi hosts with SSH or ESXi Shell enabled"
+      safe.lockdown_off: "ESXi hosts with lockdown mode off, where the standard requires it on"
+      safe.root_logins: "Root logins on ESXi hosts and VCF appliances within safe.root_login_window_days"
+    status:
+      green: "all parts are 0"
+      red: "any certificate expired or expiring within safe.certificate_red_days"
+      amber: "otherwise"
+    decisions: [D-044, D-049]
+
+  # ---------------------------------------------------------------- Room to grow
+
+  capacity.run_out_date:
+    description: >
+      Per cluster group and resource: the first date forecast demand exceeds usable capacity.
+    formula: >
+      Forecast of demand over 13 months of history, keeping periodic peaks
+      (Capacity design, 3.5), plus committed demand from the demand register (3.6),
+      compared with usable capacity (3.2). Resources: compute (threads), memory (GB),
+      storage (TB).
+    unit: date
+    decisions: [D-014, D-054]
+
+  capacity.decision_date:
+    description: Per cluster group and resource, the last date to order more.
+    formula: capacity.run_out_date - setting capacity.procurement_lead_time_days(location)
+    unit: date
+    decisions: [D-054]
+
+  capacity.location_decision:
+    description: >
+      Per location, the earliest decision date of any of its cluster groups and resources,
+      and whether that cluster group is in the next procurement round.
+    formula: >
+      date = min(capacity.decision_date) over cluster groups and resources in the location;
+      group, resource = where that minimum occurs;
+      in_plan = that cluster group is in procurement_round.next.cluster_groups_in_plan
+    status:
+      in_plan: "in_plan is true. Shown as 'In the plan', not as an alarm (Executive design, 4.4)"
+      red: "not in plan, and date - now <= capacity.decide_now_days (including dates already past)"
+      amber: "not in plan, and date - now <= capacity.decide_soon_days"
+      green: "otherwise"
+    note: >
+      Never a location-wide total: one cluster group can run out while the location as a
+      whole has room (Capacity design, 3.1).
+    decisions: [D-054, D-055]
+
+  capacity.estate_decision:
+    description: The estate headline. The location_decision with the earliest date.
+    formula: min over locations of capacity.location_decision.date, with its location, group, resource and in_plan
+
+  # ---------------------------------------------------------------- Value (D-019, D-060)
+
+  value.cost_annual:
+    description: Yearly cost of the private cloud, in three parts.
+    parts:
+      value.cost_product: "Hardware and software from vendor contracts, spread over value.depreciation_years"
+      value.cost_service: "Data centre facilities and managed services, per year"
+      value.cost_people: "Fully loaded cost of the people who design, build and run it, including the share of IT leadership time, per year"
+    formula: value.cost_product + value.cost_service + value.cost_people
+    note: >
+      Inputs come from the cost model (D-060), not from VCF Operations cost, which divides
+      cost per VM (PCM core, 3.2). No line items on the Executive page.
+    decisions: [D-019, D-060]
+
+  value.tco:
+    description: Total cost over the depreciation period.
+    formula: value.cost_annual * setting value.depreciation_years
+
+  value.public_cloud_comparison:
+    description: >
+      Private cloud TCO against the FinOps estimate for the same estate on public cloud,
+      over the same period, component by component.
+    formula: >
+      difference = setting value.public_cloud_estimate - value.tco;
+      difference_percent = difference / value.public_cloud_estimate * 100
+    decisions: [D-058]
+
+  value.cost_avoided_ytd:
+    description: >
+      This year's purchases deferred by reclamation, valued at today's price of the capacity
+      not bought, per location.
+    formula: >
+      sum over procurement decisions this year where reclamation moved a cluster group out
+      of a round: today's unit cost of the capacity deferred
+    note: "Cost avoidance, not saving. Counted only when a purchase was deferred (D-060)."
+    decisions: [D-060]
+
+  value.cost_avoidable_next_round:
+    description: >
+      Purchases in the next procurement round that the current reclaimable capacity would
+      defer, valued at today's price.
+    formula: >
+      for each cluster group in the next round: if reclaimable capacity in that group moves
+      its decision date past the round, the round's cost for that group; else 0
+    decisions: [D-060]
+
+  recovery.site_recovery:
+    description: Per protected location, the state of its site recovery plans (D-059).
+    parts:
+      recovery.last_test_at: "Most recent test of any plan protecting the location"
+      recovery.recovery_minutes: "Recovery time achieved in that test"
+      recovery.target_minutes: "recovery_plan.target_recovery_minutes"
+      recovery.share_tested_percent: >
+        Share of the location's protected VMs that were in a test within
+        recovery.test_max_age_days
+    status:
+      red: "no test within recovery.test_max_age_days, or recovery_minutes > target_minutes"
+      amber: "share_tested_percent < recovery.min_share_tested_percent"
+      green: "otherwise"
+    note: >
+      Labelled "site recovery". Backup is not claimed (D-059). Untested VMs make it amber,
+      however recent the last test.
+    decisions: [D-059]
+
+  speed.delivery_time:
+    description: >
+      Median time from request to delivery of a new VM or environment through VCF Automation,
+      over the last 30 days, against the same 30 days a year earlier.
+    unit: hours
+    note: "Source assumed: VCF Automation request timestamps. Verify on the live system (D-062)."
+    decisions: [D-062]
+
+  # ---------------------------------------------------------------- Goals (D-043)
+
+  goals.status:
+    description: Each goal's status this month.
+    formula: >
+      on_track: the goal's metric, projected to year-end at its current rate, meets the target;
+      at_risk: it misses the target by at most 10% of the target;
+      missed: otherwise, or the year has ended without meeting it
+    decisions: [D-043]

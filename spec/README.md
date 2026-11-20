@@ -1,0 +1,55 @@
+# PCM specification
+
+This folder is what PCM is built from (D-010). AI generates all code from it. Nobody edits generated code by hand (D-070).
+
+The reasons behind each item are in [`../design/`](../design) and [`../decisions.md`](../decisions.md). Every item here links to them by ID.
+
+## Layout
+
+| Folder | Holds | Format |
+|---|---|---|
+| `objects/` | The object model | YAML |
+| `catalog/` | Every definition: metrics, models, thresholds, settings, vocabulary | YAML |
+| `api/` | The API contract that synthetic data and real collection both fill | OpenAPI |
+| `design-system/` | Tokens, colour roles, components | Markdown |
+| `workspaces/` | One file per page | Markdown with a YAML header |
+| `data/` | Synthetic ACME estate and stories | YAML |
+| `tests/` | Acceptance tests | YAML |
+
+## Rules for builders
+
+1. **A page never computes a number.** It names a catalog entry by ID, and the API returns that entry's value. If a page needs a number that has no catalog entry, add the entry first (D-070, 3.2).
+2. **Every page and visual names its question, role and cadence** in its header (D-052). Without them it is not built.
+3. **Every visual handles every state listed for it:** normal, the warning colours, stale, empty, loading, error. Stale is grey with "No data", never the last value (D-041).
+4. **Every value from the API carries its metadata:** source, time, definition ID and version, and a stale flag (PCM core, 3.5). Pages show the time; they never hide the stale flag.
+5. **Words follow the workspace's vocabulary list** in `catalog/vocabulary/` (D-051).
+6. **Settings are not thresholds invented by the builder.** Every threshold or target is a named setting in `catalog/settings.yaml`, with its default and who owns it.
+
+## Build and test
+
+- Generated code goes in `../build/`, which is marked as generated.
+- The synthetic data generator reads `data/estate.yaml`, `data/stories.yaml`, a seed, and "now" (D-067).
+- The demo uses the present time. Each test passes its own "now".
+- Tests in `tests/` run at three levels: catalog, story, page (D-070, section 4).
+
+## Status
+
+| Workspace | Specification | Build |
+|---|---|---|
+| Executive | Written (D-053, step 1) | Not started |
+| NOC | Not started | Not started |
+| L2 | Not started | Not started |
+| Capacity | Not started | Not started |
+
+## Assumptions to verify on the live system (D-062)
+
+Each item below is assumed to be available. The prototype does not depend on it, because it runs on synthetic data. Check each one when the live VCF 9.1 system is available.
+
+| Item | Used by | Assumed source |
+|---|---|---|
+| Site recovery plans, test runs, protected VMs | `recovery.*` | VMware Live Site Recovery API |
+| Request submitted and delivered times | `speed.delivery_time` | VCF Automation API |
+| Certificate expiry per component | `safe.certificates_expiring` | SDDC Manager or vCenter API |
+| SSH, ESXi Shell and lockdown state per host | `safe.*` | vCenter API, through VCF Operations properties |
+| Root logins | `safe.root_logins` | VCF Operations for Logs |
+| 20-second peak metrics | `fast.*`, capacity forecast | VCF Operations |

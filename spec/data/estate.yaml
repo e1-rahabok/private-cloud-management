@@ -1,0 +1,128 @@
+# Synthetic ACME estate (design/synthetic-acme-data.md). ACME is a global bank (D-065).
+# The generator builds objects and history from this file, data/stories.yaml, a seed and "now" (D-067).
+# Same inputs, same data.
+
+version: 1
+company: ACME Corp
+industry: banking
+
+regions:
+  apj:  { name: Asia Pacific, vcf_operations_instance: vcf-ops-apj }
+  amer: { name: Americas,     vcf_operations_instance: vcf-ops-amer }
+  emea: { name: Europe,       vcf_operations_instance: vcf-ops-emea }
+
+host_generations:
+  current:  { cores: 64, threads: 128, memory_gb: 768, note: "2 x 32 cores, Hyper-Threading on" }
+  previous: { cores: 40, threads: 80,  memory_gb: 512, note: "2 x 20 cores, Hyper-Threading on" }
+
+# Host counts follow the mockup's location shares (28, 25, 22, 14, 11 percent of 1,200).
+# London has the oldest fleet, for the hardware refresh story (C-5).
+locations:
+  sg:
+    name: Singapore
+    region: apj
+    time_zone: Asia/Singapore
+    financial_year_end_month: 12
+    hosts: { current: 269, previous: 67 }
+    procurement_lead_time_days: 120
+  va:
+    name: Virginia
+    region: amer
+    time_zone: America/New_York
+    financial_year_end_month: 12
+    hosts: { current: 210, previous: 90 }
+    procurement_lead_time_days: 120
+  fr:
+    name: Frankfurt
+    region: emea
+    time_zone: Europe/Berlin
+    financial_year_end_month: 12
+    hosts: { current: 198, previous: 66 }
+    procurement_lead_time_days: 120
+  tk:
+    name: Tokyo
+    region: apj
+    time_zone: Asia/Tokyo
+    financial_year_end_month: 3
+    hosts: { current: 126, previous: 42 }
+    procurement_lead_time_days: 120
+  ld:
+    name: London
+    region: emea
+    time_zone: Europe/London
+    financial_year_end_month: 12
+    hosts: { current: 42, previous: 90 }
+    procurement_lead_time_days: 120
+
+# Cluster layout per location, by class of service. Host counts per cluster are spread
+# evenly by the generator; every cluster has 1 HA host and 1 maintenance host held back
+# from usable capacity (Capacity design, 3.2).
+cluster_layout:
+  share_of_hosts: { gold: 0.25, silver: 0.45, bronze: 0.20, mixed: 0.04, management: 0.04, edge: 0.02 }
+  hosts_per_cluster: { min: 8, max: 16 }
+
+vms:
+  per_host_average: { gold: 7, silver: 28, bronze: 40, mixed: 20 }
+  production_share: 0.6
+  guest_os: { windows: 0.45, linux: 0.55 }
+
+datastores:
+  tb_per_host: 40
+
+# Load pattern of a bank, in each location's local time (D-065).
+load_pattern:
+  online_day: { from: "08:00", to: "18:00" }
+  end_of_day_batch: { from: "22:00", to: "03:00", note: "often the daily peak" }
+  payday: { day_of_month: 25 }
+  month_end_close: true
+  quarter_end_close: true
+  year_end_close: "location.financial_year_end_month"
+
+# Realism rules the generator must follow (synthetic data design, section 3).
+realism:
+  contention_rises_only_near_saturation: true
+  memory_consumed_high_is_normal: true
+  bronze_runs_hotter_than_gold: true
+  idle_means_idle_every_day: true
+  mostly_green: true
+  cluster_health_from_worst_vm_and_p90: true
+
+# Cost model inputs (D-060). Per year, in USD. Product is already spread over
+# value.depreciation_years.
+cost:
+  product: 24000000
+  service: 6000000
+  people: 9000000
+
+# FinOps input (D-058): the same estate on public cloud over 5 years.
+public_cloud_estimate:
+  total_5y: 310000000
+  as_of: "now - 40 days"
+  owner: finops
+
+procurement:
+  next_round_closes: "now + 42 days"
+
+recovery_plans:
+  - { id: rp-sg, protected: sg, recovery: tk, target_minutes: 30 }
+  - { id: rp-va, protected: va, recovery: va, target_minutes: 30, note: "second site in the same metro" }
+  - { id: rp-fr, protected: fr, recovery: ld, target_minutes: 30 }
+  - { id: rp-tk, protected: tk, recovery: sg, target_minutes: 30 }
+  - { id: rp-ld, protected: ld, recovery: fr, target_minutes: 30 }
+
+goals:
+  - id: g-alerts
+    title: Fewer urgent alerts
+    metric: alerts.urgent_per_month
+    target: 200
+    direction: at_most
+  - id: g-versions
+    title: Software versions kept current
+    metric: config.versions_current_percent
+    target: 95
+    direction: at_least
+  - id: g-found-first
+    title: Problems found before users notice
+    metric: l2.found_by_check_percent
+    target: 60
+    direction: at_least

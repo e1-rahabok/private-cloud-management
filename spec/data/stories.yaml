@@ -1,0 +1,138 @@
+# Stories planted in the synthetic estate (design/synthetic-acme-data.md, section 5).
+# Times are relative to "now" (D-067). Each story's expected results are tests in tests/.
+# This file holds only the stories the Executive page needs (D-070, section 7).
+# Other stories are added with their workspace.
+
+version: 1
+
+background:
+  description: >
+    Everything not in a story is mostly green (realism rule). No location other than the
+    ones below has a decision date within 90 days. Up and fast stay above target in all
+    locations.
+  up.availability_percent: { estate: 99.97 }
+  fast.served_well_percent: { estate: 99.4 }
+  decision_dates_days_from_now: { va: 200, fr: 160, tk: 300, ld: 250 }
+
+stories:
+
+  C-1:
+    title: Singapore Silver runs out of working memory
+    objects: { cluster_group: SG-Silver, resource: memory }
+    plant:
+      run_out_date: "now + 150 days"
+      in_next_round: true
+    expect:
+      capacity.decision_date: "now + 30 days"
+      capacity.location_decision(sg): { date: "now + 30 days", resource: memory, in_plan: true, status: in_plan }
+      capacity.estate_decision: { location: sg }
+    decisions: [D-054]
+
+  C-6:
+    title: Reclaimable capacity in Singapore Silver
+    objects: { cluster_group: SG-Silver }
+    plant:
+      powered_off_vms: 300
+      idle_vms: 900
+      oversized_large_vms: 60
+      reclaim_moves_decision_date_to: "now + 70 days"
+      next_round_cost_for_group: 1800000
+    expect:
+      value.cost_avoidable_next_round: 1800000
+    note: >
+      Reclaiming moves SG-Silver's decision date past the round (now + 42 days), so the round's
+      cost for that group could be avoided (D-060). Until it is done, C-1 stays in the plan.
+    decisions: [D-060]
+
+  E-4:
+    title: Cost avoided earlier this year
+    objects: { cluster_group: TK-Silver }
+    plant:
+      deferred_purchase:
+        when: "now - 150 days"
+        value_at_today_price: 1200000
+    expect:
+      value.cost_avoided_ytd: 1200000
+    decisions: [D-060]
+
+  N-4:
+    title: SSH left on in London
+    objects: { location: ld, hosts: 3 }
+    plant:
+      ssh_enabled_since: "now - 8 hours"
+    expect:
+      safe.ssh_or_shell_enabled: 3
+    decisions: [D-049]
+
+  E-1:
+    title: Health is up and fast, safe needs watching
+    depends_on: [N-4]
+    plant:
+      certificates_expiring:
+        - { component: vcenter-fr-01, expires: "now + 21 days" }
+        - { component: nsx-manager-sg-01, expires: "now + 26 days" }
+      lockdown_off: 0
+      root_logins_7d: 0
+    expect:
+      up: { status: green, headline: 99.97 }
+      fast: { status: green, headline: 99.4 }
+      safe: { status: amber, headline: 5, certificates_expiring: 2, ssh_or_shell_enabled: 3 }
+    decisions: [D-035, D-049]
+
+  E-2:
+    title: Singapore's date is already in the plan
+    depends_on: [C-1]
+    expect:
+      headline_chip: in_plan
+      headline_text_contains: ["working memory", "Singapore"]
+    decisions: [D-054]
+
+  E-3:
+    title: Frankfurt site recovery not fully tested
+    objects: { recovery_plan: rp-fr }
+    plant:
+      last_test: "now - 120 days"
+      recovery_minutes: 22
+      protected_vms: 1800
+      vms_in_last_test: 1580
+      other_plans: { last_test: "now - 60 days", recovery_minutes: 18, share_tested_percent: 99 }
+    expect:
+      recovery.site_recovery(fr): { status: amber, share_tested_percent: 87.8 }
+      card_status: amber
+    decisions: [D-059]
+
+  E-5:
+    title: Goals, one at risk
+    plant:
+      g-alerts: { projected_year_end: 180 }
+      g-versions: { projected_year_end: 88 }
+      g-found-first: { projected_year_end: 64 }
+    expect:
+      g-alerts: on_track
+      g-versions: at_risk
+      g-found-first: on_track
+    decisions: [D-043]
+
+  E-6:
+    title: Delivery speed
+    plant:
+      delivery_hours_last_30d: 3.8
+      delivery_hours_year_ago: 264
+    expect:
+      speed.delivery_time: { now: 3.8, year_ago: 264 }
+
+  E-7:
+    title: Europe's VCF Operations goes stale
+    enabled_by_default: false
+    objects: { vcf_operations_instance: vcf-ops-emea }
+    plant:
+      last_successful_read: "now - 20 minutes"
+      collection_cycle_minutes: 5
+    expect:
+      locations: { fr: { stale: true }, ld: { stale: true } }
+      header_text_contains: "Some data is out of date"
+    note: >
+      Off by default, so the other stories read Frankfurt and London normally. Tests and
+      demos switch it on. Same failure as NOC story N-2. On the Executive page, Frankfurt and London towers turn
+      grey with "No data"; they are never drawn as healthy (D-041).
+    decisions: [D-041]

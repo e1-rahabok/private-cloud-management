@@ -1,0 +1,127 @@
+# Settings: every threshold and target a page or model uses.
+# No builder invents a threshold. Each one is here, with its default, its owner,
+# and where the default comes from (spec README, rule 6).
+# Defaults marked "mockup" come from the Executive Dashboard mockup and must be
+# confirmed by the customer at install.
+
+version: 1
+
+settings:
+
+  up.target_percent:
+    description: Target for operational availability of production VMs.
+    default: 99.95
+    unit: percent
+    owner: l2
+    source: mockup
+    decisions: [D-045]
+
+  up.amber_margin_percent:
+    description: Below target by at most this much shows amber; further below shows red.
+    default: 0.05
+    unit: percent
+    owner: l2
+    source: mockup
+
+  fast.target_percent:
+    description: Target share of production VM time served well (VM Performance green).
+    default: 99.0
+    unit: percent
+    owner: l2
+    source: "proposal; confirm with the author"
+
+  fast.amber_margin_percent:
+    description: Below target by at most this much shows amber; further below shows red.
+    default: 1.0
+    unit: percent
+    owner: l2
+    source: "proposal; confirm with the author"
+
+  safe.certificate_warning_days:
+    description: A certificate expiring within this many days is a finding.
+    default: 30
+    unit: days
+    owner: l2
+    source: "SP5 object checks (private-cloud-explained): yellow at 1 to 30 days"
+    decisions: [D-049]
+
+  safe.certificate_red_days:
+    description: A certificate expiring within this many days, or already expired, makes "Is it safe?" red.
+    default: 7
+    unit: days
+    owner: l2
+    source: "proposal; confirm with the author"
+    decisions: [D-049]
+
+  safe.root_login_window_days:
+    description: Root logins counted over this window.
+    default: 7
+    unit: days
+    owner: l2
+    source: "proposal; matches the Executive 7-day health window"
+
+  capacity.procurement_lead_time_days:
+    description: Time from order to usable capacity, per location.
+    default: 120
+    unit: days
+    owner: capacity
+    source: "mockup: delivery takes about 4 months"
+    per: location
+    decisions: [D-054]
+
+  capacity.decide_now_days:
+    description: Decision date within this many days, and not in the next procurement round, shows red.
+    default: 30
+    unit: days
+    owner: capacity
+    source: "proposal; confirm with the author"
+    decisions: [D-054]
+
+  capacity.decide_soon_days:
+    description: Decision date within this many days, and not in the next procurement round, shows amber.
+    default: 90
+    unit: days
+    owner: capacity
+    source: "mockup: under 90 days act"
+    decisions: [D-054]
+
+  recovery.test_max_age_days:
+    description: A recovery plan whose last test is older than this shows red.
+    default: 365
+    unit: days
+    owner: l2
+    source: "D-059 rationale: for example 12 months"
+    decisions: [D-059]
+
+  recovery.min_share_tested_percent:
+    description: Below this share of protected VMs covered by the last test, the card shows amber.
+    default: 95
+    unit: percent
+    owner: l2
+    source: "proposal; confirm with the author"
+    decisions: [D-059]
+
+  value.depreciation_years:
+    description: Period over which product cost is spread, and the TCO period.
+    default: 5
+    unit: years
+    owner: finops
+    source: "Cost n Price n Value: do 5 years"
+    decisions: [D-058, D-060]
+
+  value.public_cloud_estimate:
+    description: >
+      FinOps input: the cost of running the same estate on public cloud over the
+      depreciation period, component by component. Maintained as a data file in 1.0,
+      because FinOps has no workspace yet.
+    default: null
+    unit: currency
+    owner: finops
+    source: "Cost n Price n Value, Private Cloud | Public Cloud"
+    decisions: [D-058]
+
+  value.currency:
+    description: Currency shown on the Executive page.
+    default: USD
+    owner: finops
+    source: mockup
