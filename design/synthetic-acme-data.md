@@ -35,7 +35,7 @@ The prototype runs on synthetic data (D-018), served through the same API contra
 | VMs | About 30,000 | About 25 per host. Plausible for a Silver-heavy estate (Capacity design, SP5 host example). |
 | Guest OS | Windows and Linux only (D-038) | Scope. |
 | History | 13 months hourly for all clusters and hosts; 45 days at 5 minutes for clusters, hosts and the VMs in stories | Matches the store design (PCM core, 3.3). Raw data for all 30,000 VMs adds volume without adding a story. |
-| Clock | A fixed "now", with a replayable last hour for the wall | See section 4. |
+| Clock | The present time; "now" is an input, so tests can fix it | See section 4. |
 
 - The mockup's top-line numbers (76,800 units, 480 TB, 21 PB) are replaced by values derived from this estate.
 - **Why:** the mockup never defined "units" (Executive design, 4.8). Derived values make every number on the Executive page trace back to hosts and clusters, and that tracing is what the prototype must prove.
