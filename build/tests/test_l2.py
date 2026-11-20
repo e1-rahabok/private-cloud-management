@@ -18,7 +18,8 @@ from build.pcm_proto import api, generator, l2, noc
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = yaml.safe_load((ROOT / "spec/tests/l2.yaml").read_text())
 NOW = generator.parse_now(SPEC["now"])
-SETTINGS = generator.load_spec()["settings"]
+REAL_SPEC = generator.load_spec()
+SETTINGS = REAL_SPEC["settings"]
 T = {t["id"]: t for level in ("catalog", "story") for t in SPEC[level]}
 
 
@@ -117,6 +118,26 @@ class Story(Base):
             code, out = l2.act(NOW, ["escalations", "inc-fr-s-02", "agent"], {})
         self.assertEqual(code, 200)
         self.assertEqual(out["record"]["actor_agent"], "agent-e2")
+
+
+class AskWhy(Base):
+    def test_service_unavailable(self):
+        st = dict(SETTINGS, **{"agent_e2.service_url": "http://127.0.0.1:9"})
+        with mock.patch.object(generator, "load_spec", lambda: {**REAL_SPEC, "settings": st}):
+            code, out = l2.act(NOW, ["investigate", "sg-app-117", "ask"], {"question": "Why?"})
+        self.assertEqual((code, out["source"]), (200, "unavailable"))
+        self.assertEqual(noc.STATE.history[0]["actor_agent"], "agent-e2")
+
+    def test_service_answer_passes_facts_and_role(self):
+        seen = {}
+        def fake(url, body, timeout):
+            seen.update(body)
+            return {"type": "answer", "content": "Inside the Guest OS.", "files_read": ["sp5-framework/performance/vm-slow"], "model": "m"}
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            code, out = l2.act(NOW, ["investigate", "sg-app-117", "ask"], {"question": "Is the platform the cause?"})
+        self.assertEqual(out["source"], "service")
+        self.assertEqual(seen["role"], "l2")
+        self.assertEqual(seen["facts"]["realm_verdict"], "guest_os")
 
 
 class SpecRules(unittest.TestCase):

@@ -100,3 +100,23 @@ def draft_facts(facts: dict, task: str, settings: dict, avoided: list, template:
         return {"text": template, "source": "fallback_vocabulary", "model": model}
     except (urllib.error.URLError, TimeoutError, KeyError, ValueError):
         return {"text": template, "source": "fallback_unavailable", "model": model}
+
+
+def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 180) -> dict:
+    """Agent E2 service (D-078): the knowledge base, the reading plan and the model call, behind one endpoint.
+    Returns {content, files_read, computed, model, source}. source: service or unavailable."""
+    body = {"question": question, "facts": facts, "role": role}
+    try:
+        out = _post_raw(url.rstrip("/") + "/v1/answer", body, timeout)
+        return {"content": out.get("content") or "", "questions": out.get("questions", []), "type": out.get("type"),
+                "files_read": out.get("files_read", []), "computed": out.get("computed", []),
+                "model": out.get("model"), "knowledge_commit": out.get("knowledge_commit"), "source": "service"}
+    except (urllib.error.URLError, TimeoutError, ConnectionError, ValueError, KeyError):
+        return {"content": "", "files_read": [], "computed": [], "model": None, "source": "unavailable"}
+
+
+def _post_raw(url: str, body: dict, timeout: int) -> dict:
+    req = urllib.request.Request(url, data=json.dumps(body, default=str).encode(), headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read())
+

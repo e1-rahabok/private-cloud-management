@@ -25,6 +25,8 @@ paths:
     post: { summary: "Agent E2 drafts the root cause analysis (task rca_draft). L2 vocabulary. Recorded (D-076)." }
   /api/l2/investigate/{object}:
     get: { summary: "Fixed-order checks for a VM or cluster, VM and Guest OS side by side, logs beside metrics (l2.investigation_order, l2.realms)." }
+  /api/l2/investigate/{object}/ask:
+    post: { summary: "Ask Agent E2 why (D-078). Body: question. PCM adds the investigation facts and the role, calls the Agent E2 service, records the call with both identity fields. Returns content, files_read, source (service or unavailable)." }
   /api/l2/configuration:
     get: { summary: "Configuration findings in SP5 time order, each with fix the setting or fix the standard (l2.config_order)." }
   /api/l2/configuration/{id}/decide:

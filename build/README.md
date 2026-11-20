@@ -99,7 +99,7 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
 |---|---|---|
 | Catalog | LCAT-1 to LCAT-3 | 3 passed |
 | Story | LST-1 to LST-8, plus the RCA draft record | 9 passed |
-| Page | LPG-1 to LPG-8 | 8 passed |
+| Page | LPG-1 to LPG-9 | 9 passed |
 
 - **The escalation loop works across workspaces.** The NOC escalates FR-S-02. L2 sees it with raw counters and drafts the root cause analysis with Agent E2. L2 closes it with a cause, a fix and a detection decision, and the NOC incident closes too.
 - **Live RCA draft, 2026-11-20 (Gemma 4 31B through the gateway):** grounded in the evidence. It separates what is proven from the fix, and reports only what L1 did. The wording is stiff.
@@ -117,13 +117,23 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
   - The facts now keep `available_action` apart from `actions_already_done`, and the rules say so.
   - Test NST-12 holds the separation.
 
+## Agent E2 service (D-078)
+
+- "Ask Agent E2 why" on `/l2/investigate/{object}` calls the Agent E2 service (`harness/answer_service.py` in the Agent E2 repository, merged 2026-11-20). PCM sends the question, the investigation facts on the page, and the role.
+- **Run it next to PCM:** `python3 harness/answer_service.py --port 8090` from the Agent E2 repository. It takes about 50 s to start. The URL is the setting `agent_e2.service_url`.
+- **Live check, 2026-11-20:**
+  - sg-app-117 answered in 32 s: "the issue is inside the Guest OS".
+  - The answer cites SP5 files and adds that the run queue of 6.5 per vCPU is in the orange band. It names what to check next.
+  - Minor: it cited the cluster performance file for VM-level green bands.
+- **Without the service,** the page says "The Agent E2 service is not available" (test LPG-9).
+
 ## Known gaps (to fix in the specification, not here)
 
 | Gap | Effect | Proposed fix |
 |---|---|---|
 | Capacity decision dates are planted from stories | No forecast engine yet | Comes with the Capacity workspace (D-053) |
 | Class group KPIs are planted from the background, not computed from VM daily KPIs | No VM KPI engine yet | Comes with the NOC and L2 workspaces (D-053) |
-| Agent E2 gets incident facts only, not the knowledge base | It explains what PCM shows, not why SP5 says so | Connect the Agent E2 harness (reading plan over the knowledge base) behind the same client |
+| NOC and L2 drafts still use the direct model client (facts only) | Fast, but not grounded in the knowledge base | Move them to the Agent E2 service once its latency suits a draft |
 | L1 cannot split an incident yet | D-069 allows splitting | Add to the incident page |
 | `?region=` scope on the wall is not built | D-068 | Add to the wall |
 | The shift view uses the Asia Pacific shift only | One region shown | Use the viewer's region from sign-in |

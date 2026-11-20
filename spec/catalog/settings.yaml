@@ -217,3 +217,10 @@ settings:
     owner: l2
     source: "L2 design, 3.9"
 
+  agent_e2.service_url:
+    description: "Agent E2 service (D-078): POST /v1/answer with question, facts and role. Answers 'why' questions from the knowledge base, with sources."
+    default: "http://127.0.0.1:8090"
+    owner: l2
+    source: "Agent E2 harness/answer_service.py"
+    decisions: [D-078]
+

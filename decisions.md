@@ -82,6 +82,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-075 | 2026-11-20 | Every red on the NOC wall belongs to something L1 can acknowledge. When a screen turns red with no alert behind it (unexpected VM changes, a risky configuration change), PCM opens a wall-finding incident with its own SOP. | Red stops the rotation until acknowledged (D-041). Inventory changes raise no alert (SP5), so without a wall finding a red "What changed?" screen could never be acknowledged, and the rotation would stay stuck. |
 | D-076 | 2026-11-20 | For demos, Agent E2 calls a model through Vercel AI Gateway, as in Agent E2's own benchmark and lab. PCM talks to Agent E2's model through one OpenAI-compatible client: the endpoint and the model are settings. Customer sites point it at a local model server (D-004, D-017). | See Rationale. |
 | D-077 | 2026-11-20 | "Is it up?" follows the SP5 Availability SLA: Operational Availability per VM per calendar month, against the class target (Gold 99.975%, Silver 99.95%, Bronze 99.9%). Downtime inside an approved change window does not count; downtime outside it counts, even when planned. PCM reads approved change windows from the ITSM change calendar through a connector, or from its own business calendar where no ITSM is connected. Actual Availability is shown in the drill-down. A VM breaches when its counted minutes exceed the allowance for the whole calendar month; the same rule now applies to the Security SLA. | See `design/service-levels.md`, section 4. |
+| D-078 | 2026-11-20 | Agent E2 is a service behind PCM: it owns the knowledge base, the reading plan, the flow executor and the model call, behind one HTTP endpoint (`POST /v1/answer`, Agent E2 `harness/answer_service.py`). PCM owns the data, the actions, the user's identity and every screen, and sends the question with the live facts and the role. The Agent E2 repository becomes part of PCM eventually. | See Rationale. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -354,4 +355,17 @@ Source: Cost n Price n Value (in `sources/`).
 - **Its words are checked like a page's words.** The output is scanned against the workspace's vocabulary list. If it uses an avoided word, Agent E2 is asked once to rewrite. If it fails again, the page shows the fixed template instead. A model must not leak raw counters onto an L1 screen any more than a page may.
 - **Each draft is recorded with both identity fields:** Agent E2's ID and the person who asked (D-050).
 - **If the gateway fails, the demo still works.** The page shows the fixed template, labelled "Agent E2 is not available", never an empty box or an error.
+
+### D-078 Agent E2 as a service behind PCM
+
+- **Why a service, not shared code.**
+  - Agent E2's own live-lab design planned a web server, login, a VCF Operations connector, a database and a UI. PCM already owns all of these, so building both would duplicate them.
+  - A service boundary keeps each side testable on its own: Agent E2's benchmark measures the same pipeline PCM calls.
+- **What crosses the boundary:** the question, the live facts as JSON and the role of the person asking. Back come the answer, the knowledge files it read and the facts it computed.
+  - The facts arrive as data under a fixed heading, never as instructions.
+  - Web lookup is off in the service, so live facts never reach a web search (D-004).
+- **Two Agent E2 paths in PCM, for now:**
+  - Short drafts (an incident explanation, an escalation note, an RCA draft) use the direct model client of D-076: fast, with facts only.
+  - "Why" questions that need the knowledge base use the service: slower, about 30 seconds, but grounded in SP5 with sources.
+- **Eventually one repository (author).** When Agent E2 moves into PCM, D-010 (the specification is the maintained artifact) meets a knowledge base that is the author's own writing, not generated. The knowledge base stays authored; only the code follows D-010. How and when the move happens is open.
 

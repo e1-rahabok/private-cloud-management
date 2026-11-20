@@ -11,6 +11,7 @@ const PORT = 8768;
 const NOW = readFileSync(ROOT + 'spec/tests/l2.yaml', 'utf8').match(/^now:\s*"([^"]+)"/m)[1];
 const avoided = readFileSync(ROOT + 'spec/catalog/vocabulary/l2.yaml', 'utf8').split('avoided:')[1].split('labels:')[0]
   .split('\n').map(l => l.trim()).filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
+// No Agent E2 service on port 8090 during page tests: LPG-9 checks the unavailable state.
 const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_AGENT_E2_MODE: 'mock' } });
 await new Promise(r => setTimeout(r, 800));
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -61,6 +62,13 @@ try {
   await page.waitForSelector('body[data-replayed]');
   const after = await page.isDisabled('[data-publish]');
   check('LPG-6', before && !after, `publish disabled before replay: ${before}; after: ${after}`);
+
+  // LPG-9 Agent E2 service not running: the page says so and shows no answer
+  await go('/l2/investigate/sg-app-117');
+  await page.click('#ask button[type="submit"]');
+  await page.waitForSelector('body[data-ask]', { timeout: 30000 });
+  const askText = await page.innerText('#answer');
+  check('LPG-9', askText.includes('The Agent E2 service is not available'), askText.split('\n')[0]);
 
   const contrast = async () => page.evaluate(() => {
     const parse = c => (c.match(/[\d.]+/g) || []).map(Number);

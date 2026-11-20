@@ -369,6 +369,13 @@ def act(now: datetime, path: list, body: dict, enable=()) -> tuple[int, dict]:
                 rec("change_standard", item["setting"], body.get("reason", ""), item["standard"], item["actual"])
                 return 200, {"standard_version": v}
             return 400, {"error": "choice must be fix_the_setting or fix_the_standard"}
+        if path[:1] == ["investigate"] and len(path) == 3 and path[2] == "ask":
+            facts = investigate(now, path[1], enable)
+            if not facts or not body.get("question"):
+                return 400, {"error": "an object this page knows and a question are required"}
+            out = agent_e2.ask_service(st["agent_e2.service_url"], body["question"], facts, "l2")
+            r = rec("agent_ask", path[1], body["question"], "-", out["source"], actor_agent="agent-e2")
+            return 200, {**out, "record": r}
         if path == ["calendar"]:
             need = ("kind", "starts_at", "ends_at", "note")
             if any(not body.get(k) for k in need):

@@ -61,3 +61,7 @@ page:
   - id: LPG-8
     rule: No decision ID (D-nnn) appears in the visible text of any page of this workspace, in any state.
 
+  - id: LPG-9
+    rule: Without the Agent E2 service running, "Ask Agent E2 why" on /l2/investigate/sg-app-117 says "The Agent E2 service is not available" and shows no answer.
+    decisions: [D-078]
+

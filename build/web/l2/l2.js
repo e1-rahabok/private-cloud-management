@@ -104,7 +104,23 @@ async function investigate() {
     ${d.steps.map(s => `<tr class="${s.step === d.first_failing ? 'step-fail' : ''}"><td>${STEP[s.step]}${s.step === d.first_failing ? ' (first failing)' : ''}</td><td>${chip(s.status)}</td><td>${esc(s.values)}</td></tr>`).join('')}</tbody></table>
     ${d.realms ? `<h2>VM and Guest OS, side by side</h2><div class="cols2">${realm('VM', d.realms.vm)}${realm('Guest OS', d.realms.guest_os)}</div>` : ''}
     <div class="conclusion" data-realm="${d.realm_verdict}">${esc(d.conclusion)}</div>
-    <h2>Log events, same object and window</h2><ul>${d.logs.map(l => `<li>${fmtTime(l.at)}: ${esc(l.text)}</li>`).join('')}</ul>`;
+    <h2>Log events, same object and window</h2><ul>${d.logs.map(l => `<li>${fmtTime(l.at)}: ${esc(l.text)}</li>`).join('')}</ul>
+    <h2>Ask Agent E2 why</h2><form class="inline" id="ask"><label>Question<input type="text" name="question" size="70" value="Is the VMware platform the cause? What should I check next?"></label><button type="submit" class="act">Ask</button></form>
+    <div class="draft" id="answer" aria-live="polite"><span class="muted">Agent E2 reads the knowledge base and the facts on this page. It takes about 30 seconds.</span></div>`;
+  document.getElementById('ask').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const box = document.getElementById('answer');
+    box.innerHTML = '<span class="muted">Agent E2 is reading the knowledge base…</span>';
+    const r = await postJSON(`investigate/${encodeURIComponent(obj)}/ask`, { question: ev.target.elements.question.value });
+    if (r.body.source !== 'service') {
+      box.innerHTML = '<p class="why">The Agent E2 service is not available.</p>';
+    } else {
+      box.innerHTML = `<div class="answer-text">${esc(r.body.content).replace(/\n/g, '<br>')}</div>
+        <p class="muted">Knowledge files read: ${r.body.files_read.map(esc).join(', ')}</p>
+        <p class="muted">Model: ${esc(r.body.model)} · asked by ${esc(r.body.record.actor_human)} · recorded in the action history</p>`;
+    }
+    document.body.dataset.ask = r.body.source;
+  });
 }
 
 // ---------------------------------------------------------------- /l2/configuration
