@@ -55,7 +55,27 @@ def close_month(d: datetime, month: int) -> bool:
     return d.month == month and d.day >= 25  # the close week at the end of the year-end month
 
 
-def build(now: datetime, enable=()) -> dict:
+class State:
+    """Demand register entries added on the page (in memory, prototype)."""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.added = []
+
+
+STATE = State()
+
+
+def trend(weekly: list, weeks: int) -> tuple[float, float]:
+    """capacity.trend: least squares over the last `weeks` weekly peaks, close weeks left out."""
+    last = len(weekly) - 1
+    pts = [(-7 * (last - i), p["v"]) for i, p in enumerate(weekly) if i >= last - weeks and not p["close"]]
+    return fit(pts)
+
+
+def build(now: datetime, enable=(), register_as_of: datetime | None = None) -> dict:
+    """register_as_of: leave out register entries added after this time (last week's view, for /capacity)."""
     spec = generator.load_spec()
     est, st = spec["estate"], spec["settings"]
     stories = {k: v for k, v in spec["stories"]["stories"].items() if v.get("enabled_by_default", True) or k in enable}
@@ -68,7 +88,12 @@ def build(now: datetime, enable=()) -> dict:
     register = []
     if "C-4" in stories:
         r = stories["C-4"]["plant"]["demand_register"]
-        register.append({**r, "group": stories["C-4"]["objects"]["cluster_group"], "date": generator.rel(r["when"], now)})
+        register.append({**r, "group": stories["C-4"]["objects"]["cluster_group"], "date": generator.rel(r["when"], now),
+                         "added": generator.rel(r.get("added", "now - 30 days"), now)})
+    for r in STATE.added:
+        register.append(dict(r))
+    if register_as_of is not None:
+        register = [r for r in register if r["added"] <= register_as_of]
 
     groups = []
     for lid, loc in est["locations"].items():
@@ -105,14 +130,13 @@ def build(now: datetime, enable=()) -> dict:
                     if uplift_frac and close_month(d.astimezone(tz), ye):
                         v += uplift_frac * U
                     weekly.append({"t": d.isoformat(), "v": round(v, 2), "close": close_month(d.astimezone(tz), ye)})
-                pts = [(-7 * (56 - i), p["v"]) for i, p in enumerate(weekly) if i >= 56 - st["capacity.trend_weeks"] and not p["close"]]
-                a, b = fit(pts)
+                a, b = trend(weekly, st["capacity.trend_weeks"])
                 # seasonal uplift: last year's excess over the trend inside the close week
                 ex = [p["v"] - (a + b * (-7 * (56 - i))) for i, p in enumerate(weekly) if p["close"]]
                 uplift = max(ex) if ex else 0.0
                 pts90 = [(-7 * (13 - i), weekly[43 + i]["v"]) for i in range(14)]
                 a90, b90 = fit(pts90)
-                committed = lambda day: sum(r[{"memory": "memory_gb", "compute": "compute_threads", "storage": "storage_tb"}[res]]
+                committed = lambda day: sum(r.get({"memory": "memory_gb", "compute": "compute_threads", "storage": "storage_tb"}[res], 0)
                                             for r in register if r["group"] == gid and now + timedelta(days=day) >= r["date"])
                 run_out = peak = run90 = None
                 forecast = []
@@ -240,4 +264,165 @@ def what_if_refresh(cap: dict, location: str, replace_previous: int, new_hosts: 
     return {"location": location, "replace_previous": replace_previous, "new_hosts": new_hosts, "before": before, "after": after,
             "threads_gain": after["threads"] - before["threads"], "memory_gain_gb": after["memory_gb"] - before["memory_gb"],
             "next_year_growth": {"threads": round(growth_threads), "memory_gb": round(growth_mem)},
-            "racks_saved_hosts": replace_previous - new_hosts}
+            "racks_saved_hosts": replace_previous - new_hosts,
+            "covers_next_year_growth": (after["threads"] - before["threads"]) >= growth_threads
+                                       and (after["memory_gb"] - before["memory_gb"]) >= growth_mem}
+
+
+def planning_six_numbers(cls: str, cores: int, base_ghz: float, memory_gb: float, st: dict) -> dict:
+    """capacity.planning_six_numbers: VMs per host by CPU and memory allocation, reservation and utilization (SP5 host
+    specification). The smallest binds. The matching DRAM is what memory needs to hold as many VMs as the CPU does."""
+    c = st["capacity.class_planning"][cls]
+    hv = st["capacity.planning_hypervisor"]
+    threads = cores * 2 - hv["threads"]
+    ghz = cores * base_ghz - hv["system_reservation_ghz"]
+    mem = memory_gb - hv["memory_gb"]
+    n = {
+        "cpu_allocation": threads * c["cpu_overcommit"] / c["vcpu"],
+        "cpu_reservation": ghz / (c["vcpu"] * base_ghz * c["cpu_reservation"]),
+        "cpu_utilization": threads / (c["vcpu"] * c["cpu_peak"]),
+        "mem_allocation": mem * c["mem_overcommit"] / c["gb"],
+        "mem_reservation": mem / (c["gb"] * c["mem_reservation"]),
+        "mem_utilization": mem / (c["gb"] * c["mem_peak"]),
+    }
+    cpu_vms = min(n["cpu_allocation"], n["cpu_reservation"], n["cpu_utilization"])
+    need = max(cpu_vms * c["gb"] / c["mem_overcommit"], cpu_vms * c["gb"] * c["mem_reservation"], cpu_vms * c["gb"] * c["mem_peak"])
+    return {"class": cls, "inputs": {"cores": cores, "base_ghz": base_ghz, "memory_gb": memory_gb, **hv},
+            "planning": c, "numbers": {k: round(v, 2) for k, v in n.items()}, "binds": min(n, key=n.get),
+            "vms_per_host": round(min(n.values()), 1), "cpu_vms": round(cpu_vms, 1),
+            "matching_dram_gb": round(need + hv["memory_gb"])}
+
+
+# ---- Capacity workspace views (spec/api/capacity.yaml)
+
+def _day(now, d):
+    return None if d is None else (now + timedelta(days=d)).isoformat()
+
+
+def _row(g: dict, now: datetime) -> dict:
+    t = g["resources"][g["tightest"]]
+    return {"id": g["id"], "location": g["location"], "location_name": g["location_name"], "class": g["class"],
+            "hosts": g["hosts"], "tightest": g["tightest"], "remaining_percent": t["remaining_percent"],
+            "time_remaining_days": t["run_out_days"], "run_out_date": _day(now, t["run_out_days"]),
+            "decision_days": g["decision_days"], "decision_date": _day(now, g["decision_days"]),
+            "in_plan": g["in_plan"], "round_on_time": g["round_on_time"], "quadrant": g["quadrant"],
+            "peak_warning": g["peak_warning"] and {**g["peak_warning"], "date": _day(now, g["peak_warning"]["days"])}}
+
+
+def contention(now: datetime, enable=()) -> dict:
+    """Clusters not serving their VMs well now (Cluster Performance orange or red), per cluster group."""
+    from . import noc
+    out = {}
+    for c in noc.build(now, enable)["clusters"]:
+        if c["class"] in CLASSES and c["status"] in ("orange", "red"):
+            out.setdefault(f"{c['location'].upper()}-{c['class'].capitalize()}", []).append(
+                {"cluster": c["id"], "score": c["score"], "status": c["status"]})
+    return out
+
+
+def groups_view(now: datetime, enable=()) -> dict:
+    cap = build(now, enable)
+    hot = contention(now, enable)
+    rows = []
+    for g in cap["groups"]:
+        r = _row(g, now)
+        r["full_now"] = hot.get(g["id"])
+        rows.append(r)
+    rows.sort(key=lambda r: (r["decision_days"] if r["decision_days"] is not None else 10 ** 6))
+    return {"now": now.isoformat(), "horizon_days": HORIZON_DAYS, "next_round_closes": cap["next_round_closes"].isoformat(),
+            "groups": rows}
+
+
+def group_detail(now: datetime, gid: str, enable=()) -> dict | None:
+    cap = build(now, enable)
+    g = next((x for x in cap["groups"] if x["id"] == gid), None)
+    if g is None:
+        return None
+    res = {}
+    for k, r in g["resources"].items():
+        res[k] = {**r, "unit": {"compute": "threads", "memory": "GB", "storage": "TB"}[k],
+                  "run_out_date": _day(now, r["run_out_days"]), "decision_date": _day(now, r["decision_days"]),
+                  "run_out_90d_date": _day(now, r["run_out_90d_days"]), "peak_cross_date": _day(now, r["peak_cross_days"])}
+    reg = [_reg(r) for r in cap["register"] if r["group"] == gid]
+    return {**_row(g, now), "now": now.isoformat(), "clusters": g["clusters"], "lead_time_days": g["lead_time_days"], "resources": res, "register": reg,
+            "full_now": contention(now, enable).get(gid)}
+
+
+def _reg(r):
+    return {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in r.items()}
+
+
+def week(now: datetime, enable=()) -> dict:
+    """What changed since last week: decision dates that moved because of new register entries, groups that entered
+    their decision window, peak warnings and waste."""
+    cap = build(now, enable)
+    last = build(now, enable, register_as_of=now - timedelta(days=7))
+    soon = cap["settings"]["capacity.decide_soon_days"]
+    new_entries = [r for r in cap["register"] if r["added"] > now - timedelta(days=7)]
+    moved, entered = [], []
+    for g in cap["groups"]:
+        lg = next(x for x in last["groups"] if x["id"] == g["id"])
+        if g["decision_days"] is None or lg["decision_days"] is None:
+            continue
+        diff = lg["decision_days"] - g["decision_days"]
+        if abs(diff) >= 7:
+            because = [r["id"] for r in new_entries if r["group"] == g["id"]]
+            moved.append({"group": g["id"], "days_earlier": diff, "decision_date": _day(now, g["decision_days"]),
+                          "because_of": because, "causes": [{"id": r["id"], "kind": r["kind"], "source": r.get("source"),
+                                                             "owner": r.get("owner")} for r in new_entries if r["group"] == g["id"]]})
+        if g["decision_days"] <= soon and lg["decision_days"] + 7 > soon:
+            entered.append(g["id"])
+    plan = cap["plan"]
+    return {"now": now.isoformat(), "next_round_closes": cap["next_round_closes"].isoformat(),
+            "groups_in_round": [p["group"] for p in plan], "moved": moved, "entered_window": entered,
+            "peak_warnings": [_row(g, now) for g in cap["groups"] if g["peak_warning"]],
+            "waste": [_row(g, now) for g in cap["groups"] if g["quadrant"] == "waste"]}
+
+
+def demand(now: datetime, enable=()) -> dict:
+    cap = build(now, enable)
+    return {"now": now.isoformat(), "entries": [_reg(r) for r in sorted(cap["register"], key=lambda r: r["date"])],
+            "groups": [g["id"] for g in cap["groups"]]}
+
+
+KINDS = ("project", "migration", "dr", "growth")
+
+
+def add_demand(now: datetime, body: dict, enable=()) -> tuple[int, dict]:
+    groups = {g["id"] for g in build(now, enable)["groups"]}
+    missing = [k for k in ("kind", "group", "date", "owner") if not body.get(k)]
+    if missing:
+        return 400, {"error": f"missing: {', '.join(missing)}"}
+    if body["kind"] not in KINDS or body["group"] not in groups:
+        return 400, {"error": "unknown kind or group"}
+    try:
+        d = datetime.fromisoformat(body["date"])
+    except ValueError:
+        return 400, {"error": "date must be YYYY-MM-DD"}
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=now.tzinfo)
+    entry = {"id": f"dr-{len(STATE.added) + 1:03d}", "kind": body["kind"], "source": body.get("source") or "",
+             "group": body["group"], "date": d, "added": now, "owner": body["owner"],
+             "compute_threads": float(body.get("compute_threads") or 0), "memory_gb": float(body.get("memory_gb") or 0),
+             "storage_tb": float(body.get("storage_tb") or 0)}
+    STATE.added.append(entry)
+    g = next(x for x in groups_view(now, enable)["groups"] if x["id"] == body["group"])
+    return 200, {"entry": _reg(entry), "group": g}
+
+
+def plan_view(now: datetime, enable=()) -> dict:
+    cap = build(now, enable)
+    rows = [{**p, "delivery_date": _day(now, p["delivery_days"]), "cover_until_date": _day(now, p["cover_until_days"]),
+             "decision_date": _day(now, next(g["decision_days"] for g in cap["groups"] if g["id"] == p["group"]))}
+            for p in cap["plan"]]
+    return {"now": now.isoformat(), "next_round_closes": cap["next_round_closes"].isoformat(), "rows": rows,
+            "total": sum(r["total"] for r in rows), "depreciation_years": cap["settings"]["value.depreciation_years"],
+            "host_standard": cap["settings"]["capacity.host_standard"]}
+
+
+def waste_view(now: datetime, enable=()) -> dict:
+    cap = build(now, enable)
+    rec = [{**r, "run_out_date_before": _day(now, r["run_out_days_before"]), "run_out_date_after": _day(now, r["run_out_days_after"])}
+           for r in cap["reclamation"]]
+    return {"now": now.isoformat(), "reclamation": rec,
+            "waste_groups": [_row(g, now) for g in cap["groups"] if g["quadrant"] == "waste"]}

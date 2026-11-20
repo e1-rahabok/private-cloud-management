@@ -251,3 +251,19 @@ settings:
     source: "proposal: synthetic ACME figures; real figures come from vendor contracts (D-060)"
     decisions: [D-060, D-061]
 
+  capacity.class_planning:
+    description: SP5 planning values per class (typical VM, overcommit, reservation, expected concurrent peak) for the host specification.
+    default:
+      gold:   { vcpu: 16, gb: 64, cpu_overcommit: 1.0, mem_overcommit: 1.0, cpu_reservation: 0.50, mem_reservation: 1.00, cpu_peak: 0.35, mem_peak: 0.85 }
+      silver: { vcpu: 8,  gb: 32, cpu_overcommit: 2.0, mem_overcommit: 1.2, cpu_reservation: 0.25, mem_reservation: 0.50, cpu_peak: 0.50, mem_peak: 0.85 }
+      bronze: { vcpu: 4,  gb: 16, cpu_overcommit: 3.0, mem_overcommit: 1.4, cpu_reservation: 0.125, mem_reservation: 0.25, cpu_peak: 0.65, mem_peak: 0.85 }
+    owner: capacity
+    source: "SP5 class-of-service planning, Example implementation"
+    decisions: [D-061]
+
+  capacity.planning_hypervisor:
+    description: Planning-stage hypervisor share per host, and the system CPU reservation.
+    default: { threads: 14, memory_gb: 64, system_reservation_ghz: 10 }
+    owner: capacity
+    source: "SP5 host specification: planning default 14 threads and 64 GB; 10 GHz system reservation"
+

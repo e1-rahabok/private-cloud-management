@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import api, generator, l2, noc
+from . import api, capacity, generator, l2, noc
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 
@@ -31,6 +31,8 @@ def route(path: str, query: dict):
         return noc_get(parts[2:], now, enable)
     if parts[:2] == ["api", "l2"]:
         return l2_get(parts[2:], now, enable, query)
+    if parts[:2] == ["api", "capacity"]:
+        return capacity_get(parts[2:], now, enable, query)
     if parts[:2] != ["api", "exec"]:
         return None
     rest = parts[2:]
@@ -85,7 +87,35 @@ def l2_get(rest, now, enable, query):
     return None
 
 
-PAGES = {"/l2": "/l2/index.html", "/l2/escalations": "/l2/escalations.html", "/l2/configuration": "/l2/configuration.html",
+def capacity_get(rest, now, enable, query):
+    st = generator.load_spec()["settings"]
+    if rest == ["week"]:
+        return capacity.week(now, enable)
+    if rest == ["groups"]:
+        return capacity.groups_view(now, enable)
+    if len(rest) == 2 and rest[0] == "groups":
+        return capacity.group_detail(now, rest[1], enable)
+    if rest == ["demand"]:
+        return capacity.demand(now, enable)
+    if rest == ["plan"]:
+        return capacity.plan_view(now, enable)
+    if rest == ["waste"]:
+        return capacity.waste_view(now, enable)
+    if rest == ["what-if", "refresh"]:
+        g = lambda k, d: query.get(k, [d])[0]
+        return capacity.what_if_refresh(capacity.build(now, enable), g("location", "ld"), int(g("replace", "90")), int(g("new", "75")))
+    if rest == ["what-if", "host"]:
+        g = lambda k, d: query.get(k, [d])[0]
+        cls = g("class", "silver")
+        if cls not in capacity.CLASSES:
+            raise ValueError("class must be gold, silver or bronze")
+        return capacity.planning_six_numbers(cls, int(g("cores", "64")), float(g("base_ghz", "2.5")), float(g("memory_gb", "768")), st)
+    return None
+
+
+PAGES = {"/capacity": "/capacity/index.html", "/capacity/clusters": "/capacity/clusters.html", "/capacity/demand": "/capacity/demand.html",
+         "/capacity/what-if": "/capacity/what-if.html", "/capacity/plan": "/capacity/plan.html", "/capacity/waste": "/capacity/waste.html",
+         "/l2": "/l2/index.html", "/l2/escalations": "/l2/escalations.html", "/l2/configuration": "/l2/configuration.html",
          "/l2/context": "/l2/context.html", "/l2/authoring": "/l2/authoring.html","/exec": "/exec/index.html", "/noc": "/noc/index.html", "/noc/wall": "/noc/wall.html",
          "/noc/alerts": "/noc/alerts.html", "/noc/shift": "/noc/shift.html"}
 
@@ -120,6 +150,8 @@ class Handler(BaseHTTPRequestHandler):
             path = "/noc/alert.html"
         if path.startswith("/l2/investigate/"):
             path = "/l2/investigate.html"
+        if path.startswith("/capacity/group/"):
+            path = "/capacity/group.html"
         path = PAGES.get(path, path)
         f = (WEB / path.lstrip("/")).resolve()
         if WEB not in f.parents or not f.is_file():
@@ -131,7 +163,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         u = urlparse(self.path)
         parts = [p for p in u.path.split("/") if p]
-        if parts[:2] not in (["api", "noc"], ["api", "l2"]):
+        if parts[:2] not in (["api", "noc"], ["api", "l2"], ["api", "capacity"]):
             return self.send(404, b'{"error":"not found"}', "application/json")
         q = parse_qs(u.query)
         length = int(self.headers.get("Content-Length") or 0)
@@ -142,10 +174,15 @@ class Handler(BaseHTTPRequestHandler):
         if parts[2:] == ["_reset"]:
             noc.STATE.reset()
             l2.STATE.reset()
+            capacity.STATE.reset()
             return self.send(200, b'{"reset":true}', "application/json")
         now = generator.parse_now(q.get("now", [None])[0])
         enable = tuple(x for x in q.get("enable", [""])[0].split(",") if x)
-        if parts[1] == "l2":
+        if parts[1] == "capacity":
+            if parts[2:] != ["demand"]:
+                return self.send(404, b'{"error":"not found"}', "application/json")
+            code, data = capacity.add_demand(now, body, enable)
+        elif parts[1] == "l2":
             code, data = l2.act(now, parts[2:], body, enable)
         else:
             code, data = noc.act(noc.build(now, enable), parts[2:], body)

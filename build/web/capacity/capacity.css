@@ -1,0 +1,32 @@
+/* GENERATED from spec/design-system/tokens.md and spec/workspaces/capacity/. Do not edit by hand (D-070). */
+:root { --waste: #3E5C79; --waste-soft: #DCE3EA; }
+.chip.waste { background: var(--waste); color: #fff; }
+.item .chip { margin-right: 6px; }
+.chip.in_plan { background: var(--accent-soft); color: var(--accent-ink); }
+.chip.late { background: var(--red-soft); color: var(--red); }
+.lead { font-size: 15px; color: var(--text-muted); margin: -8px 0 18px; }
+section.block { background: #fff; border-radius: 16px; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(11,27,43,.06); }
+section.block h2 { margin: 0 0 4px; font-size: 20px; }
+section.block .q { margin: 0 0 12px; color: var(--text-muted); font-size: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
+.kpi { background: #fff; border-radius: 16px; padding: 16px; }
+.kpi .n { font-size: 30px; font-weight: 800; }
+.kpi .l { color: var(--text-muted); font-size: 14px; }
+.item { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.item:last-child { border-bottom: 0; }
+.full { color: var(--red); font-weight: 800; }
+.res3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.wf div { display: flex; justify-content: space-between; padding: 3px 0; }
+.wf .eq { border-top: 2px solid var(--text); font-weight: 800; margin-top: 4px; padding-top: 6px; }
+svg text { font-family: 'Manrope', system-ui, sans-serif; }
+.legend { margin-bottom: 10px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; }
+.warn { background: var(--amber-soft); color: var(--amber-ink); border-radius: 10px; padding: 10px 14px; font-weight: 700; margin: 10px 0; }
+.covers { font-size: 20px; font-weight: 800; margin: 12px 0; }
+.covers.yes { color: var(--accent-ink); } .covers.no { color: var(--red); }
+form.inline { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+form.inline label { display: flex; flex-direction: column; font-size: 13px; color: var(--text-muted); gap: 4px; }
+input, select { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); color: var(--text); background: #fff; }
+td.num, th.num { text-align: right; }
+tr.total td { font-weight: 800; border-top: 2px solid var(--text); }
+.binds { background: var(--amber-soft); }

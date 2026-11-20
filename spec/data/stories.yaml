@@ -348,8 +348,8 @@ stories:
     title: An OpenShift migration wave into Frankfurt Silver
     objects: { cluster_group: FR-Silver }
     plant:
-      demand_register: { id: dr-ocp-wave-2, kind: migration, source: OpenShift, vms: 800, when: "now + 200 days", owner: "migration-team", memory_gb: 25600, compute_threads: 1600, storage_tb: 160 }
-    expect: { run_out_on_or_before: "now + 200 days", register_owner_shown: true }
+      demand_register: { id: dr-ocp-wave-2, kind: migration, source: OpenShift, vms: 800, when: "now + 200 days", added: "now - 3 days", owner: "migration-team", memory_gb: 25600, compute_threads: 1600, storage_tb: 160 }
+    expect: { run_out_on_or_before: "now + 200 days", register_owner_shown: true, week_shows_moved_earlier_because_of: dr-ocp-wave-2 }
 
   C-5:
     title: London's older hosts reach the end of depreciation

@@ -21,6 +21,7 @@ Open:
 - `http://localhost:8080/noc/wall`: NOC wall, for a TV
 - `http://localhost:8080/noc`: NOC desktop
 - `http://localhost:8080/l2`: L2 Platform
+- `http://localhost:8080/capacity`: Capacity
 
 Options, in the page URL or on the API:
 
@@ -55,6 +56,14 @@ python3 -m unittest build.tests.test_l2 -v
 
 ```bash
 node build/tests/l2.page.test.mjs
+```
+
+```bash
+python3 -m unittest build.tests.test_capacity -v
+```
+
+```bash
+node build/tests/capacity.page.test.mjs
 ```
 
 The page test needs Node and Playwright with Chromium. It also writes the review screenshots to `screenshots/`.
@@ -110,6 +119,28 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
 
 **Found in review and fixed in the specification first:** decision IDs ("D-039", "D-073", "D-040") appeared in page text and SOP steps. New builder rule 9: decision IDs never appear in page text. Tests PG-13, NPG-10 and LPG-8 now check every workspace, and the NOC test found two SOP steps that leaked one.
 
+## Results: Capacity
+
+All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if, Purchase plan, Waste.
+
+| Level | Tests | Result |
+|---|---|---|
+| Catalog | KCAT-1 to KCAT-5 | 5 passed |
+| Story | KST-1 to KST-8, register add, cost not price | 10 passed |
+| Page | KPG-1 to KPG-6, demand add | 7 passed |
+
+- **SP5 host specification:** Silver fits 25.9 VMs on a 64-core, 768 GB host; memory binds; the matching DRAM is 839 GB. Gold 520 GB, Bronze 660 GB.
+- **This week:** FR-Silver's decision moved 130 days earlier because of the OpenShift migration entry.
+- **Contention:** FR-Silver says "Full now: VMs waiting" on FR-S-02 (score 22, the NOC's own number).
+- **Peak warning:** TK-Silver's March close week crosses usable memory; the 90-day trend sees no run-out. Amber chip, no purchase.
+- **Waste:** TK-Gold in dark grey. Reclaiming SG-Silver moves it out of the round: cost avoidance $3,588,000, the same number as the Executive cost card.
+- **Hardware refresh:** London, 90 old hosts to 75 new ones, covers next year's growth; licensed cores rise from 3,600 to 4,800.
+
+**Found in review and fixed:**
+- Groups beyond 13 months piled up on the scatter's right edge with overlapping labels. They now sit there unlabelled, with a count ("9 beyond 13 months"). The table lists them all.
+- TK-Silver showed "Good" next to a peak warning. It now shows an amber "Peak warning" chip.
+- A new register entry pulled VA-Silver's decision date into the past, shown as a plain date. It now says "overdue since".
+
 ## Agent E2 (D-076)
 
 - Agent E2 drafts on the NOC incident page through one OpenAI-compatible client (`pcm_proto/agent_e2.py`, standard library only).
@@ -147,7 +178,8 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
 | Reject asks for its reason in a browser dialog | Prototype | A proper form on the page |
 | The ITSM change calendar connector is simulated by story U-1 | No ITSM in the prototype | Build the read connector; verify on the live system (D-062) |
 | L2 cannot yet reclassify a downtime as customer-caused | Specified (D-077) | Add to the L2 pages |
-| Capacity workspace | Not built yet | Next in order (D-053) |
+| Capacity: the register lives in memory | Entries added on the page vanish on restart | PCM database (PCM core) |
+| Capacity: planning values per class and host costs are proposals | Numbers not yet confirmed | Author to confirm the settings marked proposal |
 
 ## Layout
 
@@ -164,6 +196,7 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
 | `pcm_proto/l2.py` | L2 daily check, proposals, action policies, escalations, configuration, calendar, threshold replay |
 | `pcm_proto/capacity.py` | Capacity engine: usable capacity, forecast, decision dates, purchase plan, reclamation, what-if |
 | `web/l2/` | The L2 pages |
+| `web/capacity/` | The Capacity pages |
 | `pcm_proto/agent_e2.py` | Agent E2 client: drafts, vocabulary check, fallback |
 | `tests/` | Catalog and story tests (Python), page tests (Playwright) |
 | `screenshots/` | Screenshots for review, written by the page test |

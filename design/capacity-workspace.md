@@ -254,16 +254,43 @@ Path: `privatecloud.acme.com/capacity` (D-028).
 
   The human who asked is recorded with each task (D-050).
 
+### 3.19 Considerations from the first build
+
+- **The unit is the cluster group, not the cluster.**
+  - Decision: pages say "cluster group" (location plus class), and the detail page is `/capacity/group/{id}`.
+  - Why: we buy hosts for a class in a location, not for one cluster. DRS and placement move load between clusters of the same class, so a single cluster runs out only when its group does.
+  - Trade-off: one hot cluster can hide inside a healthy group. Contention covers that case (next point).
+- **Contention overrides the forecast.**
+  - Decision: when a cluster in the group is orange or red on Cluster Performance now, the row says "Full now: VMs waiting", whatever the forecast says.
+  - Why: a forecast built from weekly peaks can say "13 months left" while VMs wait for CPU today. Capacity that does not serve is not capacity.
+  - One definition: the score is the NOC's own. FR-S-02 at 22 shows on the wall and on the Capacity page.
+- **"This week" isolates the cause.**
+  - Decision: last week's view is the same engine with register entries added in the last 7 days left out.
+  - Why: the question is "why did the date move?". Holding the trend fixed and removing only the new entries names the cause, here the OpenShift migration (130 days earlier). A move with no new entry is reported as "the trend changed".
+  - Trade-off: it does not show drift from one week of new peaks. That drift is small, and naming it adds noise.
+- **A peak warning is not "Good".**
+  - Decision: a group whose close week crosses usable, while its trend does not, shows an amber "Peak warning" chip, not green.
+  - Why: green would tell the planner to do nothing. The right action is to borrow hosts, burst or hold other work for that week. Buying hosts for one week a year is waste.
+- **An overdue decision is said in words.**
+  - Decision: when new demand pulls a decision date into the past, the page says "overdue since", not just a date.
+  - Why: a past date reads like a typing error. "Overdue" tells the planner the round is too late and a bridge is needed.
+- **Hardware refresh folds into what-if.**
+  - Decision: no separate `/capacity/refresh` page.
+  - Why: a refresh is one scenario among several: replace N old hosts with M new ones. The host specification belongs next to it, because the planner sizes the new host before counting them. One page, two questions; fewer places to look.
+- **The host specification uses the SP5 six numbers.**
+  - Decision: VMs per host by CPU and memory allocation, reservation and utilization. The smallest number binds, and the page shows the DRAM that matches the CPU.
+  - Why: buyers usually size DRAM by habit (768 GB, 1 TB). The matching DRAM shows the class need: Silver 839 GB, Gold 520 GB, Bronze 660 GB on a 64-core host. Too little DRAM strands cores, which are licensed per core. Too much strands DRAM.
+  - Planning values per class are settings with an owner (Capacity), not code.
+
 ## 4. Pages
 
 | Path | Job | Main question |
 |---|---|---|
 | `/capacity` | This week | What changed since last week? |
-| `/capacity/clusters` | All clusters | Which clusters need a decision, and by when? |
-| `/capacity/cluster/{id}` | One cluster | How does total become usable, what limits it, and when does it run out? |
+| `/capacity/clusters` | All cluster groups | Which cluster groups need a decision, and by when? |
+| `/capacity/group/{id}` | One cluster group | How does total become usable, what limits it, and when does it run out? |
 | `/capacity/demand` | Demand register | What demand is coming that the data cannot show? |
-| `/capacity/what-if` | Scenarios | What happens if we add, remove or change something? |
-| `/capacity/refresh` | Hardware life cycle and host standard | Which hosts age out, and what replaces them? |
+| `/capacity/what-if` | Scenarios: hardware refresh and host specification | What happens if we add, remove or change something? |
 | `/capacity/plan` | Procurement round, with cost line items | What do we buy in the next round, and what does it cost? |
 | `/capacity/waste` | Reclamation, in money | What can we reclaim, starting where? |
 
