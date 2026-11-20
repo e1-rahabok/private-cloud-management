@@ -258,7 +258,7 @@ settings:
       silver: { vcpu: 8,  gb: 32, cpu_overcommit: 2.0, mem_overcommit: 1.2, cpu_reservation: 0.25, mem_reservation: 0.50, cpu_peak: 0.50, mem_peak: 0.85 }
       bronze: { vcpu: 4,  gb: 16, cpu_overcommit: 3.0, mem_overcommit: 1.4, cpu_reservation: 0.125, mem_reservation: 0.25, cpu_peak: 0.65, mem_peak: 0.85 }
     owner: capacity
-    source: "SP5 class-of-service planning, Example implementation"
+    source: "SP5 class-of-service planning, Example implementation. Values the example does not fix (Gold CPU reservation and peak, Bronze overcommit and reservation) confirmed 2026-11-20."
     decisions: [D-061]
 
   capacity.planning_hypervisor:

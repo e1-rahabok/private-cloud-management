@@ -205,7 +205,7 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 | The ITSM change calendar connector is simulated by story U-1 | No ITSM in the prototype | Build the read connector; verify on the live system (D-062) |
 | L2 cannot yet reclassify a downtime as customer-caused | Specified (D-077) | Add to the L2 pages |
 | Workflow state is one JSON document per name | Fine for the prototype | One table each in the product database |
-| Capacity: planning values per class and host costs are proposals | Numbers not yet confirmed | Author to confirm the settings marked proposal |
+| Capacity: host costs, trend weeks, purchase cover and waste limits are proposals | Numbers not yet confirmed | Author to confirm the settings marked proposal |
 
 ## Layout
 
