@@ -24,7 +24,7 @@ The prototype runs on synthetic data (D-018), served through the same API contra
 
 | Item | Value | Why |
 |---|---|---|
-| Company | ACME Corp (fictional) | Already used in the Executive mockup. |
+| Company | ACME Corp (fictional), a global bank (D-065) | Already used in the Executive mockup. Banking gives the strongest calendar-driven load and the strictest regulators, so the stories matter more. |
 | Locations | Singapore, Virginia, Frankfurt, Tokyo, London | Already in the mockup. Three regions (Asia Pacific, Americas, Europe) exercise federation and local time. |
 | VCF Operations instances | 3, one per region | Exercises federation (D-009), including one instance that goes stale. |
 | VCF instances | 5, one per location | A global enterprise usually runs one per site. |
@@ -46,7 +46,7 @@ The generator must follow these rules. A synthetic estate that breaks them teach
 
 | Rule | Why |
 |---|---|
-| Load follows the business day in each location's local time, lower at weekends, with a month-end batch peak and a year-end peak in Virginia | Patterns are what the weekly check and the forecast look for (D-042, Capacity design 3.5). Without them, both find nothing. |
+| Banking load pattern, in each location's local time: online banking by day; the end-of-day batch at night (about 22:00 to 03:00), which is often the daily peak; payday peaks; month-end and quarter-end close; financial year-end close (December in Singapore, Virginia, Frankfurt and London; March in Tokyo) | Patterns are what the weekly check and the forecast look for (D-042, Capacity design 3.5). In a bank, night is not quiet: a design that assumes it is would schedule the weekly check (D-042) into the batch window. |
 | Contention stays near zero until utilization nears saturation, then rises sharply | SP5: capacity to performance is non-linear. Linear synthetic data would teach that high utilization is bad. |
 | Memory consumed is high on most hosts and is not a problem | SP5: memory is a cache. A prototype that shows high consumed memory as red repeats the most common misreading. |
 | Bronze clusters run hotter than Gold and score a higher Cluster Risk (%) | By design (SP5 class of service). Equal scores would hide what the classes mean. |
@@ -87,7 +87,8 @@ Each story is one or more objects with a planted condition, and the expected res
 | L-3 | Daily check: one host in cluster VA-G-05 has a different NTP and log configuration from its peers | Configuration, "Correct it" (L2 design, 3.10). Option: fix the host, or fix the standard. |
 | L-4 | Daily check proposes moving 6 VMs from the hot cluster SG-S-04 to SG-S-06 | The proposal waits for L2 approval. This action type has 23 approvals and 0 rollbacks, so promoting it to automatic is offered (L2 design, 3.7). |
 | L-5 | An alert last Thursday was not predicted by any check | It appears in "slipped through" (D-039). |
-| L-6 | Business calendar: Virginia quarter-end batch on Wednesday | The weekly check explains a forecast rise instead of flagging an anomaly (L2 design, 3.6). |
+| L-6 | Business calendar: quarter-end close on Wednesday in all locations, and a payday on Friday in Singapore | The checks explain the rise instead of flagging an anomaly (L2 design, 3.6). |
+| L-7 | The end-of-day batch in London ran 40 minutes longer last night; a datastore behind it shows rising latency | The daily check flags it as insight, before the batch window closes late and hits the start of business (SP5 prevention window). |
 
 ### Capacity
 
@@ -95,7 +96,7 @@ Each story is one or more objects with a planted condition, and the expected res
 |---|---|---|
 | C-1 | Cluster group SG-Silver: memory runs out in 5 months; procurement lead time is 4 months | The decision date is in 4 weeks, before the next purchase round closes. It is at the top of the cluster list and in the plan (Capacity design, 3.7–3.8). |
 | C-2 | Cluster group TK-Gold: 60% capacity remaining for 9 months, slow growth | Dark grey, waste. Not green (Capacity design, 3.3). |
-| C-3 | Virginia year-end peak | A 90-day forecast misses it; the 13-month forecast catches it and moves VA-Silver's decision date earlier (Capacity design, 3.5). |
+| C-3 | Year-end close: December in Virginia, March in Tokyo | A 90-day forecast misses both; the 13-month forecast catches them and moves the decision dates of VA-Silver and TK-Silver earlier (Capacity design, 3.5). Two different year-ends prove the forecast follows each location's own calendar. |
 | C-4 | Demand register: an OpenShift migration wave of 800 VMs to Frankfurt in May | FR-Silver's run-out date moves earlier. The register shows the owner (Capacity design, 3.6). |
 | C-5 | 140 older hosts in London reach end of depreciation within 12 months | The what-if shows that replacing them with the new standard covers London's growth without expansion (Capacity design, 3.9). |
 | C-6 | Reclamation: 300 powered-off VMs, 900 idle VMs, 60 large oversized VMs | Shown easiest first, largest first. Cost avoidance counts only the purchase it defers: SG-Silver moves out of the purchase round (D-060). |
@@ -106,7 +107,7 @@ Each story is one or more objects with a planted condition, and the expected res
 |---|---|---|
 | E-1 | Overall health: up and fast green, safe amber (N-4, certificates) | Three cards; safe is amber with a plain sentence (Executive design, 4.1). |
 | E-2 | Room to grow: Singapore's earliest date is C-1, already in the next purchase round | Shown as "in the plan", not as an alarm (Executive design, 4.4). |
-| E-3 | Site recovery: Frankfurt's plan last tested 4 months ago, but 220 VMs added since were never tested | Amber, with the share of protected VMs tested (D-059). |
+| E-3 | Site recovery: Frankfurt's plan last tested 4 months ago, but 220 VMs added since were never tested | Amber, with the share of protected VMs tested (D-059). For a bank this is a regulator question: regulators require tested recovery for critical systems. |
 | E-4 | Cost avoided this year from reclamation, valued at today's price (C-6) | Shown as cost avoided, not saving (D-060). |
 | E-5 | Goals: "fewer alerts" on track; "versions at N or N-1" at risk | Goals row (Executive design, 4.7). |
 
@@ -123,8 +124,6 @@ Each story is one or more objects with a planted condition, and the expected res
 
 ## 7. Open questions for the author
 
-1. **Industry of ACME.** Retail gives a strong year-end peak (C-3) and a familiar story for executives. Banking gives quarter-end and regulation. Which fits your audience?
-   - Proposal: retail.
-2. **The "now".** Monday 10:05 Singapore. Your mockup shows Monday 19 October 2026. Keep that date?
+1. **The "now".** Monday 10:05 Singapore. Your mockup shows Monday 19 October 2026. Keep that date?
    - Proposal: yes, keep it.
-3. **More stories.** Which situations from your field experience must the approval audience see? Add them to section 5, or tell me and I will write them.
+2. **More stories.** Which situations from your field experience must the approval audience see? Add them to section 5, or tell me and I will write them.
