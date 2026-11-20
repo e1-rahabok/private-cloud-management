@@ -70,8 +70,8 @@ Third build: the three gaps from the first review are fixed in the specification
 | Level | Tests | Result |
 |---|---|---|
 | Catalog | NCAT-1 to NCAT-6 | 6 passed |
-| Story | NST-1 to NST-8 | 8 passed |
-| Page | NPG-1 to NPG-8 | 8 passed |
+| Story | NST-1 to NST-12 | 12 passed |
+| Page | NPG-1 to NPG-9 | 9 passed |
 
 **Found while reviewing the screenshots, and fixed in the specification first:**
 - The SOP step "is the villain non-production?" showed "fail". It is a branch, not a failure. Branch steps now show their answer.
@@ -80,13 +80,24 @@ Third build: the three gaps from the first review are fixed in the specification
 
 **One test expectation corrected in the specification:** NST-1 expected the wall to pin "Is it fast?". Stories N-1 and N-3 are both active, so the wall pins two screens and cycles through both. The test now checks that "Is it fast?" is among the pins.
 
+## Agent E2 (D-076)
+
+- Agent E2 drafts on the NOC incident page through one OpenAI-compatible client (`pcm_proto/agent_e2.py`, standard library only).
+- **Demo:** Vercel AI Gateway, model `google/gemma-4-31b-it`, one of Agent E2's local candidates. The key comes from `AI_GATEWAY_API_KEY`. **Customer site:** set `agent_e2.endpoint` to the local model server.
+- **Tests run with `PCM_AGENT_E2_MODE=mock`,** so they do not depend on the network.
+- **Live check, 2026-11-20:** an explanation takes about 1.4 s, an escalation note about 6 s.
+- **Found in the first live call, and fixed:**
+  - The model reported an SOP action as done when it was only available.
+  - The facts now keep `available_action` apart from `actions_already_done`, and the rules say so.
+  - Test NST-12 holds the separation.
+
 ## Known gaps (to fix in the specification, not here)
 
 | Gap | Effect | Proposed fix |
 |---|---|---|
 | Capacity decision dates are planted from stories | No forecast engine yet | Comes with the Capacity workspace (D-053) |
 | Class group KPIs are planted from the background, not computed from VM daily KPIs | No VM KPI engine yet | Comes with the NOC and L2 workspaces (D-053) |
-| Agent E2 on the NOC incident page shows a fixed draft | No local LLM in the prototype | Connect Agent E2 (D-017) |
+| Agent E2 gets incident facts only, not the knowledge base | It explains what PCM shows, not why SP5 says so | Connect the Agent E2 harness (reading plan over the knowledge base) behind the same client |
 | L1 cannot split an incident yet | D-069 allows splitting | Add to the incident page |
 | `?region=` scope on the wall is not built | D-068 | Add to the wall |
 | The shift view uses the Asia Pacific shift only | One region shown | Use the viewer's region from sign-in |
@@ -107,5 +118,6 @@ Third build: the three gaps from the first review are fixed in the specification
 | `web/fonts/` | Manrope, bundled, with its licence |
 | `pcm_proto/noc.py` | NOC data, grouping, SOPs and the action engine (in memory) |
 | `web/noc/` | The NOC wall and desktop pages |
+| `pcm_proto/agent_e2.py` | Agent E2 client: drafts, vocabulary check, fallback |
 | `tests/` | Catalog and story tests (Python), page tests (Playwright) |
 | `screenshots/` | Screenshots for review, written by the page test |

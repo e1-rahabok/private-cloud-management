@@ -39,7 +39,12 @@ api: /api/noc/incidents/{id}
   - L1 can split an incident but cannot merge incidents (D-069). Splitting is out of the prototype.
 - **Action history** for this incident, with both identity fields (D-050, D-063). Actions are named in plain words ("Stopped new VMs", "Acknowledged"), never by their ID.
 - **Limits** show when they expire: at the end of the shift.
-- **Agent E2 panel:** "Explain this incident", "Draft the escalation note". The prototype shows a fixed text marked as a draft. Agent E2 itself comes later.
+- **Agent E2 panel (D-076):** two buttons, "Explain this incident" and "Draft the escalation note".
+  - Agent E2 gets the incident facts from the API: alerts, SOP steps and their results, villains and victims, the escalation route.
+  - It answers in plain words, marked "Draft by Agent E2, to review".
+  - The draft is recorded in the action history with Agent E2's ID and the person who asked (D-050).
+  - Its words are checked against the NOC vocabulary. If it uses an avoided word, it is asked once to rewrite. If it fails again, the page shows the fixed template.
+  - If the model cannot be reached, the page shows the fixed template, labelled "Agent E2 is not available".
 - **States:**
   - normal;
   - acknowledged;

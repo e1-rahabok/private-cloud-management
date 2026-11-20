@@ -72,6 +72,13 @@ paths:
                     target: { type: string }
                     incident: { type: string }
 
+  /api/noc/incidents/{id}/agent:
+    post:
+      summary: >
+        Ask Agent E2 for a draft (D-076). Body: task = explain or escalation_note, plus ActorNote.
+        Returns text, source (model, fallback_vocabulary, fallback_unavailable), model, and the action
+        record. Never changes the incident.
+
   /api/noc/shift:
     get:
       summary: The current shift's handover view (NOC design, 3.9).

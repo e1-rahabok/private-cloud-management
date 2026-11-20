@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 import yaml
 
-from . import api, catalog, generator
+from . import agent_e2, api, catalog, generator
 
 SPEC = Path(__file__).resolve().parents[2] / "spec"
 SCREENS = ("changed", "up", "fast", "safe", "set_right")
@@ -401,6 +401,15 @@ def act(nd: dict, path: list, body: dict) -> tuple[int, dict]:
             inc = next((x for x in nd["incidents"] if x["id"] == iid), None)
             if not inc:
                 return 404, {"error": "no such incident"}
+            if verb == "agent":
+                task = body.get("task", "explain")
+                if task not in agent_e2.TASKS:
+                    return 400, {"error": "task must be explain or escalation_note"}
+                vocab = yaml.safe_load((SPEC / "catalog/vocabulary/noc.yaml").read_text())
+                detail = incident_detail(nd, iid)
+                out = agent_e2.draft(detail, task, st, vocab["avoided"])
+                rec = record("agent_draft", iid, human, task, "-", out["source"], now, actor_agent="agent-e2", incident=iid)
+                return 200, {**out, "record": rec}
             if verb == "acknowledge":
                 STATE.acks[iid] = human
                 record("acknowledge", iid, human, body.get("note", ""), inc["state"], "acknowledged", now, agent, incident=iid)

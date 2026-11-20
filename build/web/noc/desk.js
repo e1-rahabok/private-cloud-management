@@ -56,7 +56,7 @@ async function alerts() {
 
 // ---------------------------------------------------------------- /noc/alert/{id}: the SOP is the page
 const KIND = { diagnosis: 'Check', action: 'Action', escalate: 'Escalate', verify: 'Verify' };
-const DONE = { acknowledge: 'Acknowledged', escalate: 'Escalated', close: 'Closed', stop_provisioning: 'Stopped new VMs', reopen_provisioning: 'Reopened to new VMs', time_boxed_limit: 'Limited until end of shift', restart_vm: 'Restarted' };
+const DONE = { agent_draft: 'Agent E2 draft', acknowledge: 'Acknowledged', escalate: 'Escalated', close: 'Closed', stop_provisioning: 'Stopped new VMs', reopen_provisioning: 'Reopened to new VMs', time_boxed_limit: 'Limited until end of shift', restart_vm: 'Restarted' };
 async function incident(msg = '') {
   const id = location.pathname.split('/').pop();
   const d = await getJSON(`incidents/${id}`);
@@ -73,7 +73,9 @@ async function incident(msg = '') {
     <p><button type="button" class="act" id="ack" ${d.state === 'new' ? '' : 'disabled'}>Acknowledge</button></p>
     <h2>SOP: ${esc(d.sop.title)} <span class="muted">(version ${d.sop.version})</span></h2>
     <ol class="steps">${d.sop.steps.map(step).join('')}</ol>
-    <h2>Agent E2</h2><div class="draft">${esc(d.agent_draft)}</div>
+    <h2>Agent E2</h2><p><button type="button" class="act secondary" data-agent="explain">Explain this incident</button>
+      <button type="button" class="act secondary" data-agent="escalation_note">Draft the escalation note</button></p>
+      <div class="draft" id="agent" aria-live="polite"><span class="muted">Agent E2 drafts; you decide.</span></div>
     <h2>Close</h2><p><label for="cause">Root cause</label> <select id="cause"><option value="">Choose a root cause</option>${d.root_causes.map(c => `<option value="${c}">${c.replaceAll('_', ' ')}</option>`).join('')}</select>
       <button type="button" class="act secondary" id="close" disabled>Close incident</button></p>
     <div class="msg" id="msg" role="status">${esc(msg)}</div>
@@ -86,6 +88,15 @@ async function incident(msg = '') {
   main.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', async () => {
     const r = await postJSON(`actions/${b.dataset.action}`, { target: b.dataset.target, incident: id });
     incident(r.status === 200 ? 'Done. Written to the action history.' : r.body.error);
+  }));
+  main.querySelectorAll('[data-agent]').forEach(b => b.addEventListener('click', async () => {
+    const box = document.getElementById('agent');
+    box.innerHTML = '<span class="muted">Agent E2 is drafting…</span>';
+    const r = await postJSON(`incidents/${id}/agent`, { task: b.dataset.agent });
+    const note = r.body.source === 'fallback_unavailable' ? '<p class="why">Agent E2 is not available. Showing the fixed template.</p>'
+      : r.body.source === 'fallback_vocabulary' ? '<p class="why">Agent E2 used words not allowed on this screen. Showing the fixed template.</p>' : '';
+    box.innerHTML = note + `<p>${esc(r.body.text)}</p><p class="muted">Model: ${esc(r.body.model)} · asked by ${esc(r.body.record.actor_human)} · recorded in the action history</p>`;
+    document.body.dataset.agent = r.body.source;
   }));
   main.querySelectorAll('[data-escalate]').forEach(b => b.addEventListener('click', async () => {
     const r = await postJSON(`incidents/${id}/escalate`, {}); incident(r.status === 200 ? `Escalated to ${r.body.to}, with the evidence attached.` : r.body.error);

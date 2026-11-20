@@ -165,3 +165,31 @@ settings:
     owner: l2
     source: prototype
 
+  # ---------------------------------------------------------------- Agent E2 (D-076)
+
+  agent_e2.endpoint:
+    description: "OpenAI-compatible endpoint of Agent E2's model. Demo: Vercel AI Gateway. Customer site: the local model server."
+    default: "https://ai-gateway.vercel.sh/v1"
+    owner: l2
+    source: "D-076; Agent E2 harness/model_client.py"
+    decisions: [D-017, D-076]
+
+  agent_e2.model:
+    description: The model. Demo default is one of Agent E2's local candidates, so the demo shows what a customer gets on site.
+    default: "google/gemma-4-31b-it"
+    owner: l2
+    source: "Agent E2 benchmark/models.md, candidate list"
+    decisions: [D-076]
+
+  agent_e2.api_key_env:
+    description: Name of the environment variable that holds the key. The key itself is never in the specification or the code.
+    default: "AI_GATEWAY_API_KEY"
+    owner: l2
+    source: "Agent E2 harness/model_client.py"
+
+  agent_e2.mode:
+    description: "live: call the model. mock: a fixed draft, for tests that must not depend on the network."
+    default: live
+    owner: l2
+    source: prototype
+

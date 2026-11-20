@@ -80,6 +80,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-073 | 2026-11-20 | "Is it safe?" is the SP5 Security SLA, measured as unsecured time per VM per calendar month, including the VM's surroundings (host, vSAN, distributed switch, vCenter, NSX Manager), with maintenance windows excluded. Contract 99.95% for every class; internal KSI 100%. Release 1.0 checks: SSH or ESXi Shell running, lockdown off, certificate expired, root login not yet closed by L2. A certificate expiring soon is a risk, shown beside the SLA. The card is red when any production VM is below 99.95% this month. Phase 2 adds the full benchmark with the same formula. | See `design/service-levels.md`, section 3. |
 | D-074 | 2026-11-20 | Three rules from the first build's review: times are shown in the viewer's time zone with the zone named; a value that leaves out stale locations says which ones; no request leaves the PCM host, so fonts and scripts ship with the build. | A global team reads one page from several zones. A headline that changes without a reason looks like a real change. An on-premises customer may have no internet access (D-004). |
 | D-075 | 2026-11-20 | Every red on the NOC wall belongs to something L1 can acknowledge. When a screen turns red with no alert behind it (unexpected VM changes, a risky configuration change), PCM opens a wall-finding incident with its own SOP. | Red stops the rotation until acknowledged (D-041). Inventory changes raise no alert (SP5), so without a wall finding a red "What changed?" screen could never be acknowledged, and the rotation would stay stuck. |
+| D-076 | 2026-11-20 | For demos, Agent E2 calls a model through Vercel AI Gateway, as in Agent E2's own benchmark and lab. PCM talks to Agent E2's model through one OpenAI-compatible client: the endpoint and the model are settings. Customer sites point it at a local model server (D-004, D-017). | See Rationale. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -341,4 +342,15 @@ Source: Cost n Price n Value (in `sources/`).
 - **Python standard library for the server.** It runs anywhere Python runs, which suits on-premises customers (D-004). It needs no package beyond PyYAML to read the specification.
 - **The tests read the specification directly.** The expected values in `spec/tests/` are not copied into test code. Changing a test means changing the specification, which keeps D-070's rule that the specification is the only place anyone edits.
 - **Not the product stack.** At 30,000 VMs and 13 months of history, the product needs a real database and a real server (PCM core, 3.3). That choice waits for the live system (D-062).
+
+### D-076 Agent E2 in the demo, through Vercel AI Gateway
+
+- **Why the gateway for demos.** The prototype runs on a laptop or a cloud session with no GPU. The gateway gives the same OpenAI-compatible interface the local server will give, so the code path is the one customers run. Only the endpoint changes. Agent E2's benchmark and lab already work this way.
+- **Why this does not break "customer data stays on site" (D-004).** The demo sends only synthetic ACME data. Agent E2's lab already holds the same exception for the author's own lab data. Customer sites keep a local model and the rule.
+- **The model is a setting.** The demo default is one of Agent E2's local candidates, not the frontier model. The approval audience should see what a customer would get on site, not a better model they will never run. The frontier model can be switched on for a comparison.
+- **Agent E2 sees only what the person sees.** It gets facts from the PCM API with the permissions of the human who asked (PCM core, 3.12; D-050). It does not search the estate on its own.
+- **Agent E2 drafts. It never decides.** It writes an explanation or an escalation note, marked as a draft. It does not set severity, press an SOP button or close an incident (NOC design, 3.8).
+- **Its words are checked like a page's words.** The output is scanned against the workspace's vocabulary list. If it uses an avoided word, Agent E2 is asked once to rewrite. If it fails again, the page shows the fixed template instead. A model must not leak raw counters onto an L1 screen any more than a page may.
+- **Each draft is recorded with both identity fields:** Agent E2's ID and the person who asked (D-050).
+- **If the gateway fails, the demo still works.** The page shows the fixed template, labelled "Agent E2 is not available", never an empty box or an error.
 

@@ -106,7 +106,33 @@ story:
       rule: The London SSH count on the wall equals health.safe.open_findings.ssh_or_shell_enabled on /api/exec/summary.
     reason: One number, one definition (PCM core, 1).
 
+  - id: NST-9
+    name: An Agent E2 draft is recorded with both identity fields and never changes the incident
+    expect: { record_action: agent_draft, actor_agent: agent-e2, actor_human_set: true, incident_state_unchanged: true }
+    decisions: [D-050, D-076]
+
+  - id: NST-10
+    name: A draft that uses an avoided word is rewritten once, then replaced by the fixed template
+    given: { model_answers: ["The cluster has high CPU Ready.", "Latency is high."] }
+    expect: { source: fallback_vocabulary }
+    decisions: [D-076]
+
+  - id: NST-11
+    name: Without a key or a reachable model, the page gets the fixed template, labelled
+    expect: { source: fallback_unavailable }
+    decisions: [D-076]
+
+  - id: NST-12
+    name: Agent E2 is told which actions were done, separately from the actions the SOP offers
+    expect: { facts_have: [sop_steps, actions_already_done], sop_action_field: available_action }
+    reason: "Found in the first live call: the model reported an available SOP action as done. The facts now keep the two apart."
+    decisions: [D-076]
+
 page:
+
+  - id: NPG-9
+    rule: Pressing "Explain this incident" shows a draft starting "Draft by Agent E2, to review", with the model and the person who asked.
+    decisions: [D-076]
 
   - id: NPG-1
     rule: Every NOC page and section names question, role and cadence.

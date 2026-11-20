@@ -13,7 +13,8 @@ const vocab = readFileSync(ROOT + 'spec/catalog/vocabulary/noc.yaml', 'utf8');
 const avoided = vocab.split('avoided:')[1].split('labels:')[0].split('\n').map(l => l.trim())
   .filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
 
-const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit' });
+// Agent E2 in mock mode: page tests must not depend on the network (D-076).
+const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_AGENT_E2_MODE: 'mock' } });
 await new Promise(r => setTimeout(r, 800));
 const BASE = `http://127.0.0.1:${PORT}`;
 const q = (extra = '') => `?now=${encodeURIComponent(NOW)}${extra}`;
@@ -81,6 +82,13 @@ try {
   const disabled = await limitBtn.isDisabled();
   const why = await page.locator('.why').first().innerText();
   check('NPG-7', disabled && why.includes('Production VM: escalate instead'), why);
+
+  // NPG-9 Agent E2 draft on the incident page
+  await go('/noc/alert/inc-fr-s-02');
+  await page.click('button[data-agent="explain"]');
+  await page.waitForSelector('body[data-agent]');
+  const draftText = await page.innerText('#agent');
+  check('NPG-9', /^Draft by Agent E2, to review/m.test(draftText) && /asked by operator-1/.test(draftText), draftText.split('\n')[0].slice(0, 90));
 
   // NPG-8 no request leaves the PCM host; contrast on desk and wall
   const contrast = async () => page.evaluate(() => {

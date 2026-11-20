@@ -11,7 +11,10 @@ from pathlib import Path
 
 import yaml
 
-from build.pcm_proto import api, generator, noc
+import os
+from unittest import mock
+
+from build.pcm_proto import agent_e2, api, generator, noc
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = yaml.safe_load((ROOT / "spec/tests/noc.yaml").read_text())
@@ -130,6 +133,48 @@ class Story(unittest.TestCase):
         ld = next(t for t in v["wall"]["screens"]["safe"]["tiles"] if t["location"] == "ld")
         cio = api.summary(nd["ds"])["health"]["safe"]["open_findings"]["ssh_or_shell_enabled"]["value"]
         self.assertEqual(ld["findings"]["ssh_or_shell_enabled"], cio)
+
+
+class AgentE2(unittest.TestCase):
+    T = tests("story")
+
+    def setUp(self):
+        noc.STATE.reset()
+        self.nd = noc.build(NOW)
+
+    def test_NST_9_draft_recorded_and_changes_nothing(self):
+        with mock.patch.dict(os.environ, {"PCM_AGENT_E2_MODE": "mock"}):
+            before = noc.incident_list(self.nd)[0]["state"]
+            code, out = noc.act(self.nd, ["incidents", "inc-fr-s-02", "agent"], {"task": "explain"})
+        e = self.T["NST-9"]["expect"]
+        self.assertEqual(code, 200)
+        rec = out["record"]
+        self.assertEqual(rec["action"], e["record_action"])
+        self.assertEqual(rec["actor_agent"], e["actor_agent"])
+        self.assertTrue(rec["actor_human"])
+        self.assertEqual(noc.incident_list(noc.build(NOW))[0]["state"], before)
+
+    def test_NST_10_vocabulary_fallback(self):
+        answers = iter(self.T["NST-10"]["given"]["model_answers"])
+        fake = lambda *a, **k: {"choices": [{"message": {"content": next(answers)}}]}
+        with mock.patch.dict(os.environ, {"AI_GATEWAY_API_KEY": "test", "PCM_AGENT_E2_MODE": "live"}), \
+             mock.patch.object(agent_e2, "_post", fake):
+            code, out = noc.act(self.nd, ["incidents", "inc-fr-s-02", "agent"], {"task": "explain"})
+        self.assertEqual(out["source"], self.T["NST-10"]["expect"]["source"])
+
+    def test_NST_11_unavailable_fallback(self):
+        env = {k: v for k, v in os.environ.items() if k not in ("AI_GATEWAY_API_KEY", "PCM_AGENT_E2_MODE")}
+        with mock.patch.dict(os.environ, env, clear=True):
+            code, out = noc.act(self.nd, ["incidents", "inc-fr-s-02", "agent"], {"task": "explain"})
+        self.assertEqual(out["source"], self.T["NST-11"]["expect"]["source"])
+
+    def test_NST_12_done_kept_apart_from_available(self):
+        facts = agent_e2.facts_for(noc.incident_detail(self.nd, "inc-fr-s-02"))
+        e = self.T["NST-12"]["expect"]
+        for k in e["facts_have"]:
+            self.assertIn(k, facts)
+        self.assertTrue(any(e["sop_action_field"] in st for st in facts["sop_steps"]))
+        self.assertFalse(any("allowed" in st for st in facts["sop_steps"]))
 
 
 class SpecRules(unittest.TestCase):
