@@ -226,6 +226,9 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
   - approve an action;
   - promote an action to automatic;
   - close an escalation.
+- **Accountability (D-050):** each Agent E2 task records two fields: Agent E2's ID and the human who ordered the task.
+  - Agent E2 can never act beyond what that person may do.
+  - For actions that run automatically, the accountable human is the L2 engineer who made the action type automatic (3.7).
 - **Why:**
   - A confident wrong answer from an LLM at L2 level spreads: it becomes an SOP that L1 runs at 03:00.
   - Grounding in the knowledge base plus a human approval keeps the knowledge correct.
