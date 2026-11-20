@@ -74,6 +74,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-067 | 2026-11-20 | The synthetic data uses the present time. "Now" is an input to the generator: the demo uses the present, and each acceptance test passes a fixed "now". Stories are written relative to now and to the real calendar, never to a named date or weekday. | A live demo convinces more than a frozen one. Tests stay exact because each sets its own clock. |
 | D-068 | 2026-11-20 | The NOC wall shows every location by default. Limiting a NOC to its region is a setting, not a separate design. An alert belongs to the region of its object; that region's shift acknowledges it. | See Rationale. |
 | D-069 | 2026-11-20 | PCM groups alerts into one incident by object relationship and time, using fixed rules, not the LLM. L1 can split an incident; L1 cannot merge alerts by hand. | See Rationale. |
+| D-070 | 2026-11-20 | The specification is organised as in `design/specification-structure.md`: `design/` holds the why, `spec/` holds the what. Pages name a catalog entry instead of defining numbers; every page and visual names its question, role and cadence; every state is specified, including stale; tests run at three levels (catalog, story, page); code is never edited by hand. | An AI builder implements what it is told and invents the rest. These rules leave it as little to invent as possible, and make each build checkable. |
 ## Rationale
 
 Longer reasons for decisions that need them.
