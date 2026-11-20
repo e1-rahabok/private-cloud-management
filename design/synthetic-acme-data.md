@@ -54,16 +54,24 @@ The generator must follow these rules. A synthetic estate that breaks them teach
 | Most objects are green most of the time | SP5: by default all green. A prototype full of red teaches the audience that red is normal. |
 | Health of a cluster comes from its VMs (worst VM and 90th percentile) | SP5 parent and child rule. |
 
-## 4. Time: a fixed "now", plus a replayed hour
+## 4. Time: the present, with the clock as an input (D-067)
 
 - **What:**
-  - The dataset has one fixed "now": a Monday at 10:05 in Singapore. It is the start of the Asia Pacific business day, after the daily check has run.
-  - The last 60 minutes before "now" can be replayed in a loop, minute by minute. This lets the NOC wall show live change during a demo.
-  - All other views read the fixed history.
+  - "Now" is an input to the generator, next to the seed and the story file. The same three inputs always give the same data.
+  - The demo uses the present time by default. Acceptance tests pass a fixed "now" of their own.
+  - Stories are written relative to "now". Examples: "SSH enabled 8 hours ago", "decision date in 4 weeks", "contention starts 20 minutes ago".
+  - Calendar patterns follow the real calendar:
+    - the end-of-day batch at local night;
+    - payday, month-end and quarter-end;
+    - year-end in December, or March for Tokyo.
+  - Stories tied to a day are written as "the most recent" or "the next": the most recent daily check, the next quarter-end. They never name a weekday.
+  - The wall is live: data is generated forward, minute by minute, from the present.
 - **Why:**
-  - **A fixed "now" makes the acceptance tests exact.** "Cluster SG-G-03 runs out on 14 March" can only be tested if "today" never moves.
-  - **The wall must move** (SP5: a static screen does not draw the eye). A replayed hour gives motion without making the tests unstable.
-  - **Monday morning in Asia Pacific is the richest moment.** The daily check has just run, Europe is about to start its day, and the weekend's events are in the history.
+  - **A live demo is more convincing than a frozen one.** The date on the screen is today, and the wall moves because time moves.
+  - **Tests stay exact.** Each test sets its own "now", so the expected answer is known.
+  - **13 months of history always holds one December and one March,** so the year-end stories (C-3) hold on any date.
+  - **Weekday-free stories survive a demo on any day.** A "Monday morning" story shown on a Saturday would contradict the date on the screen.
+- **Cost:** generation runs at start-up instead of once. VMs get full detail only where a story needs it, so this takes minutes. The result is cached per day.
 
 ## 5. Stories
 
@@ -73,10 +81,10 @@ Each story is one or more objects with a planted condition, and the expected res
 
 | ID | Story | Expected result |
 |---|---|---|
-| N-1 | Cluster FR-S-02 (Frankfurt, Silver): VM contention rises in the replayed hour after a batch job starts on a Bronze VM placed in the wrong cluster | "Is it fast?" turns red and interrupts the rotation (D-041). The SOP offers a time-boxed limit only if the villain is non-production (D-040). Here it is production, so the SOP escalates to L2 with evidence. |
+| N-1 | Cluster FR-S-02 (Frankfurt, Silver): VM contention starts rising 20 minutes before now, after a batch job starts on a Bronze VM placed in the wrong cluster | "Is it fast?" turns red and interrupts the rotation (D-041). The SOP offers a time-boxed limit only if the villain is non-production (D-040). Here it is production, so the SOP escalates to L2 with evidence. |
 | N-2 | The Europe VCF Operations instance stops answering for 20 minutes | Frankfurt and London tiles turn grey "No data", never green (D-041). L1 escalates the grey. |
 | N-3 | 40 VMs are deleted in Tokyo within 10 minutes, with no change planned in the calendar | "What changed?" shows the deletions as unexpected. |
-| N-4 | Three ESXi hosts in London have SSH enabled since 02:10 | "Is it safe?" shows amber with the count (D-049). |
+| N-4 | Three ESXi hosts in London have had SSH enabled for the last 8 hours | "Is it safe?" shows amber with the count (D-049). |
 
 ### L2
 
@@ -86,8 +94,8 @@ Each story is one or more objects with a planted condition, and the expected res
 | L-2 | An application owner complains that VM SG-APP-117 is slow | VM health is green; Guest OS run queue is high. The page shows the cause is inside the Guest OS, with evidence for the Windows team (L2 design, 3.5). |
 | L-3 | Daily check: one host in cluster VA-G-05 has a different NTP and log configuration from its peers | Configuration, "Correct it" (L2 design, 3.10). Option: fix the host, or fix the standard. |
 | L-4 | Daily check proposes moving 6 VMs from the hot cluster SG-S-04 to SG-S-06 | The proposal waits for L2 approval. This action type has 23 approvals and 0 rollbacks, so promoting it to automatic is offered (L2 design, 3.7). |
-| L-5 | An alert last Thursday was not predicted by any check | It appears in "slipped through" (D-039). |
-| L-6 | Business calendar: quarter-end close on Wednesday in all locations, and a payday on Friday in Singapore | The checks explain the rise instead of flagging an anomaly (L2 design, 3.6). |
+| L-5 | An alert 4 days ago was not predicted by any check | It appears in "slipped through" (D-039). |
+| L-6 | Business calendar: the next quarter-end close in all locations, and the next payday in Singapore | The checks explain the rise instead of flagging an anomaly (L2 design, 3.6). |
 | L-7 | The end-of-day batch in London ran 40 minutes longer last night; a datastore behind it shows rising latency | The daily check flags it as insight, before the batch window closes late and hits the start of business (SP5 prevention window). |
 
 ### Capacity
@@ -124,6 +132,4 @@ Each story is one or more objects with a planted condition, and the expected res
 
 ## 7. Open questions for the author
 
-1. **The "now".** Monday 10:05 Singapore. Your mockup shows Monday 19 October 2026. Keep that date?
-   - Proposal: yes, keep it.
-2. **More stories.** Which situations from your field experience must the approval audience see? Add them to section 5, or tell me and I will write them.
+1. **More stories.** Which situations from your field experience must the approval audience see? Add them to section 5, or tell me and I will write them.
