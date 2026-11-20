@@ -264,14 +264,9 @@ Path: `privatecloud.acme.com/capacity` (D-028).
 | `/capacity/plan` | Procurement round, with cost line items | What do we buy in the next round, and what does it cost? |
 | `/capacity/waste` | Reclamation, in money | What can we reclaim, starting where? |
 
-## 5. Open questions for the author
+## 5. Settled questions
 
-1. **Who owns the capacity model settings per cluster** (buffer, procurement lead time, procurement round dates)?
-   - Proposal: the Capacity team.
-   - Class-of-service definitions stay with L2 (D-045).
-2. **What happens to the purchase plan?**
-   - Proposal: PCM produces it as a document for IT Finance. Procurement systems are not connected in 1.0.
-3. **Chargeback in 1.0.** SP5: when VMs are free, the platform team may reclaim; when they are charged, the application team owns the VM.
-   - Proposal: 1.0 assumes VMs are free. Price comes with FinOps after 1.0 (D-027).
-4. **Storage arrays.** Storage capacity on external arrays needs vendor adapters. vSAN does not.
-   - Proposal: in 1.0, vSAN plus datastore space as seen by vSphere. Arrays come later.
+- Capacity settings per cluster: the Capacity team (D-054).
+- Purchase plan: a document for IT Finance in 1.0 (D-055).
+- Chargeback: VMs are free in 1.0, so the platform team may reclaim (D-056).
+- Storage: vSAN and datastore space in 1.0; arrays later (D-057).

@@ -56,6 +56,12 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-049 | 2026-11-20 | In release 1.0, "Is it safe?" shows VMware platform hygiene only: root logins, ESXi Shell or SSH enabled, lockdown mode off, certificates near expiry. No attack or breach detection (D-044). | These are configuration checks L2 already runs. They are among the most common causes of outages and audit findings in VMware estates. Health keeps its three questions (D-035). |
 | D-050 | 2026-11-20 | Agent E2 cannot carry responsibility. Every Agent E2 task, action or change records two fields: Agent E2's own ID, and the human who ordered it. That human varies by task. Agent E2 can serve several managers at once, because it tracks who ordered what. | Accountability stays with a person. The audit log answers "who ordered this", not only "what did it". |
 | D-051 | 2026-11-20 | The Executive workspace uses plain language with basic IT words. Technical terms are kept to a minimum, including in the drill-down. Allowed: server, storage, network, data centre, application, backup, recovery, outage, capacity, cost, upgrade, version, virtual machine (VM). Avoided: ESXi, vSAN, NSX, DRS, HA, vCPU, IOPS, latency, contention, cluster, host, datastore, resource pool, RTO, RPO, snapshot. A build test fails if an avoided term appears in the page text. The list lives in the specification, so customers can change it. | The CIO presents this page upward to the CEO, CFO and board. Basic IT words are understood there; product and engineering terms are not. CEOs and CFOs hear "virtual machine" in budget discussions. |
+| D-052 | 2026-11-20 | Every visual answers a named question, for a named role, at a named cadence. A visual that cannot name all three is cut. | A rich UI turns into decoration without this rule. It also gives each regeneration from the specification (D-010) a test that a visual can pass or fail. |
+| D-053 | 2026-11-20 | The prototype is built in this order: Executive, NOC, L2, then Capacity. All four stay in release 1.0 (D-012). | See Rationale. |
+| D-054 | 2026-11-20 | The Capacity team owns the capacity settings of each cluster: buffer, procurement lead time, procurement round dates. Class-of-service definitions stay with L2 (D-045). | The people who answer for the purchase date set the inputs to it. |
+| D-055 | 2026-11-20 | In release 1.0 the purchase plan is a document for IT Finance. PCM does not connect to procurement systems. | Procurement systems differ by customer and are slow to integrate. A clear document already removes most of the work. |
+| D-056 | 2026-11-20 | Release 1.0 assumes VMs are free to tenants (no chargeback). So the platform team may reclaim. | This is the most common case today (SP5). Price and chargeback come with FinOps after 1.0 (D-027). |
+| D-057 | 2026-11-20 | Storage capacity in release 1.0 covers vSAN and datastore space as vSphere sees it. External arrays come later. | Array capacity needs a vendor adapter per array. vSAN is in VCF already. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -218,4 +224,29 @@ Longer reasons for decisions that need them.
 - SP5: deep analysis and long-term planning (1 week to 1 year) is done by the L2 team.
 - The review is shown on one screen in the room as a live dashboard, not a PDF. SP5 IT management: a monthly presentation supported by a live dashboard for an interactive discussion.
 - Other roles attend without needing a workspace of their own (D-037).
+
+### D-053 Prototype build order
+
+**The goal of the prototype is approval** (D-026). The order follows who approves and what each step proves.
+
+1. **Executive first.**
+   - The people who approve PCM read this page.
+   - A mockup already exists (D-015). It needs aligning with D-019, D-035, D-049 and D-051, not inventing.
+   - It is the fastest way to show something real.
+2. **NOC second.**
+   - It is the opposite end of every scale: live versus monthly, junior versus senior, a wall TV versus a desk.
+   - Shown next to Executive, it proves the core idea of PCM: one data core, completely different experiences per role (D-011).
+   - It is also small: five wall screens and a few desk pages.
+3. **L2 third.**
+   - It proves the PCM core works: the automated daily check, the action tiers, the escalation loop, and Agent E2 as a team member.
+   - It is the deepest workspace, so it comes once the pattern is proven.
+4. **Capacity fourth.**
+   - It needs its own engine: a forecast over 13 months of history, the what-if model and the demand register.
+   - Its synthetic data is the hardest to make believable, because it needs a year of seasonal history.
+   - Building it last lets it reuse everything the first three proved.
+
+**Why not build all four at once**
+- Code is cheap (D-010), but verification is not. Each workspace needs its numbers checked against the specification.
+- Four at once means four sets of mistakes found at the same time.
+- In this order, each step fixes the shared core before the next one depends on it.
 
