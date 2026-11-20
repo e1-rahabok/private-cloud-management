@@ -206,7 +206,15 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
   - Goals held in PCM are measured from the same data every month. Goals in a slide deck are forgotten by March.
   - Decisions without owners come back unchanged next month.
 
-### 3.15 Agent E2: explains and drafts, never decides
+### 3.15 A suspected breach goes to the security team (D-044)
+
+- **What:** when a finding points to a breach, L2 secures the evidence and hands it over. PCM does not investigate the breach.
+  - Evidence: the logs, the events, and the configuration at that point in time.
+- **Why:**
+  - SP5: a breach is a forensic investigation, not troubleshooting.
+  - Evidence handling has its own rules. An L2 engineer who "just checks" can destroy the trail.
+
+### 3.16 Agent E2: explains and drafts, never decides
 
 - **Agent E2 may:**
   - explain a finding in the context of the knowledge base and today's business context;
@@ -242,7 +250,5 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
 
 ## 5. Open questions for the author
 
-1. **Security forensics.** "Is it breached" is a forensic investigation, not troubleshooting (SP5), and security operations is out of scope (D-008).
-   - Proposal: when a "safe" finding points to a breach, L2 secures the evidence and hands over to the security team. PCM does not investigate the breach.
-2. **Who owns PCM's own configuration** (class-of-service definitions, action tiers)?
+1. **Who owns PCM's own configuration** (class-of-service definitions, action tiers)?
    - Proposal: L2 proposes changes. The Operations Manager approves them after 1.0. Until then, L2 owns them.

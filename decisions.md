@@ -48,6 +48,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-042 | 2026-11-20 | PCM also runs the weekly check, a deeper analysis. It runs when load is low, by default Sunday early morning in each region's local time. Platform (L2) reviews the result in about 1 hour. | The weekly check loads the systems it reads. See Rationale. |
 
 | D-043 | 2026-11-20 | The monthly review (1 day) is also the bigger team meeting: everyone meets to discuss important but not urgent matters, plan the next month, and review progress for the year against goals. PCM prepares the review pack; L2 (Platform) hosts it. | See Rationale. |
+| D-044 | 2026-11-20 | A suspected breach is not investigated in PCM. L2 secures the evidence and hands it to the security team. Security is parked until after release 1.0. | "Is it breached?" is a forensic investigation, not troubleshooting (SP5), and needs security expertise (D-008, D-022). |
 ## Rationale
 
 Longer reasons for decisions that need them.
