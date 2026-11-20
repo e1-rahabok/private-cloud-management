@@ -222,3 +222,18 @@ page:
   - id: PG-9
     rule: Text contrast is at least 4.5:1, and every status colour has a text label.
     source: design-system/tokens.md
+
+  - id: PG-10
+    rule: >
+      With the browser in time zone Asia/Singapore and now = 2026-10-19T10:05:00+08:00, the header
+      shows "10:05" and names the zone (GMT+8 or SGT).
+    decisions: [D-074]
+
+  - id: PG-11
+    rule: With story E-7 on, each estate meter shows "Excludes Frankfurt and London".
+    decisions: [D-074]
+
+  - id: PG-12
+    rule: Loading /exec and opening every panel makes no request to any host other than the PCM host.
+    decisions: [D-004, D-074]
+

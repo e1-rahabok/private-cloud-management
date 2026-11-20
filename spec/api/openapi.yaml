@@ -112,6 +112,12 @@ components:
         value: { type: [number, "null"] }
         unit: { type: string }
         status: { $ref: "#/components/schemas/Status" }
+        excludes:
+          type: array
+          items: { type: string }
+          description: >
+            Location IDs left out of this value because their data is stale. Pages must say so
+            next to the value (D-074).
         meta: { $ref: "#/components/schemas/Meta" }
 
     DateValue:
@@ -141,6 +147,8 @@ components:
       required: [updated_at, scale, health, room_to_grow, value, goals]
       properties:
         updated_at: { type: string, format: date-time }
+        oldest_data_at: { type: string, format: date-time }
+        stale_locations: { type: array, items: { type: string } }
         scale:
           type: object
           properties:

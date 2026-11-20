@@ -129,6 +129,27 @@ try {
   });
   check('PG-9', pg9.fails.length === 0 && pg9.emptyChips === 0, pg9.fails.slice(0, 5).join(' | ') || 'all text at least 4.5:1');
 
+  // PG-10 viewer's time zone, named
+  const sgCtx = await browser.newContext({ timezoneId: 'Asia/Singapore', viewport: { width: 1360, height: 900 } });
+  const sgPage = await sgCtx.newPage();
+  await sgPage.goto(base); await sgPage.waitForSelector('body[data-ready="1"]');
+  const sgHeader = await sgPage.innerText('#updated');
+  check('PG-10', /10:05/.test(sgHeader) && /(GMT\+8|SGT)/.test(sgHeader), sgHeader);
+  await sgCtx.close();
+
+  // PG-11 meters say which locations they leave out
+  await load('&enable=E-7');
+  const notes = await page.$$eval('.meter-note', els => els.map(e => e.innerText));
+  check('PG-11', notes.length === 3 && notes.every(t => t.includes('Excludes Frankfurt and London')), JSON.stringify(notes));
+
+  // PG-12 no request leaves the PCM host
+  const hosts = new Set();
+  page.on('request', r => hosts.add(new URL(r.url()).host));
+  await load();
+  await allText();
+  const foreign = [...hosts].filter(h => h !== `127.0.0.1:${PORT}`);
+  check('PG-12', foreign.length === 0, foreign.length ? `requests to ${foreign.join(', ')}` : 'all requests to the PCM host');
+
   // Screenshots for the author's review (deviceScaleFactor 2).
   mkdirSync(ROOT + 'build/screenshots', { recursive: true });
   const shot = await browser.newPage({ viewport: { width: 1360, height: 900 }, deviceScaleFactor: 2 });

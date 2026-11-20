@@ -34,7 +34,7 @@ cadence: [weekly]
 
 - ACME mark, name, "Private cloud".
 - Section links: Health, Room to grow, Value, Goals.
-- Today's date, and "Updated hh:mm" from `summary.updated_at`.
+- Today's date, and "Updated hh:mm" from `summary.updated_at`, in the viewer's time zone with the zone named, for example "Updated 10:05 GMT+8" (spec README, rule 8).
 - **States:**
   - normal;
   - stale: when any section's data is stale, the "Updated" text shows the oldest time, plus "Some data is out of date".
@@ -59,6 +59,7 @@ api: /api/exec/summary → scale; /api/exec/locations/{id}
   | 3 | Storage | `storage_tb`, in TB or PB |
 
   - Each meter shows its in-use share from `in_use_percent`.
+  - When `in_use_percent.excludes` is not empty, the meter says so under the value, for example "Excludes Frankfurt and London: no data". A headline that changes without a reason looks like a real change (D-074).
   - The mockup's laptop-equivalent line is removed. Its reference value had no source, and the unit is now defined (Executive design, 4.8).
 - **Five towers**, one per location:
   - Height follows `compute_cores`.

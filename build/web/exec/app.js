@@ -22,7 +22,8 @@ const chip = st => `<span class="chip ${CHIP_CLASS[st] || st}">${CHIP[st]}</span
 const fmtInt = n => Math.round(n).toLocaleString('en-US');
 const money = n => n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${fmtInt(n)}`;
 const fmtDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-const fmtTime = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+// Viewer's time zone, with the zone named (spec README, rule 8).
+const fmtTime = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
 // A stale value is never shown as a number (D-041).
 const show = (v, f = x => x) => (v.meta && v.meta.stale) || v.value === null ? '<span class="chip no_data">No data</span>' : f(v.value);
 
@@ -86,8 +87,11 @@ function renderHeader(s) {
 function renderScale(s) {
   const sc = s.scale;
   $('eyebrow').textContent = `Our private cloud · ${sc.locations.length} locations`;
+  const names = Object.fromEntries(sc.locations.map(l => [l.id, l.name]));
+  const excl = use => (use.excludes && use.excludes.length)
+    ? `<div class="meter-note">Excludes ${use.excludes.map(id => names[id]).join(' and ')}: no data</div>` : '';
   const m = (label, v, unit, use) => `<div class="meter"><div class="meter-head"><span>${label}</span><span class="use">${show(use, x => `${x}% in use`)}</span></div>
-    <div class="meter-value">${v} <span class="meter-unit">${unit}</span></div><div class="bar"><span style="width:${use.value || 0}%"></span></div></div>`;
+    <div class="meter-value">${v} <span class="meter-unit">${unit}</span></div><div class="bar"><span style="width:${use.value || 0}%"></span></div>${excl(use)}</div>`;
   $('meters').innerHTML = m('Computing power', fmtInt(sc.compute_cores.value), 'processor cores', sc.in_use_percent.compute)
     + m('Working memory', fmtInt(sc.memory_tb.value), 'TB', sc.in_use_percent.memory)
     + m('Storage', storage(sc.storage_tb.value).split(' ')[0], storage(sc.storage_tb.value).split(' ')[1], sc.in_use_percent.storage);

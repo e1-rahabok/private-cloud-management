@@ -121,7 +121,8 @@ def summary(ds: dict) -> dict:
             "compute_cores": num(ds["total_cores"], "scale.compute_cores", now, "vcf-operations", "cores"),
             "memory_tb": num(round(sum(l["memory_tb"] for l in locs.values()), 1), "scale.memory_tb", now, "vcf-operations", "TB"),
             "storage_tb": num(round(sum(l["storage_tb"] for l in locs.values()), 1), "scale.storage_tb", now, "vcf-operations", "TB"),
-            "in_use_percent": {r: num(weighted(r), "scale.in_use_percent", now, "vcf-operations", "percent")
+            "in_use_percent": {r: {**num(weighted(r), "scale.in_use_percent", now, "vcf-operations", "percent"),
+                                   "excludes": [l["id"] for l in locs.values() if l["stale"]]}
                                for r in ("compute", "memory", "storage")},
             "locations": [location_summary(ds, lid) for lid in locs],
         },

@@ -44,7 +44,7 @@ Taken from the Executive Dashboard mockup (D-015), which is already accessible. 
 
 ## Type
 
-- Typeface: Manrope, with system-ui as fallback.
+- Typeface: Manrope, with system-ui as fallback. The font files ship with the build (`fonts/`, SIL Open Font License); they are never loaded from the internet (spec README, rule 7).
 - Numbers use tabular figures.
 
 ## Graphics

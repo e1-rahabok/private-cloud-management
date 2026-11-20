@@ -35,6 +35,7 @@ main { padding: 0 24px 24px; max-width: 1440px; margin: 0 auto; }
 .meter-head .use { color: var(--accent-on-dark); text-transform: none; letter-spacing: 0; font-size: 15px; }
 .meter-value { font-size: 34px; font-weight: 800; margin: 4px 0; }
 .meter-unit { font-size: 15px; color: var(--text-on-dark-muted); font-weight: 600; }
+.meter-note { margin-top: 6px; font-size: 13px; color: #F5E1B8; }
 .bar { height: 8px; background: #22344A; border-radius: 4px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--accent-on-dark); border-radius: 4px; }
 .hero-note { color: var(--text-on-dark-muted); font-weight: 600; margin: 0 0 8px; }
