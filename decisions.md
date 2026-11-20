@@ -75,6 +75,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-068 | 2026-11-20 | The NOC wall shows every location by default. Limiting a NOC to its region is a setting, not a separate design. An alert belongs to the region of its object; that region's shift acknowledges it. | See Rationale. |
 | D-069 | 2026-11-20 | PCM groups alerts into one incident by object relationship and time, using fixed rules, not the LLM. L1 can split an incident; L1 cannot merge alerts by hand. | See Rationale. |
 | D-070 | 2026-11-20 | The specification is organised as in `design/specification-structure.md`: `design/` holds the why, `spec/` holds the what. Pages name a catalog entry instead of defining numbers; every page and visual names its question, role and cadence; every state is specified, including stale; tests run at three levels (catalog, story, page); code is never edited by hand. | An AI builder implements what it is told and invents the rest. These rules leave it as little to invent as possible, and make each build checkable. |
+| D-071 | 2026-11-20 | The prototype uses: Python standard library plus PyYAML for the data generator and the mock API; plain HTML, CSS, JavaScript and SVG for the pages, with no framework and no build step; Python unittest for catalog and story tests; Playwright for page tests. Generated code lives in `build/`. This choice is for the prototype only; the product stack stays deferred (PCM core, section 5). | See Rationale. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -328,4 +329,12 @@ Source: Cost n Price n Value (in `sources/`).
   - **Merging by hand loses information.** It folds a second, unrelated problem into an incident that will be closed with the first problem's cause. The second problem then has no cause recorded and comes back.
   - A manual merge also breaks the rule that every alert closes with its own cause.
 - **Grouping is tuned by L2.** The rules live in the catalog (PCM core, 3.6). A split by L1 is recorded, and frequent splits of the same kind tell L2 a rule is wrong.
+
+### D-071 Prototype technology
+
+- **Fewest moving parts.** The goal is approval (D-026), not scale. Each extra tool is one more thing that can fail during a demo or on a reviewer's laptop.
+- **No framework and no build step for the pages.** The mockup is already plain HTML and SVG, and it is accessible. A framework would add a toolchain to install and update, and nothing the prototype needs.
+- **Python standard library for the server.** It runs anywhere Python runs, which suits on-premises customers (D-004). It needs no package beyond PyYAML to read the specification.
+- **The tests read the specification directly.** The expected values in `spec/tests/` are not copied into test code. Changing a test means changing the specification, which keeps D-070's rule that the specification is the only place anyone edits.
+- **Not the product stack.** At 30,000 VMs and 13 months of history, the product needs a real database and a real server (PCM core, 3.3). That choice waits for the live system (D-062).
 
