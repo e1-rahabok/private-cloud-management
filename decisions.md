@@ -65,6 +65,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-058 | 2026-11-20 | The FinOps team owns the public-cloud comparison. In release 1.0 FinOps has no workspace (D-027), so it maintains the comparison as an input to PCM. The comparison covers the whole estate over the depreciation period, component by component. | Source: Cost n Price n Value. Comparing one VM for one day flatters whichever side picks the VM. The whole estate over 5 years, with each component marked included or excluded, is the honest comparison. |
 | D-059 | 2026-11-20 | The Executive recovery card shows site recovery test results only: VMware Live Site Recovery (formerly Site Recovery Manager) recovery plans, last test date, recovery time achieved and target, and the share of protected VMs tested. It is labelled site recovery. Backup is not claimed. | See Rationale. |
 | D-060 | 2026-11-20 | PCM follows the cost model in Cost n Price n Value. There is no VM cost: unit cost is on the provider (ESXi host, then cluster); price is on the consumer. Cost has three parts: product, service, people. Reclamation is cost avoidance, valued at today's price of new capacity in that location, and counted only when it defers a purchase. | See Rationale. |
+| D-061 | 2026-11-20 | CPU unit cost is always per physical thread. Cores are used only for licensing. | A vCPU runs on a thread, so capacity is counted in threads (Capacity design, 3.17). Cost uses the same unit, so cost and capacity can be compared. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -268,7 +269,7 @@ Source: Cost n Price n Value (in `sources/`).
 **No VM cost**
 - Delete every VM today and the company saves nothing: the multi-year contracts are already paid.
 - So cost is never divided per VM. Unit cost belongs to the provider:
-  - CPU per physical unit, memory per GB, disk per GB;
+  - CPU per physical thread, always (D-061); memory per GB; disk per GB;
   - at the ESXi host, rolled up to the cluster.
 - Price belongs to the consumer, and is a separate number set by FinOps after 1.0 (D-027).
 - "Unallocated cost" does not exist. Unsold capacity lowers revenue; it does not create cost.
