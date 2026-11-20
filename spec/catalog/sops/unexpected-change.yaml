@@ -1,0 +1,13 @@
+# SOP: VM changes far above what is expected, with nothing planned (SP5 live screen).
+id: sop-unexpected-change
+title: Unexpected VM changes
+applies_to: { kind: wall_finding, screen: changed }
+version: 1
+steps:
+  - kind: diagnosis
+    text: Check the business calendar for planned work in this location now.
+    check: business_calendar.planned_now
+  - kind: diagnosis
+    text: Check who made the changes, from the vCenter task list.
+  - kind: escalate
+    text: Escalate to Platform at once. Mass deletion with no plan can be a mistake or an attack.

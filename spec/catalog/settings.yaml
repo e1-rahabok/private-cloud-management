@@ -112,3 +112,56 @@ settings:
     default: USD
     owner: finops
     source: mockup
+
+  # ---------------------------------------------------------------- NOC (D-053 step 2)
+
+  noc.rotation_seconds:
+    description: Seconds each wall screen shows before the next.
+    default: 60
+    unit: seconds
+    owner: l2
+    source: "SP5 noc-live-screen: about 60 seconds per screen"
+    decisions: [D-032, D-036]
+
+  noc.refresh_seconds:
+    description: How often the wall and desk read new data.
+    default: 60
+    unit: seconds
+    owner: l2
+    source: "SP5 noc-live-screen: refresh every minute, not every 10 minutes"
+
+  noc.grouping_window_minutes:
+    description: An alert joins an incident if raised within this many minutes of the incident's first alert.
+    default: 5
+    unit: minutes
+    owner: l2
+    source: "D-069 rationale: VM alerts within 5 minutes of their host's alert"
+    decisions: [D-069]
+
+  noc.unexpected_change_factor:
+    description: A location's VM changes of one type are unexpected when the count is more than this many times the expected count.
+    default: 3
+    owner: l2
+    source: "proposal; confirm with the author"
+    decisions: [D-036]
+
+  noc.unexpected_change_min:
+    description: And at least this many more than expected, so that 3 deletions against 1 expected is not red.
+    default: 10
+    owner: l2
+    source: "proposal; confirm with the author"
+    decisions: [D-036]
+
+  noc.shift_times:
+    description: Start of the three shifts in each region's local time (D-031).
+    default: { day: "07:00", evening: "15:00", night: "23:00" }
+    owner: l2
+    source: "proposal; confirm with the author"
+    decisions: [D-031]
+
+  noc.actor_default:
+    description: Prototype only. The operator name used when no sign-in exists. Real PCM takes it from single sign-on.
+    default: "operator-1"
+    owner: l2
+    source: prototype
+

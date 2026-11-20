@@ -1,0 +1,10 @@
+# SOP: datastore space running low. Orange: act by end of day.
+id: sop-datastore-space
+title: Datastore space running low
+applies_to: { root_object_type: datastore }
+version: 1
+steps:
+  - kind: diagnosis
+    text: Confirm the datastore is above its space threshold now.
+  - kind: escalate
+    text: Escalate to Storage. Snapshot deletion and VM moves are not L1 actions (D-040).

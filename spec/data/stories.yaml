@@ -145,3 +145,73 @@ stories:
       demos switch it on. Same failure as NOC story N-2. On the Executive page, Frankfurt and London towers turn
       grey with "No data"; they are never drawn as healthy (D-041).
     decisions: [D-041]
+
+  # ---------------------------------------------------------------- NOC stories (D-053 step 2)
+
+  N-1:
+    title: A Bronze batch VM in a Silver cluster hurts its neighbours in Frankfurt
+    objects:
+      cluster: FR-S-02
+      villain: { vm: fr-bat-017, class: bronze, environment: production }
+      victims: [fr-app-101, fr-app-114, fr-db-022, fr-app-131]
+    plant:
+      cluster_performance:
+        before: { value: 94, until: "now - 20 minutes" }
+        now: 22
+        shape: linear fall
+      villain_score: 88
+      victim_scores: [31, 36, 41, 44]
+      alerts:
+        - { object: FR-S-02, object_type: cluster, severity: red, title: "Cluster not serving its VMs well", raised: "now - 12 minutes" }
+        - { object: fr-app-101, object_type: vm, parent: FR-S-02, severity: red, title: "VM waiting for resources", raised: "now - 11 minutes" }
+        - { object: fr-app-114, object_type: vm, parent: FR-S-02, severity: red, title: "VM waiting for resources", raised: "now - 10 minutes" }
+        - { object: fr-db-022, object_type: vm, parent: FR-S-02, severity: red, title: "VM waiting for resources", raised: "now - 9 minutes" }
+    expect:
+      wall.fast.status: red
+      wall.pins_contains: fast
+      incident: { root_object: FR-S-02, alerts: 4, severity: red, sop: sop-cluster-contention, escalation_route: platform }
+      sop.limit_allowed: false
+      sop.limit_refusal: "Production VM: escalate instead"
+      sop.stop_provisioning_allowed: true
+    note: >
+      The villain is production, so the SOP escalates to L2 instead of limiting it (D-040). Stopping
+      provisioning on the cluster is still allowed: it touches no running VM.
+    decisions: [D-040, D-041, D-069]
+
+  N-2:
+    title: Europe's VCF Operations stops answering
+    enabled_by_default: false
+    same_as: E-7
+    expect:
+      wall.tiles: { fr: no_data, ld: no_data }
+      incident: { root_object: vcf-ops-emea, severity: red, sop: sop-no-data, escalation_route: platform }
+    note: "A grey screen is itself escalated (D-041). Frankfurt's contention (N-1) is hidden while Europe is grey: correct, the wall shows only what it knows."
+    decisions: [D-041]
+
+  N-3:
+    title: 40 VMs deleted in Tokyo with no change planned
+    objects: { location: tk }
+    plant:
+      deleted_last_hour: 40
+      deleted_within: "now - 10 minutes"
+      expected_deleted: 2
+      planned: false
+    expect:
+      wall.changed.tk.deleted.status: red
+      incident: { root_object: tk, kind: wall_finding, severity: red, escalation_route: platform }
+    note: >
+      Inventory changes raise no alert (SP5). But every red on the wall must be something L1 can acknowledge
+      (D-041), so PCM opens a wall-finding incident for it (D-075).
+    decisions: [D-036, D-041, D-075]
+
+  O-1:
+    title: Datastore space running low in London
+    objects: { datastore: LD-DS-07, location: ld }
+    plant:
+      alerts:
+        - { object: LD-DS-07, object_type: datastore, severity: orange, title: "Datastore space running low", raised: "now - 95 minutes" }
+    expect:
+      incident: { root_object: LD-DS-07, severity: orange, sop: sop-datastore-space, escalation_route: storage }
+      wall.pin_effect: none
+    note: "Orange is end-of-day work. It appears in the alert list but does not stop the wall rotation."
+    decisions: [D-040]

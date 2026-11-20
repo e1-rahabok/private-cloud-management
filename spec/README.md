@@ -39,7 +39,7 @@ The reasons behind each item are in [`../design/`](../design) and [`../decisions
 | Workspace | Specification | Build |
 |---|---|---|
 | Executive | Written (D-053, step 1) | First build: all tests pass (`../build/README.md`) |
-| NOC | Not started | Not started |
+| NOC | Written (D-053, step 2) | First build: all tests pass (`../build/README.md`) |
 | L2 | Not started | Not started |
 | Capacity | Not started | Not started |
 

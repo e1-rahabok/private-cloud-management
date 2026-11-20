@@ -1,0 +1,122 @@
+openapi: 3.1.0
+info:
+  title: PCM API, NOC part
+  version: "1"
+  description: >
+    NOC endpoints (design/noc-workspace.md). Shares Meta, Number and Status with openapi.yaml.
+    Reads take the synthetic-only parameters now and enable (openapi.yaml). Writes go through the
+    action engine (PCM core, 3.7) and are written to the action history (D-063).
+
+paths:
+
+  /api/noc/wall:
+    get:
+      summary: The five screens with their tiles and the status strip. Read every noc.refresh_seconds.
+      responses:
+        "200":
+          description: Wall
+          content: { application/json: { schema: { $ref: "#/components/schemas/Wall" } } }
+
+  /api/noc/clusters/{cluster_id}:
+    get:
+      summary: Drill-down from a "Is it fast?" tile, desktop only. Villains and victims with 0-100 scores.
+
+  /api/noc/incidents:
+    get:
+      summary: Open incidents, red first, then orange, oldest first within each. Grouped by D-069.
+
+  /api/noc/incidents/{id}:
+    get:
+      summary: One incident with its alerts and its SOP steps, each diagnosis step already run (NOC design, 3.5).
+
+  /api/noc/incidents/{id}/acknowledge:
+    post:
+      summary: Acknowledge. Unpins the wall rotation for this incident (D-041).
+      requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/ActorNote" } } } }
+
+  /api/noc/incidents/{id}/escalate:
+    post:
+      summary: Escalate to the L2 group in noc.escalation_route, with noc.escalation_evidence attached.
+      requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/ActorNote" } } } }
+
+  /api/noc/incidents/{id}/close:
+    post:
+      summary: Close. Refused (400) without a root cause from the list (D-040).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ActorNote"
+                - type: object
+                  required: [root_cause]
+                  properties:
+                    root_cause: { enum: [noisy_neighbour, hardware_fault, configuration_change, planned_work_not_in_calendar, data_collection_failure, other_explained] }
+
+  /api/noc/actions/{action}:
+    post:
+      summary: >
+        Run an L1 action: stop_provisioning, reopen_provisioning, time_boxed_limit, restart_vm.
+        Refused (403) when the action tier or the target's class and environment do not allow it (D-040).
+      parameters:
+        - { name: action, in: path, required: true, schema: { enum: [stop_provisioning, reopen_provisioning, time_boxed_limit, restart_vm] } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ActorNote"
+                - type: object
+                  required: [target, incident]
+                  properties:
+                    target: { type: string }
+                    incident: { type: string }
+
+  /api/noc/shift:
+    get:
+      summary: The current shift's handover view (NOC design, 3.9).
+    post:
+      summary: Save the handover note for the next shift or region.
+
+  /api/noc/history:
+    get:
+      summary: The action history (D-063), newest first. Each record has both identity fields (D-050).
+
+  /api/noc/_reset:
+    post:
+      summary: Synthetic only. Clears acknowledgements, actions and notes, so each test starts clean.
+
+components:
+  schemas:
+
+    ActorNote:
+      type: object
+      properties:
+        actor_human: { type: string, description: "From single sign-on. Prototype: setting noc.actor_default." }
+        actor_agent: { type: string, description: "Set only when Agent E2 acted for the human (D-050)." }
+        note: { type: string }
+
+    Wall:
+      type: object
+      required: [updated_at, screens, strip, pin]
+      properties:
+        updated_at: { type: string, format: date-time }
+        pcm_ok: { type: boolean, description: "PCM's own health (PCM core, 3.11)" }
+        strip:
+          type: array
+          description: Five chips in the fixed order changed, up, fast, safe, set_right.
+          items:
+            type: object
+            properties:
+              screen: { enum: [changed, up, fast, safe, set_right] }
+              status: { enum: [green, amber, red, no_data] }
+              in_hand: { type: boolean, description: "Red, but every red incident on it is acknowledged" }
+        pin:
+          type: [string, "null"]
+          description: >
+            The screen the rotation must stay on, because it has red that is not acknowledged (D-041).
+            With several, the list in pins; the wall cycles through them only.
+        pins: { type: array, items: { type: string } }
+        screens:
+          type: object
+          description: One entry per screen, each with tiles per location (or per cluster for fast).

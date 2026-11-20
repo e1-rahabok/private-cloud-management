@@ -1,0 +1,10 @@
+# SOP: a high-risk setting changed in the last hour.
+id: sop-risky-change
+title: High-risk setting changed
+applies_to: { kind: wall_finding, screen: set_right }
+version: 1
+steps:
+  - kind: diagnosis
+    text: Check the business calendar for an approved change on this object.
+  - kind: escalate
+    text: Escalate to Platform. Configuration changes are not L1 actions (D-040).

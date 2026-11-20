@@ -1,0 +1,37 @@
+# SOP: a cluster is not serving its VMs well. Source: SP5 noisy neighbour and live screen practice.
+# The SOP is the page (NOC design, 3.5). L2 owns and edits it (D-045, L2 design 3.9).
+
+id: sop-cluster-contention
+title: Cluster not serving its VMs well
+applies_to: { root_object_type: cluster, alert: cluster_performance }
+version: 1
+steps:
+  - kind: diagnosis
+    text: Confirm the cluster score is below 50 now.
+    check: noc.cluster_performance
+    pass_when: "value < 50"
+  - kind: diagnosis
+    text: Find the VMs using the most (villains) and the VMs waiting the most (victims).
+    check: noc.villains
+  - kind: diagnosis
+    text: Check whether the top villain is a non-production VM.
+    check: vm.environment
+    branch: true   # decides which action applies; shows its answer, not pass or fail
+  - kind: action
+    text: Stop new VMs landing on this cluster until it recovers.
+    action: stop_provisioning
+  - kind: action
+    text: Put a limit on the top villain until the end of your shift.
+    action: time_boxed_limit
+    when: "villain.environment == non_production"
+  - kind: escalate
+    text: Escalate to Platform with the evidence.
+    when: "villain.environment == production"
+  - kind: verify
+    text: Check the cluster score is back above 75.
+    check: noc.cluster_performance
+    pass_when: "value >= 75"
+
+actions:
+  stop_provisioning: { tier: automatic, allowed_for: [l1] }
+  time_boxed_limit: { tier: automatic, allowed_for: [l1], target: non_production_vm, expires: end_of_shift }

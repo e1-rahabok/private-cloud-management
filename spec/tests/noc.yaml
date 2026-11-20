@@ -1,0 +1,126 @@
+# Acceptance tests for the NOC workspace (D-070, section 4). Each test fixes its own clock (D-067).
+
+version: 1
+now: "2026-10-19T10:05:00+08:00"
+seed: 7
+
+catalog:
+
+  - id: NCAT-1
+    entry: noc.cluster_performance
+    given: { scores: [94, 74.9, 49.9, 24.9] }
+    expect: { wall_status: [green, amber, red, red] }
+    reason: "SP5 bands: yellow is amber on the wall; orange and red are red."
+
+  - id: NCAT-2
+    entry: noc.changed_status
+    given: { count: 40, expected: 2 }
+    expect: red
+
+  - id: NCAT-3
+    entry: noc.changed_status
+    given: { count: 3, expected: 1 }
+    expect: green
+    reason: Three times expected, but fewer than 10 more. Not worth a red.
+
+  - id: NCAT-4
+    entry: noc.grouping_rule
+    given:
+      alerts:
+        - { id: a1, object: FR-S-02, object_type: cluster, raised: "now - 12 minutes" }
+        - { id: a2, object: fr-app-101, parent: FR-S-02, raised: "now - 11 minutes" }
+        - { id: a3, object: fr-app-114, parent: FR-S-02, raised: "now - 10 minutes" }
+        - { id: a4, object: fr-app-140, parent: FR-S-02, raised: "now - 2 minutes" }
+    expect: { incidents: 2, first_incident_alerts: [a1, a2, a3] }
+    reason: a4 is 10 minutes after the first alert, outside the 5-minute window, so it opens its own incident.
+
+  - id: NCAT-5
+    entry: noc.escalation_route
+    given: { root_object_type: datastore }
+    expect: storage
+
+  - id: NCAT-6
+    entry: noc.limit_expiry
+    given: { now_local: "10:05", shift_times: { day: "07:00", evening: "15:00", night: "23:00" } }
+    expect: "15:00"
+
+story:
+
+  - id: NST-1
+    story: N-1
+    reason: N-3 is active too, so two screens are pinned; the wall cycles through both (D-041).
+    expect:
+      wall.strip[screen=fast].status: red
+      wall.pins_contains: fast
+      incidents[root_object=FR-S-02].alert_count: 4
+      incidents[root_object=FR-S-02].severity: red
+      incidents[root_object=FR-S-02].escalation_route: platform
+
+  - id: NST-2
+    story: N-1
+    name: The SOP refuses a limit on a production villain, and allows stop provisioning
+    expect:
+      action: { name: time_boxed_limit, target: fr-bat-017, status: 403 }
+      action_2: { name: stop_provisioning, target: FR-S-02, status: 200, history_has_both_fields: true }
+
+  - id: NST-3
+    story: N-1
+    name: Acknowledging unpins the wall, and the chip shows In hand
+    expect:
+      after_ack_of: FR-S-02
+      wall.pin: null
+      wall.strip[screen=fast].status: red
+      wall.strip[screen=fast].in_hand: true
+
+  - id: NST-4
+    story: N-1
+    name: Close needs a root cause
+    expect:
+      close_without_cause: 400
+      close_with_cause: 200
+
+  - id: NST-5
+    story: N-3
+    expect:
+      wall.strip[screen=changed].status: red
+      incidents[root_object=tk].kind: wall_finding
+
+  - id: NST-6
+    story: N-2
+    enable: [E-7]
+    expect:
+      wall.screens.up.tiles[location=fr].status: no_data
+      wall.screens.up.tiles[location=ld].status: no_data
+      incidents[root_object=vcf-ops-emea].severity: red
+
+  - id: NST-7
+    story: O-1
+    expect:
+      incidents[root_object=LD-DS-07].severity: orange
+      incidents[root_object=LD-DS-07].escalation_route: storage
+      orange_does_not_pin: true
+
+  - id: NST-8
+    name: Same safe numbers on the wall and the CIO page
+    expect:
+      rule: The London SSH count on the wall equals health.safe.open_findings.ssh_or_shell_enabled on /api/exec/summary.
+    reason: One number, one definition (PCM core, 1).
+
+page:
+
+  - id: NPG-1
+    rule: Every NOC page and section names question, role and cadence.
+  - id: NPG-2
+    rule: No word from catalog/vocabulary/noc.yaml "avoided" appears on any /noc page, in any state.
+  - id: NPG-3
+    rule: /noc/wall has no button, link, input or select element.
+  - id: NPG-4
+    rule: With N-1 red and not acknowledged, the wall stays on "Is it fast?" across several rotation periods.
+  - id: NPG-5
+    rule: After acknowledging on the desktop, the wall rotates again, and the fast chip shows "In hand".
+  - id: NPG-6
+    rule: With E-7 on, the Frankfurt and London tiles are grey with "No data" and show no number.
+  - id: NPG-7
+    rule: "The incident page disables the limit button for the production villain and says: Production VM, escalate instead."
+  - id: NPG-8
+    rule: No request leaves the PCM host; text contrast is at least 4.5:1 on the desktop pages and the wall.

@@ -1,0 +1,13 @@
+# SOP: PCM gets no data from a VCF Operations instance. A grey screen is itself escalated (D-041).
+id: sop-no-data
+title: No data from a VCF Operations instance
+applies_to: { root_object_type: vcf_operations_instance }
+version: 1
+steps:
+  - kind: diagnosis
+    text: Confirm the time of the last good data is more than two collection cycles ago.
+    check: meta.stale
+  - kind: diagnosis
+    text: Open the native VCF Operations screens for that region to keep watching while PCM has no data.
+  - kind: escalate
+    text: Escalate to Platform.

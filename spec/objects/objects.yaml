@@ -123,3 +123,106 @@ objects:
       closes_on: { type: date }
       cluster_groups_in_plan: { type: list, of: cluster_group }
     decisions: [D-054, D-055]
+
+  # ---------------------------------------------------------------- Added for the NOC workspace (D-053 step 2)
+
+  maintenance_window:
+    description: An agreed change window per location, from the business calendar (L2 design, 3.6). Unsecured time inside it does not count (D-073).
+    fields:
+      location: { type: ref, to: location }
+      starts_at: { type: datetime }
+      ends_at: { type: datetime }
+
+  shift:
+    description: One of three NOC shifts (D-031). Times are in the region's local time.
+    fields:
+      region: { type: ref, to: region }
+      name: { type: enum, values: [day, evening, night] }
+      starts: { type: time }
+      ends: { type: time }
+    decisions: [D-031]
+
+  vm_change_event:
+    description: One change to a VM, for "What changed?". Planned changes from the business calendar are marked planned.
+    fields:
+      at: { type: datetime }
+      vm: { type: ref, to: vm }
+      location: { type: ref, to: location }
+      type: { type: enum, values: [created, deleted, powered_off, moved, resized] }
+      planned: { type: boolean }
+
+  finding:
+    description: A failed check now, for "Is it up?", "Is it safe?" or "Is it set right?".
+    fields:
+      id: { type: string }
+      screen: { type: enum, values: [up, safe, set_right] }
+      check: { type: string, example: ssh_or_shell_enabled }
+      object: { type: string, example: "ld-esx-031" }
+      location: { type: ref, to: location }
+      since: { type: datetime }
+
+  alert:
+    description: >
+      An urgent issue on one object. Only red (act within 1 to 2 hours) and orange (act by end of day)
+      reach the NOC; yellow is not an alert (NOC design, 3.4).
+    fields:
+      id: { type: string }
+      object: { type: string }
+      object_type: { type: enum, values: [vm, host, cluster, datastore, vcf_operations_instance] }
+      parent: { type: string, optional: true, note: "The related object used for grouping (D-069)" }
+      severity: { type: enum, values: [red, orange] }
+      title: { type: string }
+      raised_at: { type: datetime }
+      incident: { type: ref, to: incident }
+
+  incident:
+    description: Alerts grouped by object relationship and time, by fixed rules (D-069). Named after the parent object.
+    fields:
+      id: { type: string }
+      root_object: { type: string }
+      root_object_type: { type: string }
+      location: { type: ref, to: location }
+      severity: { type: enum, values: [red, orange], note: "The highest of its alerts" }
+      sop: { type: ref, to: sop }
+      state: { type: enum, values: [new, acknowledged, escalated, closed] }
+      acknowledged_by: { type: string, optional: true }
+      escalated_to: { type: enum, values: [platform, storage, network], optional: true }
+      root_cause: { type: string, optional: true, note: "Required to close (D-040)" }
+      alerts: { type: list, of: alert }
+    decisions: [D-040, D-069]
+
+  sop:
+    description: A standard operating procedure. Its steps drive the alert page (NOC design, 3.5).
+    fields:
+      id: { type: string }
+      title: { type: string }
+      steps: { type: list, of: sop_step }
+
+  sop_step:
+    fields:
+      kind: { type: enum, values: [diagnosis, action, escalate, verify] }
+      text: { type: string }
+      check: { type: string, optional: true, note: "Catalog entry read live for a diagnosis or verify step" }
+      action: { type: ref, to: action_type, optional: true }
+      when: { type: string, optional: true, note: "Condition on earlier steps, e.g. villain.environment == non_production" }
+
+  action_type:
+    description: An action L1 may run through PCM (D-040), with its tier (D-029).
+    fields:
+      id: { type: enum, values: [acknowledge, annotate, escalate, close, stop_provisioning, reopen_provisioning, time_boxed_limit, restart_vm] }
+      tier: { type: enum, values: [automatic, approval, never] }
+      allowed_for: { type: list, of: string, note: "Role and target conditions" }
+
+  action_record:
+    description: One entry of the action history (D-063). Both identity fields (D-050).
+    fields:
+      at: { type: datetime }
+      action: { type: ref, to: action_type }
+      target: { type: string }
+      actor_agent: { type: string, optional: true, note: "Agent E2's ID when it acted" }
+      actor_human: { type: string, note: "The person accountable" }
+      reason: { type: string }
+      before: { type: string }
+      after: { type: string }
+      expires_at: { type: datetime, optional: true }
+    decisions: [D-050, D-063]
