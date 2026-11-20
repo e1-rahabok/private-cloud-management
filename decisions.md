@@ -31,3 +31,4 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-025 | 2026-11-20 | PCM runs actions directly through vCenter and VCF APIs, not through ITSM or automation tools. | Those tools are too slow for self-driving operations. |
 | D-026 | 2026-11-20 | Upgrading a customer-personalized specification is deferred until after the prototype is approved. | The prototype comes first. Large open-source products such as Odoo and Linux live with the same problem. |
 | D-027 | 2026-11-20 | The FinOps role owns Price: cost accounting and chargeback. FinOps works with the Capacity team. Its workspace comes after release 1.0. | Price is a FinOps job, not a Capacity or Executive one. |
+| D-028 | 2026-11-20 | All workspaces run on one host, each under its own path: `privatecloud.acme.com/noc`, `/l2`, `/capacity`, `/exec`, `/docs`. No shared menu. | One host to deploy and secure. Separate paths keep each role's experience separate (D-011). |
