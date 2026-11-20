@@ -35,6 +35,10 @@ Options, in the page URL or on the API:
 
 **Database (D-080):** what people and policies do is kept in SQLite at `var/pcm.sqlite`, so it survives a restart. Set `PCM_DB` to use another file. Tests use `PCM_DB=:memory:`. To start clean, stop the server and delete the file. Synthetic metrics are generated from "now", never stored.
 
+## Demo
+
+The demo script and its rehearsal: [`../demo/README.md`](../demo/README.md).
+
 ## Test
 
 ```bash
