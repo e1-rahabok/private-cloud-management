@@ -74,7 +74,7 @@ The core is everything the four workspaces share: data, definitions, engines, id
   | Rollups | 1 hour and 1 day, each keeping max, 95th percentile and average | 13 months for 1 hour; 5 years for 1 day |
   | Model results (KPIs, verdicts) | Same as their inputs | Same as the rollups |
   | Events and log findings | As they arrive | 13 months |
-  | Audit log of actions | As they happen | 7 years, or as the customer's policy says |
+  | Action history (3.7) | As they happen | 13 months. The audit log as a compliance record comes in phase 2 (D-063). |
 
 - **Why:**
   - **A rollup that keeps only the average destroys the signal.**
@@ -133,7 +133,7 @@ The core is everything the four workspaces share: data, definitions, engines, id
      - the class of service of the target;
   3. runs the action against vCenter or NSX with a service account that has only the rights for that action type;
   4. sets an expiry if the action is temporary, and undoes it at expiry (D-040: limits on villain VMs);
-  5. writes the audit record: what, which object, the agent ID (if any), the human accountable, why, before and after;
+  5. writes the action history: what, which object, the agent ID (if any), the human accountable, why, before and after. This is an operational record in 1.0. The audit log as a compliance record is phase 2 (D-063);
   6. optionally, sends a record to ITSM after the fact (D-025).
 - **Why:**
   - **One path means one place to audit and one place to stop.** If there are two paths, the second one is where the 03:00 incident comes from.
@@ -156,17 +156,18 @@ The core is everything the four workspaces share: data, definitions, engines, id
   - The registers are where people put that context, so that the engines and Agent E2 can use it.
   - Without them, the context lives in one senior engineer's head, which fails the SP5 holiday test.
 
-### 3.9 Federation: one PCM, regional collection
+### 3.9 Federation: one PCM, reading through VCF Operations (D-064)
 
 - **What:**
   - One PCM per enterprise.
-  - Collectors run in each region, close to that region's VCF Operations and vCenters.
-  - Each instance has its own circuit breaker:
+  - PCM has no collectors of its own. It reads from each region's VCF Operations, which already runs a collector (cloud proxy) in each region.
+  - PCM talks directly to vCenter and NSX only for actions (D-025) and for the few reads VCF Operations does not hold.
+  - Each VCF Operations instance has its own circuit breaker:
     - after repeated failures, PCM stops calling the instance for a while;
     - the instance is marked degraded;
     - its data shows as stale.
 - **Why:**
-  - **Collection close to the source.** It survives WAN problems and keeps API load local.
+  - **No duplicate collection.** VCF Operations already collects close to the source in each region. A second collector would double the API load on every vCenter and add a component to install, patch and secure in every region.
   - **One PCM.** The CIO sees one estate (Executive design, 4.9), and the NOC sees one wall.
   - **Reuse from the federation prototype.**
     - Reused: the API client for VCF Operations (two authentication methods, delta pulls by watermark, the circuit breaker).
@@ -181,12 +182,12 @@ The core is everything the four workspaces share: data, definitions, engines, id
   - Agent E2 has its own ID and always acts for a named human (D-050).
 - **Why:**
   - **Least privilege by design.** The role sets what a person may see and do. The service account sets what PCM may do. The two are checked separately.
-  - **The audit log can always name a person.** This holds even when the actor was Agent E2.
+  - **The action history can always name a person.** This holds even when the actor was Agent E2.
 
 ### 3.11 PCM watches itself
 
 - **What:**
-  - PCM checks its own health: collectors, store, engines.
+  - PCM checks its own health: its connections to each VCF Operations, its store, its engines.
   - The NOC wall shows PCM's own state.
   - If PCM itself is down, the wall says so plainly, and the NOC SOP falls back to the native VCF Operations screens.
 - **Why:**
@@ -234,8 +235,6 @@ The core is everything the four workspaces share: data, definitions, engines, id
 
 ## 6. Open questions for the author
 
-1. **Data residency.** Some countries do not allow operational data to leave them.
-   - Proposal for 1.0: one PCM, with regional collectors.
-   - Later: detailed data kept in the region, and only model results (KPIs, capacity numbers) sent to the central PCM.
-   - Is that enough for your target customers?
-2. **Audit log retention.** 7 years is a common default in regulated industries. Should PCM default to it, or ask at install?
+1. **Data residency.** PCM reads from each region's VCF Operations and stores the results centrally. Some countries do not allow operational data to leave them.
+   - Proposal: 1.0 assumes one central PCM.
+   - Later: an option to keep detailed data in the region and send only model results (KPIs, capacity numbers) to the central PCM.

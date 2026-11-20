@@ -67,6 +67,8 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-060 | 2026-11-20 | PCM follows the cost model in Cost n Price n Value. There is no VM cost: unit cost is on the provider (ESXi host, then cluster); price is on the consumer. Cost has three parts: product, service, people. Reclamation is cost avoidance, valued at today's price of new capacity in that location, and counted only when it defers a purchase. | See Rationale. |
 | D-061 | 2026-11-20 | CPU unit cost is always per physical thread. Cores are used only for licensing. | A vCPU runs on a thread, so capacity is counted in threads (Capacity design, 3.17). Cost uses the same unit, so cost and capacity can be compared. |
 | D-062 | 2026-11-20 | No check of the VCF APIs for now. They are checked later against a live VCF 9.1 system the author provides. | A live system gives a firmer answer than reading API references. |
+| D-063 | 2026-11-20 | The audit log as a compliance record (retention policy, tamper evidence, export for auditors) is phase 2, with security and compliance. Release 1.0 keeps an operational action history: what was done, to which object, by whom (both fields, D-050), why, before and after. | See Rationale. |
+| D-064 | 2026-11-20 | PCM has no collectors of its own. It reads through each region's VCF Operations, which already has a collector per region. PCM talks directly to vCenter and NSX only for actions (D-025) and for reads VCF Operations does not hold. | No duplicate collection: a second collector doubles the API load on every vCenter and adds a component to run in every region. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -287,4 +289,16 @@ Source: Cost n Price n Value (in `sources/`).
   - Example: hardware bought for $3M five years ago is now replaced by a $1M equivalent. Reclamation that defers the purchase avoids $1M, not $3M.
 - It is counted per location. Spare memory in Singapore does not serve VMs in Frankfurt.
 - The Capacity waste page (Capacity design, 3.11) and the Executive cost card (Executive design, 4.6) show it this way.
+
+### D-063 Action history in 1.0, audit log in phase 2
+
+- The author parked the audit log with security and compliance (D-022, D-044).
+- Several 1.0 decisions still need a record of each action. Without it, they do not work:
+  - **D-040:** a limit on a villain VM expires and is undone automatically. The engine must remember what it set and when.
+  - **D-050:** every Agent E2 task names the human who ordered it. That name must be stored to mean anything.
+  - **L2 design, 3.7:** an action type earns automation through its record of approvals and rollbacks. No record, no automation.
+  - **L2 design, 3.8:** escalations close with a cause and a fix. That history is what the monthly review reads.
+- So the split is by purpose:
+  - **1.0, the action history:** an operational record that the engines and people use day to day.
+  - **Phase 2, the audit log:** the same events, with what an auditor needs: a retention policy, proof nothing was altered, and export to the security team's tools.
 
