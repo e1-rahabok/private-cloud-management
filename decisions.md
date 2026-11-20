@@ -70,6 +70,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-063 | 2026-11-20 | The audit log as a compliance record (retention policy, tamper evidence, export for auditors) is phase 2, with security and compliance. Release 1.0 keeps an operational action history: what was done, to which object, by whom (both fields, D-050), why, before and after. | See Rationale. |
 | D-064 | 2026-11-20 | PCM has no collectors of its own. It reads through each region's VCF Operations, which already has a collector per region. PCM talks directly to vCenter and NSX only for actions (D-025) and for reads VCF Operations does not hold. | No duplicate collection: a second collector doubles the API load on every vCenter and adds a component to run in every region. |
 | D-065 | 2026-11-20 | ACME Corp, the synthetic customer, is a global bank. | Banking load follows a strong calendar: end-of-day batch at night, payday, month-end, quarter-end and financial year-end close, which differs by country. Banks also face the strictest regulators, so recovery and safety stories carry weight with the approval audience. |
+| D-066 | 2026-11-20 | Data residency is beyond release 1.0. Release 1.0 runs one central PCM that stores results from every region. | Scope control. Keeping detailed data in its region, with only model results sent to the central PCM, is the later option. |
 ## Rationale
 
 Longer reasons for decisions that need them.

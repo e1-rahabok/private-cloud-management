@@ -233,8 +233,6 @@ The core is everything the four workspaces share: data, definitions, engines, id
 - The choice is made once the API check (section 4) shows the real data volumes and access patterns.
 - Rule for the choice: boring, proven, easy for AI to generate and for customers to run on premises (D-004). For example, a well-known open-source relational database with a time-series extension, before anything exotic.
 
-## 6. Open questions for the author
+## 6. Settled questions
 
-1. **Data residency.** PCM reads from each region's VCF Operations and stores the results centrally. Some countries do not allow operational data to leave them.
-   - Proposal: 1.0 assumes one central PCM.
-   - Later: an option to keep detailed data in the region and send only model results (KPIs, capacity numbers) to the central PCM.
+- Data residency: beyond 1.0. Release 1.0 runs one central PCM (D-066). The later option keeps detailed data in its region and sends only model results to the central PCM.
