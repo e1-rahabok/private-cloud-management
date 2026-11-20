@@ -49,6 +49,9 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 
 | D-043 | 2026-11-20 | The monthly review (1 day) is also the bigger team meeting: everyone meets to discuss important but not urgent matters, plan the next month, and review progress for the year against goals. PCM prepares the review pack; L2 (Platform) hosts it. | See Rationale. |
 | D-044 | 2026-11-20 | A suspected breach is not investigated in PCM. L2 secures the evidence and hands it to the security team. Security is parked until after release 1.0. | "Is it breached?" is a forensic investigation, not troubleshooting (SP5), and needs security expertise (D-008, D-022). |
+| D-045 | 2026-11-20 | L2 owns PCM's own settings (class-of-service definitions, action tiers) in release 1.0. After 1.0, the Operations Manager approves changes. | L2 knows what the settings do. A second approver comes with the Operations Manager workspace. |
+| D-046 | 2026-11-20 | PCM is designed for a lean team of senior, highly experienced people. L2 is not 100% dedicated to operations; it also does architecture and engineering. Most routine and easy work is assisted by AI. | In the agentic AI era, the team is likely a few times smaller than today. |
+| D-047 | 2026-11-20 | Agent E2 is a core team member, not a tool. Assume it knows vSphere, Windows, Linux, networking and the rest of the stack, even though today it knows only vSphere. | AI does the routine work the lean team (D-046) no longer has people for. |
 ## Rationale
 
 Longer reasons for decisions that need them.
