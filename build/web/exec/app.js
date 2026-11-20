@@ -20,6 +20,8 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const chip = st => `<span class="chip ${CHIP_CLASS[st] || st}">${CHIP[st]}</span>`;
 const fmtInt = n => Math.round(n).toLocaleString('en-US');
+// Rounded down: a value below 100 never shows as 100.00 (catalog up.availability_percent, display).
+const pct2 = x => `${(Math.floor(x * 100) / 100).toFixed(2)}%`;
 const money = n => n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${fmtInt(n)}`;
 const fmtDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 // Viewer's time zone, with the zone named (spec README, rule 8).
@@ -127,7 +129,7 @@ function renderHealth(s) {
   $('health-cards').innerHTML = ['up', 'fast', 'safe'].map(q => {
     const c = s.health[q], h = c.headline;
     const head = q === 'fast' ? show(h, x => `${Math.round(x)} <small>out of 100</small>`)
-      : q === 'safe' ? show(h, x => `${x.toFixed(2)}% <small>this month</small>`) : show(h, x => `${x.toFixed(2)}%`);
+      : show(h, x => `${pct2(x)} <small>this month</small>`);
     return `<article class="card"><h3>${LABEL[q]} ${chip(h.status)}</h3><div class="headline">${head}</div>
       ${h.meta.stale ? '' : lineSVG(c.sparkline_7d.points, 'spark')}
       <p class="sentence">${esc(c.sentence)}</p>
@@ -155,11 +157,15 @@ async function healthPanel(btn, days, refresh) {
       + `</tbody></table><p class="muted">${card.order_kept ? 'Gold scored above Silver, and Silver above Bronze, as promised.' : 'A lower class scored above a higher class.'}</p>`;
     body += switcher + lineSVG(detail.series.points, 'chart', null, 220);
   } else {
-    body += switcher + lineSVG(detail.series.points, 'chart', detail.target ? detail.target.value : null, 220);
-    body += `<p class="muted">Dashed line: target ${detail.target.value}%.</p>`;
+    const t = detail.sla_by_class;
+    body += `<p class="sentence">Downtime inside an approved change window does not count against the target.</p>`;
+    body += `<table><tbody><tr><td>Availability counted against the target (operational)</td><td>${pct2(detail.operational_percent.value)} · ${fmtInt(detail.counted_vm_minutes.value)} VM-minutes down</td></tr>
+      <tr><td>All downtime, approved changes included (actual)</td><td>${pct2(detail.actual_percent.value)} · ${fmtInt(detail.actual_vm_minutes.value)} VM-minutes down</td></tr>
+      <tr><td>Virtual machines below their target this month</td><td>${show(card.vms_below_sla)}</td></tr>
+      <tr><td>Targets</td><td>Gold ${t.gold}%, Silver ${t.silver}%, Bronze ${t.bronze}%</td></tr></tbody></table>`;
   }
-  const col = { up: 'Running', fast: 'Score out of 100', safe: 'Virtual machines below the security target' }[q];
-  body += `<table><thead><tr><th>Location</th><th>${col}</th></tr></thead><tbody>${detail.by_location.map(r => `<tr><td>${names[r.location]}</td><td>${show(r.value, x => q === 'up' ? `${x}%` : x)}</td></tr>`).join('')}</tbody></table>`;
+  const col = { up: 'Downtime events counted', fast: 'Score out of 100', safe: 'Virtual machines below the security target' }[q];
+  body += `<table><thead><tr><th>Location</th><th>${col}</th></tr></thead><tbody>${detail.by_location.map(r => `<tr><td>${names[r.location]}</td><td>${show(r.value)}</td></tr>`).join('')}</tbody></table>`;
   if (detail.events.length) body += `<ul class="events">${detail.events.map(e => `<li>${esc(e.text)}</li>`).join('')}</ul>`;
   else body += `<p class="muted">No notable events in this period.</p>`;
   if (refresh) btn.setAttribute('aria-expanded', 'false');

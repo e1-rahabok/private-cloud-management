@@ -138,15 +138,45 @@ A minute is unsecured when, at that minute, any check fails for the VM or its su
 - An estate average of 99.99% hides 72 VMs that were exposed for 8 hours.
 - SP5: the reality is per VM. The application owner whose VM was exposed does not care that the estate average looks fine.
 
-## 4. Proposal: align "Is it up?" with the Availability SLA
+## 4. "Is it up?" is the SP5 Availability SLA (D-077)
 
-- Today the Executive "Is it up?" card uses a 7-day estate figure against 99.95%, taken from the mockup. That does not follow SP5. SP5 says:
-  - the availability SLA is per VM, per calendar month, as **operational availability**;
-  - it is measured on the Guest OS answering ping, since the Guest OS is in scope (D-038);
-  - the target depends on the class: Gold 99.975%, Silver 99.950%, Bronze 99.900%.
-- **Proposal: the same shape as "Is it safe?":**
-  - headline: KAI, production VM operational availability this month;
-  - red when any production VM is below its class SLA for the month;
-  - amber when below 100% but every VM is within its class SLA;
-  - green at 100%.
-- I have not changed it yet. The author confirmed only the other three settings. **This needs the author's yes.**
+### 4.1 Operational, not Actual, for the SLA
+
+| Metric | Counts | Shown |
+|---|---|---|
+| Operational Availability (%) | Downtime outside approved change windows, minus customer-caused downtime that L2 reclassified with a reason | Headline (KAI) and the SLA |
+| Actual Availability (%) | All downtime, whatever the time, owner or cause | Drill-down only |
+
+- **Why both.** SP5: vendors exclude scheduled downtime and can claim 99.999% while users see less. The SLA uses Operational. Showing Actual next to it keeps the number honest.
+- **Object:** the VM's Guest OS answering. The Guest OS is in scope (D-038), so a VM that runs but whose Windows hangs is down. Application start-up is not counted (SP5).
+
+### 4.2 The green zone comes from the change calendar
+
+- **The rule.** Downtime inside an **approved** change window is excluded. Downtime outside it counts, **even when planned** (SP5). A patch reboot at 14:00 on a Tuesday, outside the window, is downtime.
+- **The source.** The ITSM change calendar holds the approved windows in most large enterprises, so PCM reads them through the ITSM connector (D-003). Where no ITSM is connected, the maintenance windows in PCM's business calendar are the source.
+- **This does not contradict D-025.** D-025 keeps *actions* out of ITSM because ITSM is too slow for them. Reading the approved windows is different: PCM reads, and ITSM stays the system of record for change approval.
+- **Scope matters.** A window approved for cluster VA-G-05 does not cover a VM in VA-G-07. PCM matches each downtime to a window by time *and* by scope.
+
+### 4.3 Judged against the whole month
+
+- **The allowance** is the downtime a VM may have in the whole calendar month: minutes in the month × (100 − target) / 100.
+  - Silver in a 31-day month: 22.3 minutes.
+  - Gold: 11.2 minutes.
+- **Why not the month so far.** On day 18, a 15-minute outage reads as 99.94% of the month so far, which looks below 99.95%. But the month allows 22.3 minutes, so the VM has not breached. Judging against the month so far raises false breaches early in each month.
+- **This corrects my first version of the Security SLA,** which used the month so far. Both SLAs now use the same rule.
+- **A breach is final.** Once a VM's counted minutes exceed its allowance, it cannot recover that month. Red holds to month end.
+
+### 4.4 Status of the Executive card
+
+| Status | Rule |
+|---|---|
+| Green | No counted downtime this month (KAI 100%) |
+| Amber | Some counted downtime, but every production VM within its class allowance |
+| Red | At least one production VM over its class allowance |
+
+- **Display:** two decimals, rounded down. A KAI of 99.9996% shows 99.99%, never 100.00% next to an amber chip.
+
+### 4.5 Recalculable after the month
+
+- SP5: the cause of a downtime takes time to find, so the month must be recalculable.
+- L2 can reclassify a downtime as customer-caused, for example an owner's reboot after a software install, with a reason. The reclassification is recorded with both identity fields (D-050), and the month is recalculated.

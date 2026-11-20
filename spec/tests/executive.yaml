@@ -37,19 +37,19 @@ catalog:
 
   - id: CAT-5
     entry: safe.ksi_percent
-    given: { vm_secured_time_percent: [100, 100, 99.97] }
+    given: { vm_unsecured_minutes: [0, 0, 10], days_in_month: 31 }
     expect: { status: amber }
-    reason: KSI below 100%, but every VM is still at or above the 99.95% contract.
+    reason: 10 minutes is within the 22.3-minute allowance of a 31-day month at 99.95%.
 
   - id: CAT-6
     entry: safe.ksi_percent
-    given: { vm_secured_time_percent: [100, 100, 98.16] }
+    given: { vm_unsecured_minutes: [0, 0, 480], days_in_month: 31 }
     expect: { status: red }
-    reason: One VM below the contract makes the card red, whatever the estate figure (D-073).
+    reason: One VM over the allowance makes the card red, whatever the estate figure (D-073).
 
   - id: CAT-13
     entry: safe.ksi_percent
-    given: { vm_secured_time_percent: [100, 100, 100] }
+    given: { vm_unsecured_minutes: [0, 0, 0], days_in_month: 31 }
     expect: { status: green }
 
   - id: CAT-14
@@ -103,8 +103,32 @@ catalog:
 
   - id: CAT-11
     entry: up.availability_percent
-    given: { value: 99.92, target: 99.95, amber_margin: 0.05 }
+    given: { vm_counted_minutes: [0, 15, 15], classes: [gold, silver, silver], days_in_month: 31 }
     expect: { status: amber }
+    reason: 15 minutes is within Silver's 22.3-minute allowance for a 31-day month.
+
+  - id: CAT-19
+    entry: up.availability_percent
+    given: { vm_counted_minutes: [0, 15], classes: [gold, gold], days_in_month: 31 }
+    expect: { status: red }
+    reason: 15 minutes exceeds Gold's 11.2-minute allowance.
+
+  - id: CAT-20
+    entry: up.sla_allowance_minutes
+    given: { class: silver, days_in_month: 31 }
+    expect: 22.32
+
+  - id: CAT-21
+    entry: up.vm_counted_downtime_minutes
+    given: { downtime_minutes: 25, inside_approved_window_minutes: 25 }
+    expect: 0
+    reason: Downtime inside an approved change window does not count.
+
+  - id: CAT-22
+    entry: up.vm_counted_downtime_minutes
+    given: { downtime_minutes: 25, inside_approved_window_minutes: 0, planned: true }
+    expect: 25
+    reason: Planned but outside an approved window still counts (SP5).
 
   - id: CAT-12
     entry: scale.compute_cores
@@ -118,7 +142,8 @@ story:
     story: E-1
     expect:
       api: /api/exec/summary
-      health.up.headline.status: green
+      health.up.headline.status: amber
+      health.up.vms_below_sla.value: 0
       health.fast.headline.status: green
       health.fast.order_kept: true
       health.safe.headline.status: red
@@ -182,6 +207,13 @@ story:
         capacity.location_decision for sg returned by /api/exec/summary, /api/exec/locations/sg
         and /api/exec/capacity is identical, including meta.definition_version.
     reason: One number, one definition (PCM core, 1).
+
+  - id: ST-9
+    story: [U-1, U-2]
+    name: Actual availability counts the approved change window; operational does not
+    expect:
+      rule: health.up.actual_percent.value is below health.up.headline.value; health.up.headline.value is below 100; the up drill-down lists the Virginia event as not counted, with change CHG0041042.
+    decisions: [D-077]
 
 page:
 

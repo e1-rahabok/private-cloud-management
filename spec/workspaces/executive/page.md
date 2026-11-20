@@ -78,7 +78,7 @@ api: /api/exec/summary → scale; /api/exec/locations/{id}
 question: "Is it up? Is it fast? Is it safe?"
 role: executive
 cadence: [weekly, monthly]
-reads: [up.availability_percent, fast.production_kpi, fast.class_group_kpi, safe.ksi_percent, safe.vms_below_sla, safe.findings, safe.risk_certificates]
+reads: [up.availability_percent, up.actual_availability_percent, up.sla_allowance_minutes, fast.production_kpi, fast.class_group_kpi, safe.ksi_percent, safe.vms_below_sla, safe.findings, safe.risk_certificates]
 api: /api/exec/summary → health; /api/exec/health/{question}
 design: design/service-levels.md
 ```
@@ -93,11 +93,15 @@ design: design/service-levels.md
 
 | Card | Headline | Window | Example sentence |
 |---|---|---|---|
-| Is it up? | `up.availability_percent`, two decimal places | 7 days | "Virtual machines were running 99.97% of the time they were meant to." |
+| Is it up? | `up.availability_percent`, two decimals rounded down, "this month" | Calendar month to date (D-077) | "2 virtual machines in Tokyo were down for 15 minutes outside an approved change window. Every virtual machine is still within its target this month." |
 | Is it fast? | `fast.production_kpi`, as "94 out of 100". No percent sign, no target line: performance has no SLA (D-072). | 7 days | "Virtual machines scored 94 out of 100 on performance. Gold scored above Silver, and Silver above Bronze, as promised." |
 | Is it safe? | `safe.ksi_percent`, two decimal places, "this month" | Calendar month to date (D-073) | "72 virtual machines in London fell below the security target this month: remote admin access was left open on their servers for 8 hours. 2 security certificates expire within 30 days." |
 
-- **Drill-down: Is it up?** 7-day chart, with a switch to 30 days. Target as a dashed amber line. Values by location. Notable events.
+- **Drill-down: Is it up?**
+  - Per class: the target (Gold 99.975%, Silver 99.95%, Bronze 99.9%) and the virtual machines below it this month.
+  - Operational and Actual availability side by side, each with its downtime in VM-minutes. Across thousands of VMs both percentages round to the same figure; the minutes show the difference. Plus the sentence "Downtime inside an approved change window does not count against the target."
+  - Downtime events in plain words, each marked "counted" or "inside an approved change window" with its change number.
+  - Values by location.
 - **Drill-down: Is it fast?**
   - The three class scores: Gold, Silver, Bronze.
   - Whether the order is kept.

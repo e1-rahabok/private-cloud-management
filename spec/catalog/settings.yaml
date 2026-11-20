@@ -8,20 +8,21 @@ version: 1
 
 settings:
 
-  up.target_percent:
-    description: Target for operational availability of production VMs.
-    default: 99.95
+  up.sla_percent:
+    description: Availability SLA per class of service, per VM per calendar month, as Operational Availability (D-077).
+    default: { gold: 99.975, silver: 99.95, bronze: 99.9 }
     unit: percent
     owner: l2
-    source: mockup
-    decisions: [D-045]
+    source: "SP5 class-of-service, Recommended SLA per class"
+    decisions: [D-077]
 
-  up.amber_margin_percent:
-    description: Below target by at most this much shows amber; further below shows red.
-    default: 0.05
+  up.kai_target_percent:
+    description: Internal key availability indicator target.
+    default: 100
     unit: percent
     owner: l2
-    source: mockup
+    source: "SP5: availability is measured against no downtime; classes differ in how often they may miss it"
+    decisions: [D-077]
 
   safe.certificate_warning_days:
     description: A certificate expiring within this many days is a risk, shown next to the Security SLA, not inside it. An expired certificate is unsecured time.

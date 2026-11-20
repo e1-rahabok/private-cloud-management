@@ -63,12 +63,14 @@ The page test needs Node and Playwright with Chromium. It also writes the review
 
 | Level | Tests | Result |
 |---|---|---|
-| Catalog | CAT-1 to CAT-18 | 18 passed |
-| Story | ST-1 to ST-8 | 8 passed |
+| Catalog | CAT-1 to CAT-22 | 22 passed |
+| Story | ST-1 to ST-9 | 9 passed |
 | Page | PG-1 to PG-13 | 13 passed |
 | Extra | Same inputs give the same data; stories hold on another day (D-067) | 2 passed |
 
 Second build: "Is it fast?" became a KPI with no target (D-072); "Is it safe?" became the Security SLA (D-073).
+
+Fourth build: "Is it up?" became the SP5 Availability SLA (D-077): Operational Availability per VM per calendar month against the class target, with approved change windows from the ITSM change calendar excluded and Actual Availability in the drill-down. The whole-month allowance rule also corrected the Security SLA, which had judged VMs against the month so far.
 
 Third build: the three gaps from the first review are fixed in the specification (D-074) and tested by PG-10 to PG-12: times in the viewer's zone with the zone named; meters say which stale locations they leave out; the Manrope font ships in `web/fonts/` (SIL Open Font License), so no request leaves the PCM host.
 
@@ -130,6 +132,8 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
 | "Is it up?" and "Is it set right?" have no planted story | Always green | Add stories with L2 |
 | L2 weekly, monthly and detailed inventory pages | Not built yet | Next L2 build |
 | Reject and promote ask for their reason in a browser dialog | Prototype | A proper form on the page |
+| The ITSM change calendar connector is simulated by story U-1 | No ITSM in the prototype | Build the read connector; verify on the live system (D-062) |
+| L2 cannot yet reclassify a downtime as customer-caused | Specified (D-077) | Add to the L2 pages |
 | Capacity workspace | Not built yet | Next in order (D-053) |
 
 ## Layout

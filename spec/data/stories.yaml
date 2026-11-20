@@ -8,9 +8,8 @@ version: 1
 background:
   description: >
     Everything not in a story is mostly green (realism rule). No location other than the
-    ones below has a decision date within 90 days. Up stays above target in all locations.
+    ones below has a decision date within 90 days. No VM is down outside U-1 and U-2.
     Fast: every class group KPI is green, and Gold scores above Silver above Bronze (D-072).
-  up.availability_percent: { estate: 99.97 }
   fast.class_group_kpi: { gold: 96.8, silver: 93.5, bronze: 88.2 }
   decision_dates_days_from_now: { va: 200, fr: 160, tk: 300, ld: 250 }
 
@@ -70,8 +69,8 @@ stories:
     decisions: [D-049, D-073]
 
   E-1:
-    title: Up and fast are fine; safe is red because the contract broke for 72 VMs
-    depends_on: [N-4]
+    title: Up is amber, fast is fine, safe is red because the contract broke for 72 VMs
+    depends_on: [N-4, U-1, U-2]
     plant:
       certificates_expiring:
         - { component: vcenter-fr-01, expires: "now + 21 days" }
@@ -80,7 +79,7 @@ stories:
       lockdown_off: 0
       root_logins_open: 0
     expect:
-      up: { status: green, headline: 99.97 }
+      up: { status: amber }
       fast: { status: green, headline_between: [88.2, 96.8], order_kept: true }
       safe: { status: red, vms_below_sla: 72, ksi_between: [99.95, 100.0], risk_certificates: 2, ssh_or_shell_enabled: 3 }
     note: >
@@ -278,3 +277,29 @@ stories:
     plant: { batch_overrun_minutes: 40, datastore_latency_trend: rising }
     expect: { finding: { verdict: present_health, severity: amber, pillar: performance } }
     note: "An insight before the batch window runs into the start of business (SP5 prevention window)."
+
+  # ---------------------------------------------------------------- Availability SLA stories (D-077)
+
+  U-1:
+    title: Virginia patching inside an approved change window does not count
+    objects: { location: va, cluster: VA-G-05, vms: 6, class: gold, environment: production }
+    plant:
+      change_window: { id: chg-va-1042, source: itsm, change_ref: CHG0041042, approved: true, scope: [VA-G-05], starts: "now - 3 days", hours: 3 }
+      downtime: { start_in_window_minutes: 30, minutes: 25 }
+    expect:
+      counted_minutes: 0
+      actual_downtime_minutes_total: 150
+      within_sla: true
+    note: "Six Gold VMs rebooted for 25 minutes inside the approved window: Operational 100%, Actual below 100%."
+
+  U-2:
+    title: Two Tokyo Silver VMs crashed for 15 minutes outside any change window
+    objects: { location: tk, cluster: TK-S-02, vms: [tk-app-208, tk-app-211], class: silver, environment: production }
+    plant:
+      downtime: { starts: "now - 2 days", minutes: 15, inside_change_window: false }
+    expect:
+      counted_minutes_each: 15
+      within_sla: true
+      card_status: amber
+    note: "15 minutes is within Silver's 22.3-minute allowance for a 31-day month: the contract holds, the internal target (100%) does not."
+

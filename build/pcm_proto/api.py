@@ -58,7 +58,14 @@ def location_summary(ds: dict, lid: str) -> dict:
 def health_sentence(ds: dict, q: str) -> str:
     h = ds["health"][q]
     if q == "up":
-        return f"Virtual machines were running {h['value']}% of the time they were meant to."
+        names = {lid: l["name"] for lid, l in ds["locations"].items()}
+        counted = [e for e in h["events"] if e["counted"]]
+        if not counted:
+            return "No virtual machine was down outside an approved change window this month."
+        lead = " ".join(e["text"].replace(" Counted.", "") for e in counted)
+        if h["vms_below_sla"]:
+            return lead + f" {h['vms_below_sla']} virtual machines are below their target this month."
+        return lead + " Every virtual machine is still within its target this month."
     if q == "fast":
         order = ("Gold scored above Silver, and Silver above Bronze, as promised." if h["order_kept"]
                  else "A lower class scored above a higher class, so the price difference is not being delivered.")
@@ -79,9 +86,11 @@ def health_sentence(ds: dict, q: str) -> str:
 def health_card(ds: dict, q: str) -> dict:
     now, st, h = ds["now"], ds["settings"], ds["health"][q]
     if q == "up":
-        status = catalog.band_status(h["value"], st["up.target_percent"], st["up.amber_margin_percent"])
         defn = "up.availability_percent"
-        card = {"headline": num(h["value"], defn, now, "vcf-operations", "percent", status)}
+        card = {"headline": num(h["value"], defn, now, "vcf-operations", "percent", h["status"]),
+                "actual_percent": num(h["actual"], "up.actual_availability_percent", now, "vcf-operations", "percent"),
+                "vms_below_sla": num(h["vms_below_sla"], "up.vms_below_sla", now, "vcf-operations", "count"),
+                "sla_by_class": h["sla"]}
     elif q == "fast":
         defn = "fast.production_kpi"
         card = {"headline": num(h["value"], defn, now, "vcf-operations", "score", h["status"]),
@@ -171,7 +180,7 @@ def location_detail(ds: dict, lid: str) -> dict:
         "in_use_by_resource": {r: num(loc["in_use"][r], "scale.in_use_percent", loc["as_of"], loc["source"],
                                       "percent", stale=loc["stale"]) for r in ("compute", "memory", "storage")},
         "health": {
-            "up": "no_data" if loc["stale"] else catalog.band_status(by["up"]["by_location"][lid], st["up.target_percent"], st["up.amber_margin_percent"]),
+            "up": "no_data" if loc["stale"] else ("red" if by["up"]["below_by_location"].get(lid) else "amber" if by["up"]["by_location"][lid] else "green"),
             "fast": "no_data" if loc["stale"] else ("green" if catalog.kpi_band(by["fast"]["by_location"][lid]) == "green" else "amber"),
             "safe": "no_data" if loc["stale"] else ("red" if by["safe"]["by_location"].get(lid) else "green"),
         },
@@ -189,7 +198,11 @@ def health_detail(ds: dict, q: str, window_days: int = 7) -> dict:
                            for lid in ds["locations"]],
            "events": h.get("events", [])}
     if q == "up":
-        out["target"] = num(st["up.target_percent"], "setting up.target_percent", now, "settings", "percent")
+        out["sla_by_class"] = st["up.sla_percent"]
+        out["actual_percent"] = num(h["actual"], "up.actual_availability_percent", now, "vcf-operations", "percent")
+        out["operational_percent"] = num(h["value"], "up.availability_percent", now, "vcf-operations", "percent")
+        out["counted_vm_minutes"] = num(h["counted_minutes"], "up.vm_counted_downtime_minutes", now, "vcf-operations", "VM-minutes")
+        out["actual_vm_minutes"] = num(h["actual_minutes"], "up.actual_availability_percent", now, "vcf-operations", "VM-minutes")
     return out
 
 

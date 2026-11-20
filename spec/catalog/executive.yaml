@@ -52,23 +52,43 @@ entries:
 
   # ---------------------------------------------------------------- Health (D-035)
 
+  up.sla_allowance_minutes:
+    description: Downtime a VM may have in a calendar month and still meet its class SLA.
+    formula: "minutes in the whole calendar month x (100 - setting up.sla_percent[class]) / 100"
+    example: "Silver in a 31-day month: 44,640 x 0.05% = 22.3 minutes"
+    note: >
+      Judged against the whole month, not the month so far. On day 18, 15 minutes of downtime is within a
+      22-minute allowance, although 15 minutes over 18 days reads 99.94%. A VM breaches when its counted
+      minutes exceed the allowance; it cannot recover that month (D-077).
+    decisions: [D-077]
+
+  up.vm_counted_downtime_minutes:
+    description: >
+      Per VM, this calendar month: minutes the Guest OS did not answer, minus minutes inside an approved
+      change window (the green zone), minus downtime L2 reclassified as customer-caused with a reason.
+    note: >
+      SP5 Operational Availability. Approved windows come from the ITSM change calendar through its connector,
+      or from PCM's business calendar where no ITSM is connected. Downtime outside an approved window counts,
+      even when planned. The month is recalculable afterwards, because a cause can take days to find.
+    decisions: [D-038, D-077]
+
   up.availability_percent:
     description: >
-      Operational availability of production VMs over the window: the share of time they
-      were running when they were meant to run. Planned downtime in the business calendar
-      is excluded.
-    formula: >
-      100 * (sum of production VM minutes running, excluding planned downtime)
-          / (sum of production VM minutes expected to run)
-    window: 7 days, drill-down 30 days
+      The Executive headline: key availability indicator (KAI). Operational Availability of production VMs,
+      calendar month to date, weighted by minutes.
+    formula: "100 x (production VM minutes so far - counted downtime minutes) / production VM minutes so far"
     status:
-      green: ">= setting up.target_percent"
-      amber: ">= up.target_percent - up.amber_margin_percent"
-      red: "otherwise"
-    note: >
-      SP5: operational availability accounts for HA design and scheduled downtime, and is
-      the SLA number. Actual availability is shown in the drill-down only.
-    decisions: [D-035]
+      green: ">= setting up.kai_target_percent (100): no counted downtime this month"
+      red: "any production VM has up.vm_counted_downtime_minutes > its up.sla_allowance_minutes"
+      amber: "otherwise: some counted downtime, but every VM is within its class allowance"
+    display: "Two decimals, rounded down: a value below 100 never shows as 100.00."
+    decisions: [D-035, D-077]
+
+  up.actual_availability_percent:
+    description: >
+      Actual Availability, shown in the drill-down only: down is down, whatever the time, owner or cause,
+      approved change windows included (SP5).
+    decisions: [D-077]
 
   # "Is it fast?" is a KPI, not an SLA (design/service-levels.md, section 2; D-072).
 
@@ -117,11 +137,12 @@ entries:
     formula: "sum over production VMs of secured minutes / sum of minutes in month so far * 100"
     status:
       green: ">= setting safe.ksi_target_percent (100)"
-      red: "any production VM has safe.vm_secured_time_percent < setting safe.sla_contract_percent (99.95)"
+      red: "any production VM's unsecured minutes this month exceed the allowance of the whole month (minutes in month x (100 - setting safe.sla_contract_percent) / 100)"
       amber: "otherwise"
     note: >
       Red is decided per VM, not by the estate figure: an estate KSI of 99.99% can hide 72 VMs exposed for
-      8 hours. Once a VM is below 99.95% in a month it cannot recover that month, so red holds to month end.
+      8 hours. The allowance is for the whole month, not the month so far (D-077 corrected the first
+      version). Once exceeded, a VM cannot recover that month, so red holds to month end.
     decisions: [D-073]
 
   safe.vms_below_sla:

@@ -126,12 +126,7 @@ def generate(now: datetime, seed: int = 7, enable: tuple = ()) -> dict:
         locs[lid]["decision"] = catalog.location_decision(decisions[lid], in_plan, now, st)
 
     # Health.
-    up_level = bg["up.availability_percent"]["estate"]
-    health = {
-        "up": {"value": up_level, "series7": series(rng, now, 7, 2, up_level, 0.02, ceil=100.0),
-               "series30": series(rng, now, 30, 8, up_level, 0.02, ceil=100.0)},
-    }
-    health["up"]["by_location"] = {lid: round(up_level + rng.uniform(-0.01, 0.02), 2) for lid in locs}
+    health = {}
 
     # Production VMs per location and class (estate.yaml vms and cluster_layout).
     vm_cfg, layout = est["vms"], est["cluster_layout"]["share_of_hosts"]
@@ -148,12 +143,64 @@ def generate(now: datetime, seed: int = 7, enable: tuple = ()) -> dict:
     health["fast"]["series7"], health["fast"]["series30"] = daily(7), daily(30)
     health["fast"]["by_location"] = {lid: round(prod_kpi + rng.uniform(-2.0, 1.5), 1) for lid in locs}
 
-    # Safe: Security SLA as unsecured time, calendar month to date in each location's time zone (D-073).
+    # Calendar month in each location's time zone: minutes so far, and days in the whole month (D-077).
     def month_minutes(lid):
         tz = ZoneInfo(est["locations"][lid]["time_zone"])
         local = now.astimezone(tz)
         start = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         return int((local - start).total_seconds() // 60)
+
+    def days_in_month(lid):
+        local = now.astimezone(ZoneInfo(est["locations"][lid]["time_zone"]))
+        nxt = (local.replace(day=28) + timedelta(days=4)).replace(day=1)
+        return (nxt - timedelta(days=1)).day
+
+    total_vm_minutes = sum(sum(prod[l].values()) * month_minutes(l) for l in locs)
+    n_prod = sum(sum(prod[l].values()) for l in locs)
+
+    # Up: the SP5 Availability SLA, Operational Availability per VM, whole-month allowance (D-077).
+    events_up, counted, classes, actual_down, below_up = [], [], [], 0, {}
+    if "U-1" in active:
+        u1 = active["U-1"]
+        cw = u1["plant"]["change_window"]
+        start = rel(cw["starts"], now)
+        down_start = start + timedelta(minutes=u1["plant"]["downtime"]["start_in_window_minutes"])
+        mins = u1["plant"]["downtime"]["minutes"]
+        inside = mins if down_start + timedelta(minutes=mins) <= start + timedelta(hours=cw["hours"]) and cw["approved"] else 0
+        n = u1["objects"]["vms"]
+        for _ in range(n):
+            counted.append(catalog.counted_downtime_minutes(mins, inside)); classes.append(u1["objects"]["class"])
+        actual_down += mins * n
+        events_up.append({"at": down_start.isoformat(), "counted": False, "change_ref": cw["change_ref"],
+                          "text": f"{n} virtual machines in Virginia were down for {mins} minutes during patching, inside approved change {cw['change_ref']}. Not counted against the target."})
+    if "U-2" in active:
+        u2 = active["U-2"]
+        mins = u2["plant"]["downtime"]["minutes"]
+        vms = u2["objects"]["vms"]
+        for _ in vms:
+            counted.append(catalog.counted_downtime_minutes(mins, 0)); classes.append(u2["objects"]["class"])
+        actual_down += mins * len(vms)
+        allow = catalog.sla_allowance_minutes(st["up.sla_percent"][u2["objects"]["class"]], days_in_month(u2["objects"]["location"]))
+        if mins > allow:
+            below_up[u2["objects"]["location"]] = len(vms)
+        events_up.append({"at": rel(u2["plant"]["downtime"]["starts"], now).isoformat(), "counted": True, "change_ref": None,
+                          "text": f"{len(vms)} virtual machines in Tokyo were down for {mins} minutes outside any approved change window. Counted."})
+    counted_total = sum(counted)
+    kai = 100.0 * (total_vm_minutes - counted_total) / total_vm_minutes
+    actual = 100.0 * (total_vm_minutes - actual_down) / total_vm_minutes
+    pad = n_prod - len(counted)
+    up_status = catalog.kai_status(counted + [0] * pad, classes + ["silver"] * pad, days_in_month("tk"), st)
+    days_so_far = now.astimezone(timezone.utc).day
+    health["up"] = {"value": round(kai, 7), "actual": round(actual, 7), "status": up_status,
+                    "vms_below_sla": sum(below_up.values()), "below_by_location": below_up,
+                    "counted_minutes": counted_total, "actual_minutes": actual_down, "events": events_up,
+                    "sla": st["up.sla_percent"],
+                    "by_location": {lid: (sum(1 for e in events_up if e["counted"] and lid == "tk")) for lid in locs}}
+    health["up"]["series7"] = [{"t": (now - timedelta(days=days_so_far - 1 - i)).isoformat(),
+                                "v": 100.0 if i < days_so_far - 2 else round(kai, 7)} for i in range(days_so_far)]
+    health["up"]["series30"] = health["up"]["series7"]
+
+    # Safe: Security SLA as unsecured time, calendar month to date in each location's time zone (D-073).
     cert_days, cert_events, ssh, ssh_events, below = [], [], 0, [], {}
     e1 = active.get("E-1", {}).get("plant", {})
     for c in e1.get("certificates_expiring", []):
@@ -172,28 +219,25 @@ def generate(now: datetime, seed: int = 7, enable: tuple = ()) -> dict:
         in_window = minutes if n4["plant"].get("inside_maintenance_window") else 0
         mm = month_minutes(n4["objects"]["location"])
         minutes, in_window = min(minutes, mm), min(in_window, mm)  # only this calendar month counts
-        pct = catalog.vm_secured_time_percent(mm, minutes, in_window) if mm else 100.0
         n_vms = n4["objects"]["production_vms_on_hosts"]
-        vm_secured += [pct] * n_vms
+        vm_secured += [minutes - in_window] * n_vms  # unsecured minutes per VM
         unsecured_vm_minutes += (minutes - in_window) * n_vms
-        if pct < st["safe.sla_contract_percent"]:
+        allowance = catalog.sla_allowance_minutes(st["safe.sla_contract_percent"], days_in_month(n4["objects"]["location"]))
+        if minutes - in_window > allowance:
             below[n4["objects"]["location"]] = {"vms": n_vms, "hours": (minutes - in_window) // 60}
         ssh_events.append({"at": since.isoformat(),
                            "text": f"{ssh} servers in London have had remote admin access left open for {minutes // 60} hours, "
                                    f"outside the maintenance window. {n_vms} virtual machines on them fell below the security target."})
-    total_vm_minutes = sum(sum(prod[l].values()) * month_minutes(l) for l in locs)
-    n_prod = sum(sum(prod[l].values()) for l in locs)
-    vm_secured += [100.0] * (n_prod - len(vm_secured))
-    ksi = round(100.0 * (total_vm_minutes - unsecured_vm_minutes) / total_vm_minutes, 4)
+    vm_secured += [0] * (n_prod - len(vm_secured))
+    ksi = round(100.0 * (total_vm_minutes - unsecured_vm_minutes) / total_vm_minutes, 7)
     health["safe"] = {
-        "value": ksi, "status": catalog.ksi_status(vm_secured, st),
+        "value": ksi, "status": catalog.ksi_status(vm_secured, days_in_month("ld"), st),
         "vms_below_sla": sum(b["vms"] for b in below.values()), "below_by_location": below,
         "ssh_or_shell_enabled": ssh, "lockdown_off": e1.get("lockdown_off", 0),
         "certificates_expired": e1.get("certificates_expired", 0), "root_logins_open": e1.get("root_logins_open", 0),
         "risk_certificates": len([d for d in cert_days if d <= st["safe.certificate_warning_days"]]),
         "events": ssh_events + cert_events,
     }
-    days_so_far = now.astimezone(timezone.utc).day
     health["safe"]["series7"] = [{"t": (now - timedelta(days=days_so_far - 1 - i)).isoformat(),
                                   "v": 100.0 if i < days_so_far - 1 else ksi} for i in range(days_so_far)]
     health["safe"]["series30"] = health["safe"]["series7"]

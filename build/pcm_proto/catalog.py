@@ -38,7 +38,7 @@ def location_decision(decisions: dict, in_plan_groups: set, now: datetime, setti
 
 
 def band_status(value: float, target: float, amber_margin: float) -> str:
-    """Status rule of up.availability_percent."""
+    """A target with an amber margin. No longer used by up.availability_percent (D-077)."""
     if value >= target:
         return "green"
     if value >= target - amber_margin:
@@ -76,13 +76,35 @@ def vm_secured_time_percent(minutes_so_far: int, unsecured: int, unsecured_in_wi
     return round(100.0 * (minutes_so_far - counted) / minutes_so_far, 2)
 
 
-def ksi_status(vm_secured: list, settings: dict) -> str:
-    """safe.ksi_percent status: red decided per VM against the contract (D-073)."""
-    if any(v < settings["safe.sla_contract_percent"] for v in vm_secured):
+def sla_allowance_minutes(target_percent: float, days_in_month: int) -> float:
+    """up.sla_allowance_minutes and the security equivalent: allowance for the whole calendar month (D-077)."""
+    return round(days_in_month * 1440 * (100 - target_percent) / 100, 2)
+
+
+def counted_downtime_minutes(downtime: int, inside_approved_window: int, customer_caused: int = 0) -> int:
+    """up.vm_counted_downtime_minutes: approved green zone and reclassified customer-caused time do not count."""
+    return max(0, downtime - inside_approved_window - customer_caused)
+
+
+def sla_status(counted: list, allowances: list) -> str:
+    """Status shared by up.availability_percent and safe.ksi_percent: per VM, against the whole month."""
+    if any(c > a for c, a in zip(counted, allowances)):
         return "red"
-    if all(v >= settings["safe.ksi_target_percent"] for v in vm_secured):
+    if all(c == 0 for c in counted):
         return "green"
     return "amber"
+
+
+def ksi_status(vm_unsecured_minutes: list, days_in_month: int, settings: dict) -> str:
+    """safe.ksi_percent status (D-073, corrected by D-077: whole-month allowance)."""
+    allowance = sla_allowance_minutes(settings["safe.sla_contract_percent"], days_in_month)
+    return sla_status(vm_unsecured_minutes, [allowance] * len(vm_unsecured_minutes))
+
+
+def kai_status(vm_counted_minutes: list, classes: list, days_in_month: int, settings: dict) -> str:
+    """up.availability_percent status (D-077)."""
+    allow = [sla_allowance_minutes(settings["up.sla_percent"][c], days_in_month) for c in classes]
+    return sla_status(vm_counted_minutes, allow)
 
 
 def site_recovery(last_test_days_ago: int, recovery_minutes: int, target_minutes: int,

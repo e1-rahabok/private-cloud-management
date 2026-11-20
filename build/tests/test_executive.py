@@ -59,7 +59,11 @@ def make_catalog_test(t):
                 else:
                     self.assertEqual(got[k], v, k)
         elif entry == "safe.ksi_percent":
-            self.assertEqual(catalog.ksi_status(g["vm_secured_time_percent"], SETTINGS), e["status"])
+            self.assertEqual(catalog.ksi_status(g["vm_unsecured_minutes"], g["days_in_month"], SETTINGS), e["status"])
+        elif entry == "up.sla_allowance_minutes":
+            self.assertEqual(catalog.sla_allowance_minutes(SETTINGS["up.sla_percent"][g["class"]], g["days_in_month"]), e)
+        elif entry == "up.vm_counted_downtime_minutes":
+            self.assertEqual(catalog.counted_downtime_minutes(g["downtime_minutes"], g["inside_approved_window_minutes"]), e)
         elif entry == "safe.vm_secured_time_percent":
             got = catalog.vm_secured_time_percent(g["minutes_in_month_so_far"], g["unsecured_minutes"],
                                                   g["unsecured_inside_maintenance_window"])
@@ -80,7 +84,7 @@ def make_catalog_test(t):
         elif entry == "goals.status":
             self.assertEqual(catalog.goal_status(g["target"], g["direction"], g["projected_year_end"]), e)
         elif entry == "up.availability_percent":
-            self.assertEqual(catalog.band_status(g["value"], g["target"], g["amber_margin"]), e["status"])
+            self.assertEqual(catalog.kai_status(g["vm_counted_minutes"], g["classes"], g["days_in_month"], SETTINGS), e["status"])
         elif entry == "scale.compute_cores":
             est = generator.load_spec()["estate"]
             self.assertEqual(catalog.compute_cores(est["locations"], est["host_generations"]), e)
@@ -114,6 +118,13 @@ def make_story_test(t):
     def test(self):
         ds = generator.generate(NOW, seed=SPEC["seed"], enable=tuple(t.get("enable", [])))
         exp = dict(t["expect"])
+        if "rule" in exp and t["id"] == "ST-9":
+            h = api.summary(ds)["health"]["up"]
+            self.assertLess(h["actual_percent"]["value"], h["headline"]["value"])
+            self.assertLess(h["headline"]["value"], 100.0)
+            ev = api.health_detail(ds, "up")["events"]
+            self.assertTrue(any(not e["counted"] and e["change_ref"] == "CHG0041042" for e in ev))
+            return
         if "rule" in exp and t["id"] == "ST-8":  # estate KSI above contract, card red
             h = api.summary(ds)["health"]["safe"]["headline"]
             self.assertGreaterEqual(h["value"], SETTINGS["safe.sla_contract_percent"])

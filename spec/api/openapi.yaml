@@ -215,7 +215,7 @@ components:
       properties:
         headline:
           $ref: "#/components/schemas/Number"
-          description: "up: up.availability_percent; fast: fast.production_kpi (0-100, no unit); safe: safe.ksi_percent"
+          description: "up: up.availability_percent (KAI); fast: fast.production_kpi (0-100, no unit); safe: safe.ksi_percent (KSI)"
         sentence: { type: string, description: "One plain sentence in Executive vocabulary" }
         sparkline_7d: { $ref: "#/components/schemas/Series" }
         class_kpi:
@@ -230,7 +230,10 @@ components:
           description: Only for the fast card. Gold >= Silver >= Bronze.
         vms_below_sla:
           $ref: "#/components/schemas/Number"
-          description: Only for the safe card. safe.vms_below_sla (D-073).
+          description: For the up card (D-077) and the safe card (D-073). Production VMs over their allowance this month.
+        actual_percent:
+          $ref: "#/components/schemas/Number"
+          description: Only for the up card. up.actual_availability_percent.
         sla_contract_percent: { type: number, description: "Only for the safe card. Setting safe.sla_contract_percent." }
         open_findings:
           type: object

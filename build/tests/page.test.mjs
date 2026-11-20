@@ -164,6 +164,8 @@ try {
   await shot.goto(base); await shot.waitForSelector('body[data-ready="1"]');
   await shot.click('#health-cards button[data-q="safe"]'); await shot.waitForTimeout(250);
   await shot.locator('#health').screenshot({ path: ROOT + 'build/screenshots/exec-health-safe.png' });
+  await shot.click('#health-cards button[data-q="up"]'); await shot.waitForTimeout(250);
+  await shot.locator('#health').screenshot({ path: ROOT + 'build/screenshots/exec-health-up.png' });
   await shot.click('#health-cards button[data-q="fast"]'); await shot.waitForTimeout(250);
   await shot.locator('#health').screenshot({ path: ROOT + 'build/screenshots/exec-health-fast.png' });
   await shot.goto(base + '&enable=E-7'); await shot.waitForSelector('body[data-ready="1"]');

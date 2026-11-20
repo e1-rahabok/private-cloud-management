@@ -17,7 +17,7 @@ The core is everything the four workspaces share: data, definitions, engines, id
 
 | Layer | Holds | Owner |
 |---|---|---|
-| Sources | VCF Operations (one or many), VCF Operations for Logs, vCenter, NSX, SDDC Manager (read only), VMware Live Site Recovery, VCF Automation. Connectors: ITSM, CMDB, email (D-003). Migration sources: OpenShift (D-023). | Outside PCM |
+| Sources | VCF Operations (one or many), VCF Operations for Logs, vCenter, NSX, SDDC Manager (read only), VMware Live Site Recovery, VCF Automation. Connectors: ITSM (read: approved change windows, D-077; write after the fact, D-025), CMDB, email (D-003). Migration sources: OpenShift (D-023). | Outside PCM |
 | Collection | Pulls data from each source, per region | PCM |
 | Store | PCM's own database (D-006) | PCM |
 | Catalog | Definitions of KPIs, models, thresholds, check rules, SOPs, action types | PCM; edited by L2 (D-045) |

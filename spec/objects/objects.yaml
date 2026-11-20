@@ -309,3 +309,29 @@ objects:
       corrective_action: { type: string }
       detection: { type: enum, values: [new_check_rule, new_alert, new_sop, sop_updated, none_with_reason] }
       detection_note: { type: string }
+
+  # ---------------------------------------------------------------- Added for the Availability SLA (D-077)
+
+  change_window:
+    description: An approved change window (the green zone). Downtime inside it does not count against the Availability SLA.
+    fields:
+      id: { type: string }
+      source: { type: enum, values: [itsm, pcm_calendar], note: "ITSM change calendar through its connector; PCM's calendar where no ITSM is connected" }
+      change_ref: { type: string, optional: true, note: "The ITSM change number" }
+      approved: { type: boolean, note: "Only approved windows count as green zone" }
+      scope: { type: list, of: string, note: "VMs, hosts or clusters the change covers" }
+      starts_at: { type: datetime }
+      ends_at: { type: datetime }
+    decisions: [D-077]
+
+  downtime_event:
+    description: A period when a VM's Guest OS did not answer (D-038). Classified for Operational Availability.
+    fields:
+      vm: { type: ref, to: vm }
+      starts_at: { type: datetime }
+      ends_at: { type: datetime }
+      classification: { type: enum, values: [counted, inside_change_window, customer_caused] }
+      change_window: { type: ref, to: change_window, optional: true }
+      reclassified_by: { type: string, optional: true, note: "L2, with a reason, recalculable after the month" }
+    decisions: [D-077]
+
