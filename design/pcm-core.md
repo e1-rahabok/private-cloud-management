@@ -220,11 +220,10 @@ The core is everything the four workspaces share: data, definitions, engines, id
   - site recovery test results;
   - VCF Automation request timestamps;
   - the settings PCM must change through vCenter and NSX.
-- **Proposal:** before the PCM specification is written, check each against the VCF 9.1 API references on developer.broadcom.com.
-  - Record the result: supported, partly supported, or not supported.
-  - For each gap, give the workaround.
-  - Then test the list on the lab VCF 9.1 instance (D-018).
-- **Why:** a design that depends on an API that does not exist fails at the worst time: after approval, during the build.
+- **Decided (D-062):** the check waits for the live VCF 9.1 system the author will provide.
+  - Until then, the prototype runs on synthetic data behind the same API contract (3.13), so nothing built now depends on the answer.
+  - Each assumption above is listed in the specification as "to verify on the live system".
+- **Why it is still listed:** a design that depends on an API that does not exist fails at the worst time, after approval and during the build. Listing the assumptions keeps them visible until the live check.
 
 ## 5. Technology choice is deferred
 
@@ -240,4 +239,3 @@ The core is everything the four workspaces share: data, definitions, engines, id
    - Later: detailed data kept in the region, and only model results (KPIs, capacity numbers) sent to the central PCM.
    - Is that enough for your target customers?
 2. **Audit log retention.** 7 years is a common default in regulated industries. Should PCM default to it, or ask at install?
-3. **API check (section 4).** Shall I start it now, before the synthetic data design?

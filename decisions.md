@@ -66,6 +66,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-059 | 2026-11-20 | The Executive recovery card shows site recovery test results only: VMware Live Site Recovery (formerly Site Recovery Manager) recovery plans, last test date, recovery time achieved and target, and the share of protected VMs tested. It is labelled site recovery. Backup is not claimed. | See Rationale. |
 | D-060 | 2026-11-20 | PCM follows the cost model in Cost n Price n Value. There is no VM cost: unit cost is on the provider (ESXi host, then cluster); price is on the consumer. Cost has three parts: product, service, people. Reclamation is cost avoidance, valued at today's price of new capacity in that location, and counted only when it defers a purchase. | See Rationale. |
 | D-061 | 2026-11-20 | CPU unit cost is always per physical thread. Cores are used only for licensing. | A vCPU runs on a thread, so capacity is counted in threads (Capacity design, 3.17). Cost uses the same unit, so cost and capacity can be compared. |
+| D-062 | 2026-11-20 | No check of the VCF APIs for now. They are checked later against a live VCF 9.1 system the author provides. | A live system gives a firmer answer than reading API references. |
 ## Rationale
 
 Longer reasons for decisions that need them.
