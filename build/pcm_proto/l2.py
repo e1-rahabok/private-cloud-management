@@ -309,11 +309,10 @@ def investigate(now: datetime, obj: str, enable=()) -> dict | None:
     return None
 
 
+# Planted background findings; their standards come from catalog/standards.yaml (Docs design, 2.8).
 CONFIG_BASE = [
-    {"id": "c-esx-version", "group": "update_it", "object": "VA-B-01, VA-B-02", "setting": "ESXi version",
-     "actual": "N-2 on 18 hosts", "standard": "N or N-1"},
-    {"id": "c-tools-variants", "group": "simplify_it", "object": "Estate", "setting": "VMware Tools versions",
-     "actual": "5 versions", "standard": "3 versions (current plus two)"},
+    {"id": "c-esx-version", "group": "update_it", "object": "VA-B-01, VA-B-02", "setting": "esxi_version", "actual": "N-2 on 18 hosts"},
+    {"id": "c-tools-variants", "group": "simplify_it", "object": "Estate", "setting": "vmware_tools_variants", "actual": "5 versions"},
 ]
 
 
@@ -323,16 +322,20 @@ def configuration(now: datetime, enable=()) -> dict:
     if "L-3" in act:
         for i, d in enumerate(act["L-3"]["plant"]["drift"]):
             items.append({"id": f"c-va-esx-142-{i + 1}", "group": "correct_it", "object": "va-esx-142 (VA-G-05)",
-                          "setting": d["setting"], "actual": d["actual"], "standard": d["standard"]})
-    items += CONFIG_BASE
+                          "setting": d["setting"], "actual": d["actual"]})
+    items += [dict(c) for c in CONFIG_BASE]
+    std = generator.load_spec()["standards"]
     for it in items:
+        it["standard"] = std[it["setting"]]["value"]
+        it["setting_label"] = std[it["setting"]]["title"]
         it["standard_version"] = STATE.standards.get(it["setting"], 1)
         it["decision"] = next((p.get("choice") for p in STATE.proposals.values() if p.get("config_id") == it["id"]), None)
     groups = {g: [i for i in items if i["group"] == g] for g in ("correct_it", "update_it", "simplify_it", "optimize_it")}
     return {"groups": groups, "filter_default": "gold"}
 
 
-THRESHOLDS = {"th-cluster-perf-red": {"metric": "Cluster Performance", "operator": "below", "value": 50, "version": 1}}
+THRESHOLDS = {k: {f: v[f] for f in ("metric", "operator", "value", "version")}
+              for k, v in generator.load_spec()["thresholds"].items()}  # catalog/thresholds.yaml
 
 
 def replay(now: datetime, tid: str, new_value: float, settings: dict, seed: int = 7) -> dict:

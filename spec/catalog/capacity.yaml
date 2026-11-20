@@ -46,8 +46,15 @@ entries:
       reads at most 90 days of data can see (VCF Operations 9.1.1, Capacity design 3.5).
 
   capacity.run_out_date:
-    description: First day capacity.forecast reaches capacity.usable. None within 13 months shows as "beyond 13 months".
-    decisions: [D-054]
+    description: >
+      Per cluster group and resource: the first day capacity.forecast reaches capacity.usable. None within
+      13 months shows as "beyond 13 months".
+    formula: >
+      Forecast of demand over 13 months of history, keeping periodic peaks (Capacity design, 3.5), plus committed
+      demand from the demand register (3.6), compared with usable capacity (3.2). Resources: compute (threads),
+      memory (GB), storage (TB).
+    unit: date
+    decisions: [D-014, D-054]
 
   capacity.time_remaining_days:
     description: run_out_date - today.

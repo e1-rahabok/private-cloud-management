@@ -22,6 +22,7 @@ Open:
 - `http://localhost:8080/noc`: NOC desktop
 - `http://localhost:8080/l2`: L2 Platform
 - `http://localhost:8080/capacity`: Capacity
+- `http://localhost:8080/docs`: Docs (PCM's own objects, read-only)
 
 Options, in the page URL or on the API:
 
@@ -70,6 +71,20 @@ node build/tests/capacity.page.test.mjs
 
 ```bash
 python3 -m unittest build.tests.test_store -v
+```
+
+```bash
+python3 -m unittest build.tests.test_docs -v
+```
+
+```bash
+node build/tests/docs.page.test.mjs
+```
+
+Export PCM's objects for private-cloud-explained (D-082), into its checkout or any folder:
+
+```bash
+python3 -m build.pcm_proto.docs --export ../private-cloud-explained
 ```
 
 The page test needs Node and Playwright with Chromium. It also writes the review screenshots to `screenshots/`.
@@ -167,6 +182,26 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 - Page tests now wait until the server answers. A fixed 0.8-second wait made the Executive page test fail once.
 - The Executive page test was still flaky. It opened each panel, waited a fixed 150 ms, then looked for the 7/30-day switch, and sometimes found the previous panel's switch. It now waits for the panel it opened. Three runs in a row pass.
 
+## Results: Docs
+
+| Level | Tests | Result |
+|---|---|---|
+| Catalog | DCAT-1 to DCAT-4 | 4 passed |
+| Story | DST-1 to DST-4, no decision ID in any object | 5 passed |
+| Page | DPG-1 to DPG-4 | 4 passed |
+
+- 122 objects: 73 measures, 5 SOPs, 5 action policies, 1 threshold, 4 configuration standards, 34 settings.
+- "Used on" is computed from the page specifications. The Cluster Performance threshold shows on the NOC wall and incident page, and also on Capacity's cluster groups page, through the contention override.
+- History comes from the action record: after L2 publishes 60, the threshold shows version 2, 50 to 60, and who.
+- The export writes 9 files in private-cloud-explained's content model: 5 runbooks, 3 operations plans, 1 inventory register. Every file has its front matter fields and the required headings of its type.
+
+**Found by building `/docs`, and fixed in the specification first:**
+- `capacity.run_out_date` was defined twice, in the Executive and the Capacity catalogs. One definition now, in the Capacity catalog. Test DCAT-4 holds it.
+- The monthly review page read `l2.configuration_review`, which does not exist. It now reads `l2.config_order`. Test DCAT-2 checks every read on every page.
+- The Cluster Performance alert threshold and the configuration standards were written in the prototype code. They are now `catalog/thresholds.yaml` and `catalog/standards.yaml`. Test DCAT-3 holds it.
+
+**Needed on the private-cloud-explained side:** source type `pcm` and origin `generated` in its content model.
+
 ## Agent E2 (D-076)
 
 - Agent E2 drafts on the NOC incident page through one OpenAI-compatible client (`pcm_proto/agent_e2.py`, standard library only).
@@ -223,6 +258,8 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 | `pcm_proto/capacity.py` | Capacity engine: usable capacity, forecast, decision dates, purchase plan, reclamation, what-if |
 | `web/l2/` | The L2 pages |
 | `web/capacity/` | The Capacity pages |
+| `pcm_proto/docs.py` | Docs: objects, used on, history, export for private-cloud-explained |
+| `web/docs/` | The Docs pages |
 | `pcm_proto/store.py` | The prototype database (SQLite): action record, demand register, workflow state |
 | `pcm_proto/agent_e2.py` | Agent E2 client: drafts, vocabulary check, fallback |
 | `tests/` | Catalog and story tests (Python), page tests (Playwright) |

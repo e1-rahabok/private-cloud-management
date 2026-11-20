@@ -29,7 +29,8 @@ def load_spec() -> dict:
     def y(p):
         return yaml.safe_load((SPEC / p).read_text())
     settings = {k: v["default"] for k, v in y("catalog/settings.yaml")["settings"].items()}
-    return {"estate": y("data/estate.yaml"), "stories": y("data/stories.yaml"), "settings": settings}
+    return {"estate": y("data/estate.yaml"), "stories": y("data/stories.yaml"), "settings": settings,
+            "thresholds": y("catalog/thresholds.yaml")["thresholds"], "standards": y("catalog/standards.yaml")["standards"]}
 
 
 def rel(expr: str, now: datetime) -> datetime:

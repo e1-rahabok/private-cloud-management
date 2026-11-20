@@ -1,0 +1,52 @@
+# Acceptance tests for the Docs workspace (D-082). Each test fixes its own clock (D-067).
+version: 1
+now: "2026-10-19T10:05:00+08:00"
+
+catalog:
+  - id: DCAT-1
+    name: Every object has a page
+    expect: { kinds: [measure, sop, policy, threshold, standard, setting], each_count_equals_its_source: true }
+  - id: DCAT-2
+    name: Every read on every page names a catalog entry
+    expect: { dangling_reads: [] }
+  - id: DCAT-4
+    name: One number, one definition
+    expect: { ids_defined_twice: [] }
+  - id: DCAT-3
+    name: No value lives only in code
+    expect: { thresholds_from_catalog: true, standards_from_catalog: true }
+
+story:
+  - id: DST-1
+    name: A threshold's page shows what it touches and its history
+    expect:
+      used_on_includes: "/noc/wall"
+      after_l2_publishes_60: { version: 2, value: 60, history_before: "50", history_after: "60", by: l2-engineer-1 }
+  - id: DST-2
+    name: A published policy shows its new version and owner
+    stories: [L-4]
+    expect: { version: 2, tier: automatic, history_actions: [publish_policy] }
+  - id: DST-3
+    name: Proposals are visible
+    expect: { capacity.trend_weeks: proposal, capacity.class_planning: confirmed }
+  - id: DST-4
+    name: The export follows the private-cloud-explained content model
+    expect:
+      runbooks: 5
+      front_matter_fields: [title, doc_type, domain, priority, audience, access_scope, sources, last_ingested, origin, reviewed_by, reviewed_on, owner]
+      access_scope: infra-team
+      origin: generated
+      runbook_headings: [Trigger, Impact, Diagnosis, Actions, Escalation, Verification, Follow-up]
+      operations_plan_headings: [Scope, Objectives, Roles, Procedure, Testing, Review]
+      bom_headings: [Scope, Register, Compatibility, Support status, Source export]
+      no_decision_ids: true
+
+page:
+  - id: DPG-1
+    rule: Every Docs page and section names question, role and cadence.
+  - id: DPG-2
+    rule: The search box on /docs narrows the list to objects matching the text.
+  - id: DPG-3
+    rule: /docs/measure/capacity.run_out_date lists at least one /capacity page under "Used on".
+  - id: DPG-4
+    rule: No decision ID in page text; no request leaves the PCM host; text contrast at least 4.5:1.

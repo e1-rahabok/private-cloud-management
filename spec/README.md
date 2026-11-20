@@ -44,6 +44,7 @@ The reasons behind each item are in [`../design/`](../design) and [`../decisions
 | NOC | Written (D-053, step 2) | First build: all tests pass (`../build/README.md`) |
 | L2 | Written for all 9 pages (D-053, step 3) | Second build: all tests pass (`../build/README.md`) |
 | Capacity | Written (D-053, step 4) | First build: all tests pass (`../build/README.md`) |
+| Docs | Written (D-082) | First build: all tests pass (`../build/README.md`) |
 
 ## Assumptions to verify on the live system (D-062)
 

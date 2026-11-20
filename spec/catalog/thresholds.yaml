@@ -1,0 +1,17 @@
+# Thresholds that raise alerts or change a status. Moved from the prototype code (Docs design, 2.8).
+# L2 changes a threshold on /l2/authoring: replayed against history before it is published (l2.threshold_replay).
+
+version: 1
+
+thresholds:
+
+  th-cluster-perf-red:
+    measure: noc.cluster_performance
+    metric: Cluster Performance
+    operator: below
+    value: 50
+    unit: score out of 100
+    version: 1
+    owner: l2
+    description: A cluster below this score is red on the NOC wall and opens an incident.
+    source: "SP5 KPI bands: red 25 to 0 is the worst band; 50 is the start of orange, used as the alert line"

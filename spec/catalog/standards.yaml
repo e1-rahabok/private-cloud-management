@@ -1,0 +1,38 @@
+# Configuration standards: what every host and VM should look like. Moved from the prototype code (Docs design, 2.8).
+# L2 decides per finding: fix the setting, or fix the standard (L2 design, 3.10). Fixing the standard publishes a new version.
+
+version: 1
+
+standards:
+
+  ntp_server:
+    title: NTP server
+    applies_to: ESXi host
+    value: ntp.acme.internal
+    version: 1
+    owner: l2
+    why: Hosts with different clocks break log correlation, certificate checks and vSAN.
+
+  syslog_target:
+    title: Syslog target
+    applies_to: ESXi host
+    value: loginsight.acme.internal
+    version: 1
+    owner: l2
+    why: A host that does not send its logs cannot be investigated after the fact.
+
+  esxi_version:
+    title: ESXi version
+    applies_to: ESXi host
+    value: N or N-1
+    version: 1
+    owner: l2
+    why: Older versions miss fixes and stretch the upgrade path; two versions keep the estate supportable.
+
+  vmware_tools_variants:
+    title: VMware Tools versions
+    applies_to: VM
+    value: 3 versions (current plus two)
+    version: 1
+    owner: l2
+    why: Every extra variant is another combination to test and to troubleshoot.

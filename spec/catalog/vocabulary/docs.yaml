@@ -1,0 +1,12 @@
+# Docs vocabulary: the technical terms of the catalog are allowed (Docs design, 2.6). No decision IDs (builder rule 9).
+version: 1
+workspace: docs
+allowed: [CPU Ready, threads, cores, DRAM, Operational Availability, KPI, SLA]
+avoided: [health score]
+labels:
+  measure: Measures
+  sop: SOPs
+  policy: Action policies
+  threshold: Thresholds
+  standard: Configuration standards
+  setting: Settings

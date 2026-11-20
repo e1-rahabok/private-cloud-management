@@ -164,16 +164,7 @@ entries:
 
   # ---------------------------------------------------------------- Room to grow
 
-  capacity.run_out_date:
-    description: >
-      Per cluster group and resource: the first date forecast demand exceeds usable capacity.
-    formula: >
-      Forecast of demand over 13 months of history, keeping periodic peaks
-      (Capacity design, 3.5), plus committed demand from the demand register (3.6),
-      compared with usable capacity (3.2). Resources: compute (threads), memory (GB),
-      storage (TB).
-    unit: date
-    decisions: [D-014, D-054]
+  # capacity.run_out_date is defined once, in catalog/capacity.yaml (one number, one definition).
 
   capacity.decision_date:
     description: Per cluster group and resource, the last date to order more.

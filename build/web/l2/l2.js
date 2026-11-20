@@ -162,7 +162,7 @@ async function configuration(msg = '') {
   const d = await getJSON('configuration');
   main.innerHTML = `<h1>Configuration</h1><p class="muted">Filter: Gold first. Ordered by urgency.</p><div class="msg" role="status">${esc(msg)}</div>`
     + Object.entries(d.groups).map(([g, items]) => `<h2>${GROUP[g]}</h2>` + (items.length ? `<table><thead><tr><th>Object</th><th>Setting</th><th>Actual</th><th>Standard</th><th></th></tr></thead><tbody>${items.map(i => `<tr>
-      <td>${esc(i.object)}</td><td>${esc(i.setting.replaceAll('_', ' '))}</td><td>${esc(i.actual)}</td><td>${esc(i.standard)} <span class="muted">(v${i.standard_version})</span></td>
+      <td>${esc(i.object)}</td><td>${esc(i.setting_label || i.setting)}</td><td>${esc(i.actual)}</td><td>${esc(i.standard)} <span class="muted">(v${i.standard_version})</span></td>
       <td>${i.decision ? esc(i.decision.replaceAll('_', ' ')) : `<button type="button" class="act" data-fix="${i.id}" data-choice="fix_the_setting">Fix the setting</button> <button type="button" class="act secondary" data-fix="${i.id}" data-choice="fix_the_standard">Fix the standard</button>`}</td></tr>`).join('')}</tbody></table>`
       : `<p class="muted">Nothing to ${GROUP[g].toLowerCase().replace(' it', '')}.</p>`)).join('');
   main.querySelectorAll('[data-fix]').forEach(b => b.addEventListener('click', async () => {

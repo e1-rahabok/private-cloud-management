@@ -266,8 +266,8 @@ stories:
     objects: { host: va-esx-142, cluster: VA-G-05 }
     plant:
       drift:
-        - { setting: ntp_server, actual: "10.20.1.9", standard: "ntp.acme.internal" }
-        - { setting: syslog_target, actual: "(none)", standard: "loginsight.acme.internal" }
+        - { setting: ntp_server, actual: "10.20.1.9" }
+        - { setting: syslog_target, actual: "(none)" }    # standards: catalog/standards.yaml
     expect: { group: correct_it, findings: 2 }
 
   L-4:

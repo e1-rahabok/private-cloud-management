@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import api, capacity, generator, l2, noc
+from . import api, capacity, docs, generator, l2, noc
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 
@@ -31,6 +31,13 @@ def route(path: str, query: dict):
         return noc_get(parts[2:], now, enable)
     if parts[:2] == ["api", "l2"]:
         return l2_get(parts[2:], now, enable, query)
+    if parts[:2] == ["api", "docs"]:
+        rest = parts[2:]
+        if not rest:
+            return docs.index(enable)
+        if len(rest) == 2 and rest[0] in docs.KINDS:
+            return docs.detail(rest[0], rest[1], enable)
+        return None
     if parts[:2] == ["api", "capacity"]:
         return capacity_get(parts[2:], now, enable, query)
     if parts[:2] != ["api", "exec"]:
@@ -122,7 +129,7 @@ def capacity_get(rest, now, enable, query):
     return None
 
 
-PAGES = {"/capacity": "/capacity/index.html", "/capacity/clusters": "/capacity/clusters.html", "/capacity/demand": "/capacity/demand.html",
+PAGES = {"/docs": "/docs/index.html", "/capacity": "/capacity/index.html", "/capacity/clusters": "/capacity/clusters.html", "/capacity/demand": "/capacity/demand.html",
          "/capacity/what-if": "/capacity/what-if.html", "/capacity/plan": "/capacity/plan.html", "/capacity/waste": "/capacity/waste.html",
          "/l2": "/l2/index.html", "/l2/weekly": "/l2/weekly.html", "/l2/monthly": "/l2/monthly.html", "/l2/inventory": "/l2/inventory.html", "/l2/escalations": "/l2/escalations.html", "/l2/configuration": "/l2/configuration.html",
          "/l2/context": "/l2/context.html", "/l2/authoring": "/l2/authoring.html","/exec": "/exec/index.html", "/noc": "/noc/index.html", "/noc/wall": "/noc/wall.html",
@@ -159,6 +166,8 @@ class Handler(BaseHTTPRequestHandler):
             path = "/noc/alert.html"
         if path.startswith("/l2/investigate/"):
             path = "/l2/investigate.html"
+        if path.startswith("/docs/") and path.count("/") == 3:
+            path = "/docs/object.html"
         if path.startswith("/capacity/group/"):
             path = "/capacity/group.html"
         path = PAGES.get(path, path)

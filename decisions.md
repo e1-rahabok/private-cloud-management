@@ -12,7 +12,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-006 | 2026-11-20 | PCM uses VCF Operations as a data source and has its own database. It does not depend 100% on VCF Operations. | VCF Operations covers only the VMware part, and PCM keeps its own data. |
 | D-007 | 2026-11-20 | PCM replaces the VCF Operations presentation layer for capacity, cost, performance, inventory, configuration and availability management. Compliance follows D-022. | These are the operations areas PCM serves by role. |
 | D-008 | 2026-11-20 | Out of scope: VCF lifecycle management (the SDDC Manager part) and security operations. | Lifecycle is Broadcom software management. Security operations is a different field with different expertise. |
-| D-009 | 2026-11-20 | New capabilities: an executive dashboard, multiple VCF Operations instances, and documentation for the private cloud. | Starting points: [VMW-Executive-Dashboard](https://github.com/e1-rahabok/VMW-Executive-Dashboard), [VMW-Federated-VCF-Operations](https://github.com/e1-rahabok/VMW-Federated-VCF-Operations), [private-cloud-explained](https://github.com/e1-rahabok/private-cloud-explained). Ideas are also borrowed from https://isvara.io. |
+| D-009 | 2026-11-20 | New capabilities: an executive dashboard, multiple VCF Operations instances, and documentation for the private cloud. Revised by D-082: documentation for colleagues is private-cloud-explained, a separate product; PCM documents only its own objects. | Starting points: [VMW-Executive-Dashboard](https://github.com/e1-rahabok/VMW-Executive-Dashboard), [VMW-Federated-VCF-Operations](https://github.com/e1-rahabok/VMW-Federated-VCF-Operations), [private-cloud-explained](https://github.com/e1-rahabok/private-cloud-explained). Ideas are also borrowed from https://isvara.io. |
 | D-010 | 2026-11-20 | The specification is the maintained artifact. AI writes 100% of the code. Developers do not maintain code. | Generating code is cheap. The specification is what has to stay correct. |
 | D-011 | 2026-11-20 | Each role gets a workspace with its own URL. Workspaces share no menu. | One common UI for all roles weakens the experience for each of them. |
 | D-012 | 2026-11-20 | Workspaces are per role, not per pillar of operations management. First four: **NOC** (L1 operators), **L2**, **Capacity**, **Executive**. | Enterprise IT is run by people in different roles. Each role gets its own workspace. |
@@ -27,7 +27,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-021 | 2026-11-20 | The L2 role covers escalation (reactive) and proactive health checks, across availability, performance and configuration. | L2 is the expert behind the NOC. |
 | D-022 | 2026-11-20 | Compliance is parked under security, after release 1.0. | It needs security expertise (D-008). |
 | D-023 | 2026-11-20 | VMware is mandatory. Competitors are included only for migration into VMware, not for management. Migration runs one way only: into VMware. Red Hat OpenShift is the first. | The goal is to bring the whole private cloud infrastructure onto VMware (D-002). |
-| D-024 | 2026-11-20 | Documentation has its own URL, for example `privatecloud.acme.com/docs`. | Follows D-011. |
+| D-024 | 2026-11-20 | Documentation has its own URL, for example `privatecloud.acme.com/docs`. Revised by D-082: `/docs` documents PCM's own objects only. | Follows D-011. |
 | D-025 | 2026-11-20 | PCM runs actions directly through vCenter and VCF APIs, not through ITSM or automation tools. | Those tools are too slow for self-driving operations. |
 | D-026 | 2026-11-20 | Upgrading a customer-personalized specification is deferred until after the prototype is approved. | The prototype comes first. Large open-source products such as Odoo and Linux live with the same problem. |
 | D-027 | 2026-11-20 | The FinOps role owns Price: cost accounting and chargeback. FinOps works with the Capacity team. Its workspace comes after release 1.0. | Price is a FinOps job, not a Capacity or Executive one. |
@@ -86,6 +86,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-079 | 2026-11-20 | Replace the trust ladder with policy as code. No "Make automatic" button and no promotion thresholds. The approval and rollback record per action type is evidence for L2, never a gate. L2 changes an action type's tier and guardrails through "Propose a policy change": versioned, replayed against recent history, owned (L2 in 1.0; the Operations Manager reviews after 1.0). Guardrails make automatic safe: blast-radius limits, maintenance windows, class-of-service conditions, automatic expiry and undo, and a service account scoped to the action type. | See Rationale. |
 | D-080 | 2026-11-20 | The prototype keeps what people and policies do in SQLite: the action record (append-only), the demand register, and workflow state. Synthetic metrics are generated from "now" and never stored. Plain SQL, so the schema ports to the product database. This does not choose the product database (PCM core, 5). | See Rationale. |
 | D-081 | 2026-11-20 | Detailed inventory matches every change to what explains it, in a fixed order: the PCM action record, an approved change window, a VCF Automation request, DRS. Explained changes are counted; unexplained ones are listed one by one, production and Gold first. L2 can record an unexplained change as expected, with a reason. | Tens of thousands of changes a week cannot be read one by one. L2's question is "is it expected?", so PCM answers it and shows only the exceptions. Details: L2 design, 3.17. |
+| D-082 | 2026-11-20 | PCM `/docs` documents only what PCM owns and acts on: the definition of every number, SOPs, action policies, thresholds, configuration standards and settings, each with version, owner, where it is used and its change history. It is read-only: each object is changed in the workspace that owns it. Documentation for colleagues (architecture, decisions, guides, team structure, learning modes) is private-cloud-explained, a separate product. PCM exports its objects as Markdown into private-cloud-explained, through its review. | See Rationale. |
 
 ## Rationale
 
@@ -429,4 +430,27 @@ Source: Cost n Price n Value (in `sources/`).
 
 **What it does not decide**
 - The product database stays open (PCM core, section 5). The schema uses only TEXT, INTEGER and REAL, and ISO 8601 times, so it ports to a relational product database without redesign. The append-only trigger has a direct equivalent there.
+
+### D-082 PCM documents its own objects; private-cloud-explained documents the private cloud
+
+**Why not one documentation product**
+- The two products have opposite sources of truth. private-cloud-explained takes what people wrote (email, Confluence, Office files, meetings). PCM takes the live estate.
+- Merging breaks both:
+  - private-cloud-explained would need vCenter credentials. A read-only, low-risk site becomes a high-risk one, and its stated non-goal (no live connection) falls.
+  - PCM would need an ingestion pipeline for documents. That is a large project with no operational value.
+- The readers differ. private-cloud-explained serves every employee, in two tiers. PCM serves operations roles (D-011).
+
+**Why PCM still needs `/docs`**
+- Every number on every PCM page needs its definition one click away. A number nobody can explain is not trusted.
+- PCM owns objects that act: an SOP drives L1's buttons, a policy decides what runs automatically, a threshold raises alerts. Their documentation must be the object itself, or the text and the behaviour drift apart.
+- "Where is it used" answers the question before every change: which pages and which roles see a different number if this changes.
+
+**Why read-only**
+- Each object already has one place where it is changed, with a replay and a record: L2 publishes thresholds and policies, Capacity owns its settings. A second edit path in `/docs` would bypass them.
+
+**What PCM exports to private-cloud-explained, and why**
+- SOPs, action policies, thresholds and settings, and the inventory summary. These are the overlaps where a hand-written copy goes stale.
+- PCM's SOPs start from an alert. In private-cloud-explained's content model that is a runbook, not an SOP. They are exported as runbooks.
+- The export is Markdown with private-cloud-explained's front matter, and it goes through the same pull-request review as every other page.
+- Two changes are needed on the private-cloud-explained side: a source type `pcm` and an origin `generated`. Neither exists in its content model today.
 

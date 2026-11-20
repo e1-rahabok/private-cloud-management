@@ -59,7 +59,7 @@ reads: [l2.weekly_measures, l2.repeated_escalations, l2.slipped_alerts]
 question: "Is risk going down, and what does the Capacity team expect?"
 role: l2
 cadence: [monthly]
-reads: [l2.configuration_review, capacity.purchase_plan]
+reads: [l2.config_order, capacity.purchase_plan]
 ```
 
 - **Configuration risk:** open findings by group (correct it, update it, simplify it, optimize it) now.
