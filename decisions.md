@@ -47,6 +47,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-041 | 2026-11-20 | Wall behaviour: a fixed status strip on every screen; red interrupts the rotation until acknowledged; stale data turns the wall grey, never green; with five or more displays, nothing rotates. | See Rationale. |
 | D-042 | 2026-11-20 | PCM also runs the weekly check, a deeper analysis. It runs when load is low, by default Sunday early morning in each region's local time. Platform (L2) reviews the result in about 1 hour. | The weekly check loads the systems it reads. See Rationale. |
 
+| D-043 | 2026-11-20 | The monthly review (1 day) is also the bigger team meeting: everyone meets to discuss important but not urgent matters, plan the next month, and review progress for the year against goals. PCM prepares the review pack; L2 (Platform) hosts it. | See Rationale. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -173,4 +174,40 @@ Longer reasons for decisions that need them.
 - Patterns a day cannot show: weekly cycles, slow drifts, VMs that are slightly worse every day.
 - A review of the alerts that slipped through all week, used to improve the checks.
 - Each finding goes to L2 with an owner and an action.
+
+### D-043 The monthly review
+
+**What it is**
+- More than a long check. It is the one time each month the whole team meets: L1 leads, L2, the Capacity team, Architecture, and others as needed.
+- It has three jobs:
+  - discuss important but not urgent matters;
+  - plan the next month;
+  - check progress for the year against goals.
+
+**Why PCM prepares the pack**
+- A day of the whole team is the most expensive hour of the month. It should be spent on judgement and decisions, not on building slides.
+- PCM produces the pack the same way it produces the daily and weekly checks:
+  - one year of baselines and trends;
+  - repeated escalations;
+  - alerts that slipped through;
+  - configuration risk progress;
+  - the capacity outlook from the Capacity team's weekly work.
+
+**Why yearly goals live in PCM**
+- SP5 Day 0: goals follow SMART criteria, with metrics to measure success.
+- A goal written in a slide deck in January is forgotten by March. A goal held in PCM is measured every month from the same data.
+- Example goals:
+  - fewer alerts;
+  - fewer repeated escalations;
+  - more problems found by a check than by an alert;
+  - versions at N or N-1.
+
+**Why the meeting records decisions and owners**
+- A meeting without recorded actions repeats itself next month.
+- Each decision gets an owner and a due date in PCM. The next month's pack opens with their status.
+
+**Why L2 hosts it**
+- SP5: deep analysis and long-term planning (1 week to 1 year) is done by the L2 team.
+- The review is shown on one screen in the room as a live dashboard, not a PDF. SP5 IT management: a monthly presentation supported by a live dashboard for an interactive discussion.
+- Other roles attend without needing a workspace of their own (D-037).
 

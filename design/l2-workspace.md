@@ -189,7 +189,24 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
   - The root cause is often a log message on another object that never became an alarm.
   - SP5 check before turning a log message into an alert: count how often it appears on healthy objects over a week. PCM runs this count when L2 proposes a log-based alert. A message seen 1,000 times in 5 days on healthy hosts is noise.
 
-### 3.14 Agent E2: explains and drafts, never decides
+### 3.14 The monthly review is a team meeting (D-043)
+
+- **What:** `/l2/monthly` is presented on one screen in the room as a live dashboard.
+  - PCM prepares it in advance:
+    - one-year baselines;
+    - repeated escalations;
+    - alerts that slipped through;
+    - configuration risk progress;
+    - the capacity outlook;
+    - progress against the year's goals.
+  - The meeting records decisions with owners and due dates.
+  - Next month's pack opens with their status.
+- **Why:**
+  - It is the one day the whole team meets, so its time goes to judgement, not slide-making.
+  - Goals held in PCM are measured from the same data every month. Goals in a slide deck are forgotten by March.
+  - Decisions without owners come back unchanged next month.
+
+### 3.15 Agent E2: explains and drafts, never decides
 
 - **Agent E2 may:**
   - explain a finding in the context of the knowledge base and today's business context;
@@ -213,7 +230,7 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
 | `/l2/escalations` | Escalations from L1 | What did L1 hand over, and is it complete? |
 | `/l2/investigate/{object}` | Troubleshooting | Why is it down or slow? |
 | `/l2/weekly` | Weekly check result | What does a week show that a day did not? |
-| `/l2/monthly` | Monthly review | What larger problem should we fix this month? |
+| `/l2/monthly` | Monthly review and team meeting (D-043) | How are we doing against this year's goals, and what do we decide for next month? |
 | `/l2/configuration` | Configuration risk | What is wrong, outdated, complex or wasteful? |
 | `/l2/inventory` | Detailed inventory and changes (D-020) | What changed, and is that expected? |
 | `/l2/context` | Business calendar (3.6) | What is expected this week? |
@@ -225,9 +242,7 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
 
 ## 5. Open questions for the author
 
-1. **Monthly review attendees.** SP5 says monthly work solves "larger, more complex and political problems". Usually that needs Architecture in the room.
-   - Proposal: the review runs in the L2 workspace. Architecture joins, but has no workspace in 1.0.
-2. **Security forensics.** "Is it breached" is a forensic investigation, not troubleshooting (SP5), and security operations is out of scope (D-008).
+1. **Security forensics.** "Is it breached" is a forensic investigation, not troubleshooting (SP5), and security operations is out of scope (D-008).
    - Proposal: when a "safe" finding points to a breach, L2 secures the evidence and hands over to the security team. PCM does not investigate the breach.
-3. **Who owns PCM's own configuration** (class-of-service definitions, action tiers)?
+2. **Who owns PCM's own configuration** (class-of-service definitions, action tiers)?
    - Proposal: L2 proposes changes. The Operations Manager approves them after 1.0. Until then, L2 owns them.
