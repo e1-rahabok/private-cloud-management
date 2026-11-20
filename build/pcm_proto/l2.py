@@ -26,7 +26,7 @@ class State:
 
     def reset(self):
         self.proposals, self.closures, self.calendar_added = {}, {}, []
-        self.tiers, self.extra_approvals, self.promoted_by = {}, {}, {}
+        self.policies, self.replays, self.extra_approvals = {}, {}, {}
         self.standards, self.thresholds = {}, {}
 
 
@@ -49,9 +49,23 @@ def verdicts(findings: list) -> dict:
     return out
 
 
-def promotion_offered(approvals: int, rollbacks: int, settings: dict) -> bool:
-    """l2.offer_promotion."""
-    return approvals >= settings["l2.promotion_min_approvals"] and rollbacks <= settings["l2.promotion_max_rollbacks"]
+def guardrail_block(policy: dict, run: dict) -> str | None:
+    """l2.action_policy: the first guardrail a run breaks, or None. Guardrails, not approvals, gate automatic runs (D-079)."""
+    g = policy.get("guardrails", {})
+    if "max_vms_per_cluster_per_hour" in g and run.get("vms", 0) > g["max_vms_per_cluster_per_hour"]:
+        return "max_vms_per_cluster_per_hour"
+    if g.get("same_class_of_service_only") and not run.get("same_class", True):
+        return "same_class_of_service_only"
+    if g.get("not_in_close_week") and run.get("in_close_week"):
+        return "not_in_close_week"
+    if g.get("environment") == "non_production" and run.get("environment") == "production":
+        return "environment"
+    return None
+
+
+def accountable(policy: dict, action_type: str) -> str:
+    """D-050 for automatic runs: the policy owner and the policy version."""
+    return f"policy {action_type} v{policy['version']}, owner {policy['owner']}"
 
 
 def next_quarter_end(now: datetime, tz: str) -> datetime:
@@ -84,21 +98,55 @@ def calendar(now: datetime, enable=()) -> list:
     return out + STATE.calendar_added
 
 
-def action_types(settings: dict, enable=()) -> list:
+def policies(enable=()) -> list:
+    """Action policies (catalog/policies/actions.yaml) with published changes, plus the record as evidence."""
+    base = yaml.safe_load((SPEC / "catalog/policies/actions.yaml").read_text())["policies"]
     l4 = stories(enable).get("L-4")
-    base = {"move_vms_between_clusters": {"approvals": 23, "rollbacks": 0},
-            "power_off_idle_vm": {"approvals": 8, "rollbacks": 0},
-            "delete_old_snapshot": {"approvals": 31, "rollbacks": 2}}
-    if not l4:
-        base.pop("move_vms_between_clusters")
+    rec = {"move_vms_between_clusters": (l4["plant"]["record"] if l4 else {"approvals": 0, "rejections": 0, "rollbacks": 0}),
+           "power_off_idle_vm": {"approvals": 8, "rejections": 0, "rollbacks": 0},
+           "delete_old_snapshot": {"approvals": 31, "rejections": 2, "rollbacks": 2}}
     out = []
-    for t, r in base.items():
-        approvals = r["approvals"] + STATE.extra_approvals.get(t, 0)
-        tier = STATE.tiers.get(t, "approval")
-        out.append({"action_type": t, "tier": tier, "approvals": approvals, "rollbacks": r["rollbacks"],
-                    "promotion_offered": tier != "automatic" and promotion_offered(approvals, r["rollbacks"], settings),
-                    "promoted_by": STATE.promoted_by.get(t)})
+    for t, p in base.items():
+        cur = {**p, **STATE.policies.get(t, {})}
+        r = dict(rec.get(t, {"approvals": 0, "rejections": 0, "rollbacks": 0}))
+        r["approvals"] = r.get("approvals", 0) + STATE.extra_approvals.get(t, 0)
+        out.append({"action_type": t, "tier": cur["tier"], "guardrails": cur["guardrails"], "version": cur["version"],
+                    "owner": cur["owner"], "workspace": cur.get("workspace"), "record": r})
     return out
+
+
+def history_runs(action_type: str, enable=()) -> list:
+    """The recent runs a policy replay reads. Synthetic: built from story L-4's counts."""
+    l4 = stories(enable).get("L-4")
+    if action_type != "move_vms_between_clusters" or not l4:
+        return []
+    h = l4["plant"]["history"]
+    runs = []
+    for i in range(h["moves"]):
+        run = {"vms": 4 + i % 5, "same_class": True, "in_close_week": False}
+        if i < h["more_than_10_vms"]:
+            run["vms"] = 12 + i
+        elif i < h["more_than_10_vms"] + h["across_classes"]:
+            run["same_class"] = False
+        elif i < h["more_than_10_vms"] + h["across_classes"] + h["in_close_week"]:
+            run["in_close_week"] = True
+        runs.append(run)
+    return runs
+
+
+def policy_replay(action_type: str, proposed: dict, enable=()) -> dict:
+    """l2.policy_replay: what the proposed policy would have run automatically, and what each guardrail stops."""
+    runs = history_runs(action_type, enable)
+    stopped = {}
+    auto = 0
+    for r in runs:
+        b = guardrail_block(proposed, r)
+        if b:
+            stopped[b] = stopped.get(b, 0) + 1
+        elif proposed.get("tier") == "automatic":
+            auto += 1
+    return {"action_type": action_type, "runs": len(runs), "would_run_automatically": auto, "stopped": stopped,
+            "proposed": proposed}
 
 
 def proposals(enable=()) -> list:
@@ -108,6 +156,7 @@ def proposals(enable=()) -> list:
         p = l4["plant"]["proposal"]
         state = STATE.proposals.get(p["id"], {"state": "waiting"})
         out.append({"id": p["id"], "action_type": p["action_type"], "targets": [p["from"], p["to"]],
+                    "run": {"vms": p["vms"], "same_class": p["same_class"], "in_close_week": p["in_close_week"]},
                     "reason": f"{p['from']} is running hot. Move {p['vms']} VMs to {p['to']}, which has room in the same class.",
                     **state})
     for pid, p in STATE.proposals.items():
@@ -177,7 +226,7 @@ def daily(now: datetime, enable=()) -> dict:
                     "finished_at": (started + timedelta(minutes=41)).isoformat(),
                     "review": "About 10 minutes when nothing needs you."},
             "verdicts": verdicts(f), "findings": f, "slipped_alerts": slipped,
-            "action_types": action_types(st, enable)}
+            "policies": policies(enable)}
 
 
 def escalations(now: datetime, enable=()) -> list:
@@ -314,16 +363,36 @@ def act(now: datetime, path: list, body: dict, enable=()) -> tuple[int, dict]:
                                         "rejection_reason": body["reason"]}
                 rec("reject", pid, body["reason"], "waiting", "rejected")
                 return 200, {"state": "rejected"}
-        if path[:1] == ["action-types"] and len(path) == 3 and path[2] == "promote":
-            t = next((x for x in action_types(st, enable) if x["action_type"] == path[1]), None)
-            if not t or not t["promotion_offered"]:
-                return 403, {"error": "Promotion is not offered for this action type."}
+        if path[:1] == ["policies"] and len(path) == 3 and path[2] in ("replay", "publish"):
+            t = path[1]
+            cur = next((x for x in policies(enable) if x["action_type"] == t), None)
+            if not cur:
+                return 404, {"error": "no such action type"}
+            proposed = {"tier": body.get("tier", cur["tier"]), "guardrails": body.get("guardrails", cur["guardrails"])}
+            if proposed["tier"] not in ("automatic", "approval", "never"):
+                return 400, {"error": "tier must be automatic, approval or never"}
+            if path[2] == "replay":
+                out = policy_replay(t, proposed, enable)
+                STATE.replays[t] = proposed
+                return 200, out
+            if STATE.replays.get(t) != proposed:
+                return 400, {"error": "Replay the proposed policy before publishing it."}
             if not body.get("reason"):
-                return 400, {"error": "A reason is required: you become accountable for its automatic runs."}
-            STATE.tiers[path[1]] = "automatic"
-            STATE.promoted_by[path[1]] = human
-            rec("promote", path[1], body["reason"], "approval", "automatic")
-            return 200, {"tier": "automatic", "promoted_by": human}
+                return 400, {"error": "A reason is required to publish a policy change."}
+            new = {**proposed, "version": cur["version"] + 1, "owner": human}
+            STATE.policies[t] = new
+            STATE.replays.pop(t, None)
+            rec("publish_policy", t, body["reason"], f"v{cur['version']} {cur['tier']}", f"v{new['version']} {new['tier']}")
+            ran = []
+            if new["tier"] == "automatic":
+                for p in proposals(enable):
+                    if p["action_type"] == t and p.get("state") == "waiting" and p.get("run") and not guardrail_block(new, p["run"]):
+                        STATE.proposals[p["id"]] = {**STATE.proposals.get(p["id"], {}), "state": "ran_automatically",
+                                                    "accountable": accountable(new, t)}
+                        noc.record(t, p["id"], accountable(new, t), "policy run", "waiting", "ran automatically", now,
+                                   actor_agent="pcm-policy")
+                        ran.append(p["id"])
+            return 200, {**new, "ran_automatically": ran}
         if path[:1] == ["escalations"] and len(path) == 3:
             iid, verb = path[1], path[2]
             esc = next((e for e in escalations(now, enable) if e["id"] == iid), None)

@@ -24,7 +24,7 @@ const hosts = new Set();
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on('request', r => hosts.add(new URL(r.url()).host));
-  page.on('dialog', d => d.accept('Clean record over 23 approvals'));
+  page.on('dialog', d => d.accept('Reason given in the test'));
   const go = async p => { await page.goto(BASE + p + q); await page.waitForSelector('body[data-ready="1"]'); };
 
   await reset();
@@ -47,6 +47,17 @@ try {
   await go('/l2');
   const verdicts = await page.$$eval('.verdict', els => els.map(e => e.dataset.verdict));
   check('LPG-3', verdicts.join() === 'present_health,risk,efficiency' && !/health score/i.test(await page.innerText('body')), verdicts.join(', '));
+
+  // LPG-10 no "Make automatic"; Publish only after Replay
+  await go('/l2');
+  const noAuto = !(await page.innerText('body')).includes('Make automatic');
+  await page.click('button[data-propose="move_vms_between_clusters"]');
+  const pubBefore = await page.isDisabled('#publish');
+  await page.selectOption('#pf select[name="tier"]', 'automatic');
+  await page.click('#pf button[type="submit"]'); await page.waitForSelector('body[data-policy-replayed]');
+  const replayText = await page.innerText('#replay');
+  const pubAfter = await page.isDisabled('#publish');
+  check('LPG-10', noAuto && pubBefore && !pubAfter && /18/.test(replayText), replayText.trim());
 
   await go('/l2/escalations');
   const escText = await page.innerText('[data-escalation="inc-fr-s-02"]');
@@ -90,7 +101,7 @@ try {
   // Screenshots for review: approve-then-promote flow on Today, the escalation, the investigation.
   mkdirSync(ROOT + 'build/screenshots', { recursive: true });
   const shot = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 2 });
-  shot.on('dialog', d => d.accept('Clean record over 23 approvals'));
+  shot.on('dialog', d => d.accept('Reason given in the test'));
   await shot.goto(BASE + '/l2' + q); await shot.waitForSelector('body[data-ready="1"]');
   await shot.screenshot({ path: ROOT + 'build/screenshots/l2-today.png', fullPage: true });
   await shot.goto(BASE + '/l2/investigate/sg-app-117' + q); await shot.waitForSelector('body[data-ready="1"]');

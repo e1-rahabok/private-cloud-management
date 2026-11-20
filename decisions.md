@@ -32,7 +32,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-026 | 2026-11-20 | Upgrading a customer-personalized specification is deferred until after the prototype is approved. | The prototype comes first. Large open-source products such as Odoo and Linux live with the same problem. |
 | D-027 | 2026-11-20 | The FinOps role owns Price: cost accounting and chargeback. FinOps works with the Capacity team. Its workspace comes after release 1.0. | Price is a FinOps job, not a Capacity or Executive one. |
 | D-028 | 2026-11-20 | All workspaces run on one host, each under its own path: `privatecloud.acme.com/noc`, `/l2`, `/capacity`, `/exec`, `/docs`. No shared menu. | One host to deploy and secure. Separate paths keep each role's experience separate (D-011). |
-| D-029 | 2026-11-20 | Action governance lives inside PCM. Each action has a tier: automatic, approval in PCM, or never automatic. A fixed policy sets the tier; the LLM only proposes. Every action is written to an audit log in PCM. | Direct actions (D-025) still need control and an answer to "who changed what, why, and who approved". |
+| D-029 | 2026-11-20 | Action governance lives inside PCM as policy as code. Each action type has a tier (automatic, approval, never) and guardrails, versioned in the catalog with an owner. An automatic action never records an approval: if an approval could be automated, it is not needed, so it is removed from the policy. Every action is written to the action history. Revised by D-079. | Direct actions (D-025) still need control. Guardrails reduce risk; approval records do not. |
 | D-030 | 2026-11-20 | Management scope is Broadcom VMware only; competitors appear only for migration (D-023). Out of scope: end-user help desk (for example "my laptop is not working") and business transactions (for example "the payment system is slow"). Scope guide: https://isvara.io/read/part-2/role-based-contents | PCM manages the VMware private cloud, not the applications or end-user devices on it. |
 | D-031 | 2026-11-20 | L1 works in three shifts; someone always watches. Fewer people per shift than today (D-046). No mobile push for L1; mobile push is for L2. | The NOC is staffed 24x7, so L1 does not need to be paged. Even with AI, people stay on every shift: not all operational context is in a computer, so AI does not have all of it. |
 | D-032 | 2026-11-20 | L1 has two UIs. **Wall screen**: a large TV that streams the present, with no mouse and no keyboard; it auto-rotates about every 60 seconds through Inventory, Availability, Performance, Security, Compliance, Configuration. **Desktop dashboard**, assisted by Agent E2. Live screen practice: https://isvara.io/read/part-2/proactive-operations | A static screen bores the viewer. The wall is for watching; the desk is for working. |
@@ -54,7 +54,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-047 | 2026-11-20 | Agent E2 is a core team member, not a tool. Assume it knows vSphere, Windows, Linux, networking and the rest of the stack, even though today it knows only vSphere. | AI does the routine work the lean team (D-046) no longer has people for. |
 | D-048 | 2026-11-20 | PCM assumes a two-layer organization. Today's top layers are cut the most. The middle layer becomes the new upper layer. | In a large IT organization with 8 layers, the top 3 are the highest paid and the furthest from ground reality: they neither do the work nor know the technology. AI removes the need for them first. |
 | D-049 | 2026-11-20 | In release 1.0, "Is it safe?" shows VMware platform hygiene only: root logins, ESXi Shell or SSH enabled, lockdown mode off, certificates near expiry. No attack or breach detection (D-044). | These are configuration checks L2 already runs. They are among the most common causes of outages and audit findings in VMware estates. Health keeps its three questions (D-035). |
-| D-050 | 2026-11-20 | Agent E2 cannot carry responsibility. Every Agent E2 task, action or change records two fields: Agent E2's own ID, and the human who ordered it. That human varies by task. Agent E2 can serve several managers at once, because it tracks who ordered what. | Accountability stays with a person. The audit log answers "who ordered this", not only "what did it". |
+| D-050 | 2026-11-20 | Agent E2 cannot carry responsibility. Every task, action or change records two fields: the actor (a person, Agent E2's ID, or PCM running a policy) and the accountable party. For a person or Agent E2, the accountable party is the human who ordered it, which varies by task; Agent E2 can serve several managers at once. For an automatic run, it is the policy owner and the policy version. Revised by D-079. | Accountability stays with a person, and the action history answers "who ordered this", or "which policy, owned by whom", not only "what did it". |
 | D-051 | 2026-11-20 | The Executive workspace uses plain language with basic IT words. Technical terms are kept to a minimum, including in the drill-down. Allowed: server, storage, network, data centre, application, backup, recovery, outage, capacity, cost, upgrade, version, virtual machine (VM). Avoided: ESXi, vSAN, NSX, DRS, HA, vCPU, IOPS, latency, contention, cluster, host, datastore, resource pool, RTO, RPO, snapshot. A build test fails if an avoided term appears in the page text. The list lives in the specification, so customers can change it. | The CIO presents this page upward to the CEO, CFO and board. Basic IT words are understood there; product and engineering terms are not. CEOs and CFOs hear "virtual machine" in budget discussions. |
 | D-052 | 2026-11-20 | Every visual answers a named question, for a named role, at a named cadence. A visual that cannot name all three is cut. | A rich UI turns into decoration without this rule. It also gives each regeneration from the specification (D-010) a test that a visual can pass or fail. |
 | D-053 | 2026-11-20 | The prototype is built in this order: Executive, NOC, L2, then Capacity. All four stay in release 1.0 (D-012). | See Rationale. |
@@ -83,6 +83,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-076 | 2026-11-20 | For demos, Agent E2 calls a model through Vercel AI Gateway, as in Agent E2's own benchmark and lab. PCM talks to Agent E2's model through one OpenAI-compatible client: the endpoint and the model are settings. Customer sites point it at a local model server (D-004, D-017). | See Rationale. |
 | D-077 | 2026-11-20 | "Is it up?" follows the SP5 Availability SLA: Operational Availability per VM per calendar month, against the class target (Gold 99.975%, Silver 99.95%, Bronze 99.9%). Downtime inside an approved change window does not count; downtime outside it counts, even when planned. PCM reads approved change windows from the ITSM change calendar through a connector, or from its own business calendar where no ITSM is connected. Actual Availability is shown in the drill-down. A VM breaches when its counted minutes exceed the allowance for the whole calendar month; the same rule now applies to the Security SLA. | See `design/service-levels.md`, section 4. |
 | D-078 | 2026-11-20 | Agent E2 is a service behind PCM: it owns the knowledge base, the reading plan, the flow executor and the model call, behind one HTTP endpoint (`POST /v1/answer`, Agent E2 `harness/answer_service.py`). PCM owns the data, the actions, the user's identity and every screen, and sends the question with the live facts and the role. The Agent E2 repository becomes part of PCM eventually. | See Rationale. |
+| D-079 | 2026-11-20 | Replace the trust ladder with policy as code. No "Make automatic" button and no promotion thresholds. The approval and rollback record per action type is evidence for L2, never a gate. L2 changes an action type's tier and guardrails through "Propose a policy change": versioned, replayed against recent history, owned (L2 in 1.0; the Operations Manager reviews after 1.0). Guardrails make automatic safe: blast-radius limits, maintenance windows, class-of-service conditions, automatic expiry and undo, and a service account scoped to the action type. | See Rationale. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -368,4 +369,36 @@ Source: Cost n Price n Value (in `sources/`).
   - Short drafts (an incident explanation, an escalation note, an RCA draft) use the direct model client of D-076: fast, with facts only.
   - "Why" questions that need the knowledge base use the service: slower, about 30 seconds, but grounded in SP5 with sources.
 - **Eventually one repository (author).** When Agent E2 moves into PCM, D-010 (the specification is the maintained artifact) meets a knowledge base that is the author's own writing, not generated. The knowledge base stays authored; only the code follows D-010. How and when the move happens is open.
+
+### D-079 Policy as code, not a trust ladder
+
+**Why the ladder was wrong**
+- The first L2 design (3.7) let an action type "earn" automation: after enough approvals with no rollbacks, PCM offered a "Make automatic" button.
+- That makes approval a counter. If a counter can decide that approval is no longer needed, approval was never doing any work: people were clicking through a step that carried no judgement.
+- Automatic approval is a contradiction. If an approval can be automated, it is not needed, so it is removed from the policy instead.
+- Approval logs that nobody reads add compliance bulk with no reduction in risk. The industry is moving to policy as code, guardrail governance and lean ITSM.
+
+**What makes an automatic action safe: guardrails**
+
+| Guardrail | Example |
+|---|---|
+| Blast radius | At most 10 VMs moved per cluster per hour |
+| Time | Not inside a location's close week; only inside a maintenance window where the policy says so |
+| Class of service | Only between clusters of the same class; only on non-production VMs |
+| Expiry and undo | A limit expires at the end of the shift; every action has a defined undo |
+| Service account | One account per action type, with only the rights that action needs (PCM core, 3.7) |
+
+- The guardrails sit in the policy next to the tier. A run that breaks a guardrail is not run; it becomes a proposal for a person, with the guardrail named.
+
+**How a policy changes**
+- **"Propose a policy change":** L2 edits the tier and guardrails of one action type.
+- **Replay:** PCM replays the proposed policy against recent action history and shows what would have run automatically, and what each guardrail would have stopped.
+- **Publish:** the new version gets an owner and a time.
+  - L2 owns it in 1.0.
+  - After 1.0, the Operations Manager reviews it (D-045).
+- **Rollback of a policy** is publishing the previous version again.
+
+**The record per action type stays, as evidence only.** Approvals, rejections and rollbacks help L2 decide whether to propose a change. They never unlock anything by themselves.
+
+**Accountability (D-050) for automatic runs:** the second field is the policy owner and the policy version, for example "policy move-vms v2, owner l2-engineer-1". There is no approval record for an automatic run, because no one approved it: the policy did.
 

@@ -11,7 +11,13 @@ background:
     ones below has a decision date within 90 days. No VM is down outside U-1 and U-2.
     Fast: every class group KPI is green, and Gold scores above Silver above Bronze (D-072).
   fast.class_group_kpi: { gold: 96.8, silver: 93.5, bronze: 88.2 }
-  decision_dates_days_from_now: { va: 200, fr: 160, tk: 300, ld: 250 }
+  capacity:
+    note: >
+      The forecast engine computes every run-out date (capacity.forecast). The background sets each location's
+      trend run-out for its Silver memory, the tightest resource in this estate; other groups and resources run
+      out later. Stories below change single groups.
+    silver_memory_trend_run_out_days: { sg: 150, va: 340, fr: 330, tk: 470, ld: 370 }
+    in_use_percent_now: { compute: 62, memory: 80, storage: 60 }
 
 stories:
 
@@ -19,7 +25,8 @@ stories:
     title: Singapore Silver runs out of working memory
     objects: { cluster_group: SG-Silver, resource: memory }
     plant:
-      run_out_date: "now + 150 days"
+      memory_in_use_percent_now: 86
+      trend_run_out: "now + 150 days"
       in_next_round: true
     expect:
       capacity.decision_date: "now + 30 days"
@@ -35,12 +42,11 @@ stories:
       idle_vms: 900
       oversized_large_vms: 60
       reclaim_moves_decision_date_to: "now + 70 days"
-      next_round_cost_for_group: 1800000
     expect:
-      value.cost_avoidable_next_round: 1800000
+      value.cost_avoidable_next_round: "equals capacity.purchase_plan total for SG-Silver (one definition)"
     note: >
-      Reclaiming moves SG-Silver's decision date past the round (now + 42 days), so the round's
-      cost for that group could be avoided (D-060). Until it is done, C-1 stays in the plan.
+      Reclaiming moves SG-Silver's decision date past the following round, so this round's cost for
+      that group could be avoided (D-060). Until it is done, C-1 stays in the plan.
     decisions: [D-060]
 
   E-4:
@@ -249,12 +255,25 @@ stories:
     expect: { group: correct_it, findings: 2 }
 
   L-4:
-    title: A VM move earns automation
+    title: A VM move becomes automatic by a policy change, not by a count of approvals
     plant:
-      proposal: { id: p-move-sg-s-04, action_type: move_vms_between_clusters, from: SG-S-04, to: SG-S-06, vms: 6 }
-      record: { action_type: move_vms_between_clusters, approvals: 23, rollbacks: 0, tier: approval }
-    expect: { promotion_offered: true, promote_without_reason: 400, promote_with_reason: 200, tier_after: automatic }
-    decisions: [D-029, D-050]
+      proposal: { id: p-move-sg-s-04, action_type: move_vms_between_clusters, from: SG-S-04, to: SG-S-06, vms: 6, same_class: true, in_close_week: false }
+      record: { action_type: move_vms_between_clusters, approvals: 23, rejections: 1, rollbacks: 0 }
+      history:
+        note: "The 23 approved moves of the last 30 days, as the replay reads them"
+        moves: 23
+        more_than_10_vms: 3
+        across_classes: 1
+        in_close_week: 1
+      proposed_policy: { tier: automatic, guardrails: { max_vms_per_cluster_per_hour: 10, same_class_of_service_only: true, not_in_close_week: true } }
+    expect:
+      no_make_automatic_button: true
+      replay: { would_run_automatically: 18, stopped: { max_vms_per_cluster_per_hour: 3, same_class_of_service_only: 1, not_in_close_week: 1 } }
+      publish_without_replay: 400
+      publish_without_reason: 400
+      after_publish: { tier: automatic, version: 2, owner: l2-engineer-1 }
+      waiting_proposal_after_publish: { state: ran_automatically, approval_recorded: false, accountable: "policy move_vms_between_clusters v2, owner l2-engineer-1" }
+    decisions: [D-029, D-050, D-079]
 
   L-5:
     title: An alert the check did not predict
@@ -302,4 +321,46 @@ stories:
       within_sla: true
       card_status: amber
     note: "15 minutes is within Silver's 22.3-minute allowance for a 31-day month: the contract holds, the internal target (100%) does not."
+
+  # ---------------------------------------------------------------- Capacity stories (D-053 step 4)
+
+  C-2:
+    title: Tokyo Gold has had most of its capacity unused for months
+    objects: { cluster_group: TK-Gold }
+    plant: { in_use_percent_now: { compute: 38, memory: 41, storage: 35 }, trend_run_out_days: 1400 }
+    expect: { quadrant: waste }
+
+  C-3:
+    title: Tokyo's March year-end close
+    objects: { cluster_group: TK-Silver, resource: memory }
+    plant:
+      last_year_close_uplift_percent_of_usable: 16
+    expect:
+      forecast_90d_sees_peak: false
+      peak_warning: { resource: memory, month: 3 }
+      purchase_decision_unchanged_by_peak: true
+    note: >
+      A 90-day forecast has never seen a March close; the 13-month forecast has (Capacity design, 3.5). The close
+      week alone crosses usable capacity, and the trend does not. SP5: do not add hardware for a peak of a few
+      days a year; borrow hosts, burst, or limit other work that week. So it is a peak warning, not a purchase.
+
+  C-4:
+    title: An OpenShift migration wave into Frankfurt Silver
+    objects: { cluster_group: FR-Silver }
+    plant:
+      demand_register: { id: dr-ocp-wave-2, kind: migration, source: OpenShift, vms: 800, when: "now + 200 days", owner: "migration-team", memory_gb: 25600, compute_threads: 1600, storage_tb: 160 }
+    expect: { run_out_on_or_before: "now + 200 days", register_owner_shown: true }
+
+  C-5:
+    title: London's older hosts reach the end of depreciation
+    objects: { location: ld }
+    plant: { previous_generation_hosts: 90, depreciation_end_within_days: 365 }
+    expect:
+      what_if: "Replace 90 previous-generation hosts with 75 of the current standard"
+      covers_next_year_growth: true
+      licensed_cores_rise: true
+    note: >
+      75 current hosts give 9,600 threads and 57,600 GB against 7,200 and 46,080 from 90 old ones. That covers
+      London's next year of growth (about 1,800 threads and 10,500 GB) in 15 fewer hosts. Licensed cores rise from
+      3,600 to 4,800, because VCF is licensed per core (D-061): the what-if shows both sides (Capacity design, 3.9).
 

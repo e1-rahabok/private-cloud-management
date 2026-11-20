@@ -181,7 +181,7 @@ story:
     expect:
       api: /api/exec/value/cost
       cost.cost_avoided_ytd.value: 1200000
-      cost.cost_avoidable_next_round.value: 1800000
+      rule_cost_avoidable: "cost.cost_avoidable_next_round.value equals the SG-Silver total in capacity.purchase_plan"
 
   - id: ST-5
     story: E-5

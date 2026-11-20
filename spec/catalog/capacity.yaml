@@ -1,0 +1,84 @@
+# Catalog entries read by the Capacity workspace (design/capacity-workspace.md).
+# The forecast engine here replaces the decision dates the first builds planted from stories:
+# Executive, L2 and Capacity now all read capacity.run_out_date from this engine (PCM core, 1).
+
+version: 1
+
+entries:
+
+  capacity.usable:
+    description: >
+      Per cluster group and resource, how total capacity becomes usable capacity, step by step
+      (Capacity design, 3.2). Running stage: the hypervisor is in the measured load, so it is not subtracted.
+    steps:
+      - "total: hosts in the group, threads (CPU), DRAM GB (memory), datastore TB (storage)"
+      - "minus HA: one host per cluster"
+      - "minus maintenance: one host per cluster (HA does not cover maintenance; SP5 supply)"
+      - "minus buffer: setting capacity.buffer_percent, applied after HA (SP5: buffer applies after HA)"
+    units: { compute: threads, memory: GB, storage: TB }
+    decisions: [D-054, D-061]
+
+  capacity.weekly_peak:
+    description: Per cluster group and resource, the highest demand in each week, from 13 months of PCM's own history (PCM core, 3.3).
+    note: "Demand = max(utilization, reservation) per VM, summed (SP5 capacity demand). Weekly peaks remove the weekly cycle."
+
+  capacity.trend:
+    description: >
+      Least-squares line over the last setting capacity.trend_weeks weekly peaks, leaving out weeks inside a
+      known close period (month-end, quarter-end or year-end close of the location), so that a periodic peak
+      does not bend the trend.
+    decisions: [D-054]
+
+  capacity.seasonal_uplift:
+    description: >
+      For each close period of the location's calendar (year-end close: December, or March in Tokyo), the
+      excess of last year's weekly peaks over the trend at that time. Added to the forecast in the same period
+      this year (Capacity design, 3.5; SP5: periodic peaks must stay in the projection).
+    decisions: [D-065]
+
+  capacity.forecast:
+    description: "trend + seasonal uplift + committed demand from the demand register, per day, for 13 months."
+    decisions: [D-054]
+
+  capacity.forecast_90d:
+    description: >
+      For comparison only: a trend from the last 13 weeks with no seasonal uplift, which is what a forecast that
+      reads at most 90 days of data can see (VCF Operations 9.1.1, Capacity design 3.5).
+
+  capacity.run_out_date:
+    description: First day capacity.forecast reaches capacity.usable. None within 13 months shows as "beyond 13 months".
+    decisions: [D-054]
+
+  capacity.time_remaining_days:
+    description: run_out_date - today.
+
+  capacity.remaining_percent:
+    description: (usable - latest weekly peak) / usable * 100.
+
+  capacity.quadrant:
+    description: Per cluster group, read from its tightest resource (Capacity design, 3.3).
+    status:
+      red: "time remaining <= setting capacity.decide_soon_days + procurement lead time"
+      waste: "remaining > setting capacity.waste_remaining_percent and time remaining > setting capacity.waste_time_days (dark grey, not green)"
+      green: "otherwise"
+    decisions: [D-054]
+
+  capacity.planning_six_numbers:
+    description: >
+      SP5 planning calculator: per host, VMs of a class that fit by allocation, reservation and utilization, for
+      CPU and memory. The first to reach 100% binds (Capacity design, 3.10; SP5 class-of-service planning).
+    decisions: [D-061]
+
+  capacity.purchase_plan:
+    description: >
+      For each cluster group whose decision date falls before the next procurement round closes: hosts of the
+      current standard to buy so the group lasts setting capacity.purchase_cover_months after delivery, and the
+      cost lines (D-060): server, VCF licence per core over the depreciation period, support.
+    decisions: [D-055, D-060, D-061]
+
+  capacity.reclamation:
+    description: >
+      Per cluster group, the five SP5 areas easiest first (orphaned files, powered-off, idle, oversized, unused),
+      largest first, with what each frees honestly (powering off an idle VM frees memory and allocation, not CPU
+      cycles), and whether reclaiming moves the group's run-out past the next round (Capacity design, 3.11).
+    decisions: [D-056, D-060]

@@ -109,16 +109,20 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
     - Agent E2, which explains a finding with today's context;
     - the next engineer on shift.
 
-### 3.7 PCM proposes, L2 approves; trust in an action is earned
+### 3.7 Policy as code decides what runs automatically (D-079)
 
 - **What:**
-  - The daily and weekly checks come with proposed fixes. L2 approves or rejects each one (D-029).
-  - PCM keeps a record per action type: how often it was approved, and how often it was rolled back.
-  - When an action type has a clean record, L2 can promote it to automatic. This is an explicit change by L2, recorded in the audit log. PCM never promotes on its own.
+  - The daily and weekly checks come with proposed fixes.
+  - Each action type has a **policy** in the catalog: its tier (automatic, approval, never), its guardrails, its version and its owner.
+  - A fix whose action type is automatic, and that passes every guardrail, runs. A fix that breaks a guardrail becomes a proposal for L2, with the guardrail named.
+  - PCM keeps a record per action type: approvals, rejections, rollbacks. It is evidence for L2, never a gate.
+  - **"Propose a policy change":** L2 edits a tier and guardrails. PCM replays the change against recent history, then L2 publishes it as a new version.
 - **Why:**
-  - Self-driving operations (D-025) are earned one action type at a time. Turning on automation for everything on day one is how a bad rule moves 500 VMs at 10:00.
-  - SP5: the rules are finite, and the usual fix is moving VMs out of a cluster. These are exactly the actions that build a clean record quickly.
-  - A rejection with a reason is data. It tells L2 which rule is wrong.
+  - Automatic approval is a contradiction. If an approval can be automated, it is not needed; remove it from the policy.
+  - Guardrails make automation safe: blast radius, time windows, class of service, expiry and undo, a scoped service account. A count of past clicks does not.
+  - Replay before publish shows what the change would have done, as threshold replay does (3.9).
+  - A rejection with a reason is still data. It tells L2 which rule or guardrail is wrong.
+  - *This replaces the first version of 3.7, a trust ladder in which an action type "earned" automation by its approval count (D-079).*
 
 ### 3.8 Escalations arrive complete, and the loop closes
 
@@ -224,11 +228,11 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
 - **Agent E2 may not:**
   - set a severity;
   - approve an action;
-  - promote an action to automatic;
+  - change an action policy;
   - close an escalation.
 - **Accountability (D-050):** each Agent E2 task records two fields: Agent E2's ID and the human who ordered the task.
   - Agent E2 can never act beyond what that person may do.
-  - For actions that run automatically, the accountable human is the L2 engineer who made the action type automatic (3.7).
+  - For actions that run automatically, the second field is the policy owner and the policy version (D-050, D-079).
 - **Why:**
   - A confident wrong answer from an LLM at L2 level spreads: it becomes an SOP that L1 runs at 03:00.
   - Grounding in the knowledge base plus a human approval keeps the knowledge correct.

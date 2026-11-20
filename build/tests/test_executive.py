@@ -140,6 +140,10 @@ def make_story_test(t):
             self.assertEqual(a, c)
             return
         path = exp.pop("api")
+        if "rule_cost_avoidable" in exp:  # ST-4: one definition with the capacity purchase plan
+            exp.pop("rule_cost_avoidable")
+            plan = next(x for x in ds["capacity"]["plan"] if x["group"] == "SG-Silver")
+            self.assertEqual(api.value_detail(ds, "value/cost".split("/")[1])["cost"]["cost_avoidable_next_round"]["value"], plan["total"])
         resp = call(ds, path)
         summary = api.summary(ds)
         for k, v in exp.items():

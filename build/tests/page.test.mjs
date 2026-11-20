@@ -40,7 +40,12 @@ try {
       texts.push(await page.innerText('body'));
       for (const days of ['30', '7']) {
         const sw = page.locator(`.switch button[data-days="${days}"]`);
-        if (await sw.count()) { await sw.first().click(); await page.waitForTimeout(150); texts.push(await page.innerText('body')); }
+        if (await sw.count()) {
+          const q = (await page.getAttribute('body', 'data-panel') || '').split('-')[0];
+          await sw.first().click();
+          await page.waitForSelector(`body[data-panel="${q}-${days}"]`);
+          texts.push(await page.innerText('body'));
+        }
       }
     }
     return texts.join('\n');

@@ -170,6 +170,7 @@ async function healthPanel(btn, days, refresh) {
   else body += `<p class="muted">No notable events in this period.</p>`;
   if (refresh) btn.setAttribute('aria-expanded', 'false');
   openPanel('health-panel', btn, panelHead(LABEL[q]) + body);
+  document.body.dataset.panel = `${q}-${days}`;  // lets a test wait for the re-rendered panel
   document.querySelectorAll('#health-panel .switch button').forEach(sb => sb.addEventListener('click', () => healthPanel(btn, Number(sb.dataset.days), true)));
 }
 

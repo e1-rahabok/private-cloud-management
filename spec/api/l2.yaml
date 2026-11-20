@@ -13,10 +13,12 @@ paths:
     post: { summary: "Approve a proposal. Counts toward its action type's record." }
   /api/l2/proposals/{id}/reject:
     post: { summary: "Reject. Requires a reason (400 without one): a rejection is data about the rule." }
-  /api/l2/action-types:
-    get: { summary: "Action type records: tier, approvals, rollbacks, whether promotion is offered (l2.offer_promotion)." }
-  /api/l2/action-types/{type}/promote:
-    post: { summary: "Make an action type automatic. Only when offered; requires a reason; the person who promotes is accountable for later automatic runs (D-050)." }
+  /api/l2/policies:
+    get: { summary: "Action policies: tier, guardrails, version, owner, plus the record per action type as evidence (l2.action_policy, l2.action_record)." }
+  /api/l2/policies/{type}/replay:
+    post: { summary: "Body: proposed tier and guardrails. Replays them against recent history (l2.policy_replay). Changes nothing." }
+  /api/l2/policies/{type}/publish:
+    post: { summary: "Publish the proposed tier and guardrails as a new version, with a reason. Only after a replay. Then re-evaluates waiting proposals of that type: those that now pass run automatically, with no approval record (D-079)." }
   /api/l2/escalations:
     get: { summary: "Incidents escalated by the NOC to L2, with their evidence (noc.escalation_evidence)." }
   /api/l2/escalations/{id}/close:

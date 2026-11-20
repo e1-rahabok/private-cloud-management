@@ -101,7 +101,8 @@ public_cloud_estimate:
   owner: finops
 
 procurement:
-  next_round_closes: "now + 42 days"
+  next_round_closes: "now + 21 days"   # before SG-Silver's decision date, so an order in the round arrives in time
+  round_interval_days: 182             # twice a year (SP5 capacity cadence)
 
 recovery_plans:
   - { id: rp-sg, protected: sg, recovery: tk, target_minutes: 30 }

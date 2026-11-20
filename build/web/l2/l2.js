@@ -31,6 +31,7 @@ async function daily(msg = '') {
     const p = f.proposal;
     const prop = p ? `<div class="proposal"><strong>Proposed fix:</strong> ${esc(p.reason)} ${p.state === 'waiting'
       ? `<button type="button" class="act" data-approve="${p.id}">Approve</button> <button type="button" class="act secondary" data-reject="${p.id}">Reject</button>`
+      : p.state === 'ran_automatically' ? `<strong>Ran automatically</strong> under ${esc(p.accountable)}. No approval: the policy decided.`
       : `<strong>${esc(p.state)}</strong> by ${esc(p.decided_by)}${p.rejection_reason ? `: ${esc(p.rejection_reason)}` : ''}`}</div>` : '';
     const inv = f.investigate ? ` <a class="link" href="${href('/l2/investigate/' + f.investigate)}">Investigate</a>` : '';
     return `<div class="finding" data-finding="${f.id}">${chip(f.severity)}<div><div class="chain">${esc(VERDICT[f.verdict])} · ${esc(f.pillar)} · ${f.parent_chain.map(esc).join(' › ')}</div>
@@ -42,19 +43,52 @@ async function daily(msg = '') {
     <div class="verdicts">${['present_health', 'risk', 'efficiency'].map(v => `<div class="verdict ${d.verdicts[v]}" data-verdict="${v}"><h2>${VERDICT[v]} ${chip(d.verdicts[v])}</h2><div>${count(v)} ${count(v) === 1 ? 'finding' : 'findings'}</div></div>`).join('')}</div>
     <h2>Findings, worst first</h2>${d.findings.length ? d.findings.map(finding).join('') : '<p>Nothing needs you this morning.</p>'}
     <div class="msg" role="status">${esc(msg)}</div>
-    <h2>Trust ladder</h2><table><thead><tr><th>Action type</th><th>Tier</th><th>Approvals</th><th>Rollbacks</th><th></th></tr></thead><tbody>
-    ${d.action_types.map(t => `<tr><td>${esc(t.action_type.replaceAll('_', ' '))}</td><td>${t.tier}${t.promoted_by ? ` (by ${esc(t.promoted_by)})` : ''}</td><td>${t.approvals}</td><td>${t.rollbacks}</td>
-      <td>${t.promotion_offered ? `<button type="button" class="act" data-promote="${t.action_type}">Make automatic</button>` : ''}</td></tr>`).join('')}</tbody></table>
+    <h2>Action policies</h2><p class="muted">What runs automatically, and within which guardrails. The record is evidence, never a gate.</p>
+    <table><thead><tr><th>Action type</th><th>Tier</th><th>Guardrails</th><th>Version and owner</th><th>Record (evidence)</th><th></th></tr></thead><tbody>
+    ${d.policies.map(p => `<tr data-policy="${p.action_type}"><td>${esc(p.action_type.replaceAll('_', ' '))}</td><td>${esc(p.tier)}</td>
+      <td>${Object.entries(p.guardrails).map(([k, v]) => `${esc(k.replaceAll('_', ' '))}: ${esc(v)}`).join('<br>')}</td>
+      <td>v${p.version}, ${esc(p.owner)}</td><td>${p.record.approvals} approved, ${p.record.rejections} rejected, ${p.record.rollbacks} rolled back</td>
+      <td><button type="button" class="act secondary" data-propose="${p.action_type}">Propose a policy change</button></td></tr>`).join('')}</tbody></table>
+    <div id="policy-form"></div>
     <h2>Slipped alerts</h2>${d.slipped_alerts.length ? `<ul>${d.slipped_alerts.map(s => `<li>${esc(s.object)}: ${esc(s.title)}, ${fmtTime(s.raised)}. No check finding predicted it. <a class="link" href="${href('/l2/authoring')}">Add a check rule</a></li>`).join('')}</ul>` : '<p>The check predicted every alert.</p>'}`;
   main.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', async () => { await postJSON(`proposals/${b.dataset.approve}/approve`); daily('Approved. Counted on the trust ladder.'); }));
   main.querySelectorAll('[data-reject]').forEach(b => b.addEventListener('click', async () => {
     const reason = prompt('Why reject? The reason tells L2 which rule is wrong.');
     const r = await postJSON(`proposals/${b.dataset.reject}/reject`, { reason }); daily(r.status === 200 ? 'Rejected, with the reason recorded.' : r.body.error);
   }));
-  main.querySelectorAll('[data-promote]').forEach(b => b.addEventListener('click', async () => {
-    const reason = prompt('Why make it automatic? You will be the person accountable for its automatic runs.');
-    const r = await postJSON(`action-types/${b.dataset.promote}/promote`, { reason }); daily(r.status === 200 ? `Now automatic. Accountable: ${r.body.promoted_by}.` : r.body.error);
-  }));
+  main.querySelectorAll('[data-propose]').forEach(b => b.addEventListener('click', () => policyForm(d.policies.find(p => p.action_type === b.dataset.propose))));
+}
+
+function policyForm(p) {
+  const g = p.guardrails;
+  const box = document.getElementById('policy-form');
+  const num = k => (k in g) ? `<label>${esc(k.replaceAll('_', ' '))}<input type="number" name="${k}" value="${g[k]}"></label>` : '';
+  const flag = k => (k in g) ? `<label>${esc(k.replaceAll('_', ' '))}<select name="${k}"><option value="true"${g[k] === true ? ' selected' : ''}>yes</option><option value="false"${g[k] === false ? ' selected' : ''}>no</option></select></label>` : '';
+  box.innerHTML = `<section class="panel"><h3>Propose a policy change: ${esc(p.action_type.replaceAll('_', ' '))} (now v${p.version}, ${esc(p.tier)})</h3>
+    <form class="inline" id="pf"><label>Tier<select name="tier">${['automatic', 'approval', 'never'].map(t => `<option${t === p.tier ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+    ${num('max_vms_per_cluster_per_hour')}${flag('same_class_of_service_only')}${flag('not_in_close_week')}
+    <button type="submit" class="act secondary">Replay</button><label>Reason<input type="text" name="reason" size="40"></label>
+    <button type="button" class="act" id="publish" disabled>Publish</button></form><div id="replay"></div></section>`;
+  const read = () => {
+    const f = document.getElementById('pf');
+    const gr = { ...g };
+    ['max_vms_per_cluster_per_hour'].forEach(k => { if (f.elements[k]) gr[k] = Number(f.elements[k].value); });
+    ['same_class_of_service_only', 'not_in_close_week'].forEach(k => { if (f.elements[k]) gr[k] = f.elements[k].value === 'true'; });
+    return { tier: f.elements.tier.value, guardrails: gr };
+  };
+  document.getElementById('pf').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const r = await postJSON(`policies/${p.action_type}/replay`, read());
+    const st = Object.entries(r.body.stopped || {}).map(([k, v]) => `${v} stopped by ${esc(k.replaceAll('_', ' '))}`).join('; ') || 'none stopped';
+    document.getElementById('replay').innerHTML = `<p>Replayed over the last ${r.body.runs} runs: <strong>${r.body.would_run_automatically}</strong> would have run automatically; ${st}.</p>`;
+    document.getElementById('publish').disabled = false;
+    document.body.dataset.policyReplayed = '1';
+  });
+  document.getElementById('publish').addEventListener('click', async () => {
+    const f = document.getElementById('pf');
+    const r = await postJSON(`policies/${p.action_type}/publish`, { ...read(), reason: f.elements.reason.value });
+    daily(r.status === 200 ? `Published v${r.body.version}, owner ${r.body.owner}.${r.body.ran_automatically.length ? ' Ran automatically under it: ' + r.body.ran_automatically.join(', ') + '.' : ''}` : r.body.error);
+  });
 }
 
 // ---------------------------------------------------------------- /l2/escalations

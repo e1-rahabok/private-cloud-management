@@ -196,20 +196,6 @@ settings:
 
   # ---------------------------------------------------------------- L2 (D-053 step 3)
 
-  l2.promotion_min_approvals:
-    description: Approvals an action type needs before PCM offers to make it automatic.
-    default: 20
-    owner: l2
-    source: "proposal; confirm with the author"
-    decisions: [D-029]
-
-  l2.promotion_max_rollbacks:
-    description: Rollbacks allowed in that record. Any rollback means a person should keep approving.
-    default: 0
-    owner: l2
-    source: "proposal; confirm with the author"
-    decisions: [D-029]
-
   l2.replay_days:
     description: Days of history a threshold change is replayed against before it is published.
     default: 30
@@ -223,4 +209,45 @@ settings:
     owner: l2
     source: "Agent E2 harness/answer_service.py"
     decisions: [D-078]
+
+  # ---------------------------------------------------------------- Capacity (D-053 step 4)
+
+  capacity.buffer_percent:
+    description: Buffer after HA, per resource (SP5 supply).
+    default: { compute: 10, memory: 0, storage: 10 }
+    unit: percent
+    owner: capacity
+    source: "SP5 supply: typical 10% CPU and 0% memory; storage 10% proposal"
+    decisions: [D-054]
+
+  capacity.trend_weeks:
+    description: Weekly peaks the trend is fitted on.
+    default: 26
+    owner: capacity
+    source: "proposal; confirm with the author"
+
+  capacity.purchase_cover_months:
+    description: A purchase should keep the group within usable capacity this long after delivery.
+    default: 12
+    owner: capacity
+    source: "proposal; confirm with the author (SP5: procurement twice a year)"
+
+  capacity.waste_remaining_percent:
+    description: Above this remaining capacity, with long time remaining, the group shows as waste (dark grey).
+    default: 40
+    owner: capacity
+    source: "proposal; confirm with the author"
+
+  capacity.waste_time_days:
+    description: Time remaining above which high remaining capacity counts as waste.
+    default: 365
+    owner: capacity
+    source: "proposal; confirm with the author"
+
+  capacity.host_standard:
+    description: The current host standard and its cost lines, per host (D-060, D-061). Set once a year.
+    default: { cores: 64, threads: 128, memory_gb: 768, storage_tb: 40, server_usd: 32000, vcf_licence_usd_per_core_year: 150, support_usd_per_year: 2400 }
+    owner: capacity
+    source: "proposal: synthetic ACME figures; real figures come from vendor contracts (D-060)"
+    decisions: [D-060, D-061]
 

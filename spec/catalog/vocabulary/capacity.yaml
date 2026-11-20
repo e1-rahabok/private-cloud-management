@@ -1,0 +1,8 @@
+# Capacity vocabulary: technical, SP5 units (Capacity design, 3.17). Cost, not price (D-019, D-027).
+version: 1
+workspace: capacity
+allowed: [threads, cores, DRAM, usable capacity, HA, buffer, overcommit, cost avoidance]
+avoided: [price, chargeback, health score, saving, savings]
+labels:
+  waste: Waste
+  in_plan: In the plan

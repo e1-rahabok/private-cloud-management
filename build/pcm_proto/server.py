@@ -68,8 +68,8 @@ def l2_get(rest, now, enable, query):
     st = generator.load_spec()["settings"]
     if rest == ["daily"]:
         return l2.daily(now, enable)
-    if rest == ["action-types"]:
-        return l2.action_types(st, enable)
+    if rest == ["policies"]:
+        return l2.policies(enable)
     if rest == ["escalations"]:
         return l2.escalations(now, enable)
     if len(rest) == 2 and rest[0] == "investigate":

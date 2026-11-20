@@ -5,8 +5,7 @@ Do not edit by hand (D-070).
 
 Inputs: the specification, a seed, "now" and the stories to enable (D-067). Same inputs, same data.
 
-Scope note: this prototype plants capacity decision dates from the stories. The forecast engine
-(Capacity design, 3.5) is built with the Capacity workspace (D-053).
+Capacity decision dates come from the capacity engine (capacity.py), the one definition every workspace reads.
 """
 from __future__ import annotations
 
@@ -106,22 +105,16 @@ def generate(now: datetime, seed: int = 7, enable: tuple = ()) -> dict:
         locs["sg"]["in_use"]["memory"] = 86.0  # SG-Silver memory pressure shows at location level
     total_cores = catalog.compute_cores(est["locations"], gens)
 
-    # Capacity decisions per cluster group and resource (planted; see scope note).
+    # Capacity decisions per cluster group and resource, from the capacity engine (spec/catalog/capacity.yaml).
+    from . import capacity as capacity_engine
+    cap = capacity_engine.build(now, enable)
     decisions, in_plan = {}, set()
-    for lid, loc in locs.items():
-        base = bg["decision_dates_days_from_now"].get(lid, 220)
-        for i, cls in enumerate(CLASSES):
-            group = f"{lid.upper()}-{cls.capitalize()}"
-            for j, res in enumerate(RESOURCES):
-                days = base + 15 * i + 25 * j + rng.randint(0, 10)
-                decisions.setdefault(lid, {})[f"{group}.{res}"] = now + timedelta(days=days)
-    if "C-1" in active:
-        c1 = active["C-1"]
-        run_out = rel(c1["plant"]["run_out_date"], now)
-        key = f"{c1['objects']['cluster_group']}.{c1['objects']['resource']}"
-        decisions["sg"][key] = catalog.decision_date(run_out, locs["sg"]["lead_time"])
-        if c1["plant"]["in_next_round"]:
-            in_plan.add(c1["objects"]["cluster_group"])
+    for g in cap["groups"]:
+        for res, r in g["resources"].items():
+            if r["decision_days"] is not None:
+                decisions.setdefault(g["location"], {})[f"{g['id']}.{res}"] = now + timedelta(days=r["decision_days"])
+        if g["in_plan"] and g["round_on_time"]:
+            in_plan.add(g["id"])
     for lid in locs:
         locs[lid]["decision"] = catalog.location_decision(decisions[lid], in_plan, now, st)
 
@@ -253,7 +246,7 @@ def generate(now: datetime, seed: int = 7, enable: tuple = ()) -> dict:
         "public_cloud_estimate": est["public_cloud_estimate"]["total_5y"],
         "public_cloud_as_of": rel(est["public_cloud_estimate"]["as_of"], now),
         "cost_avoided_ytd": active.get("E-4", {}).get("plant", {}).get("deferred_purchase", {}).get("value_at_today_price", 0),
-        "cost_avoidable_next_round": active.get("C-6", {}).get("plant", {}).get("next_round_cost_for_group", 0),
+        "cost_avoidable_next_round": sum(r["cost_avoidable"] for r in cap["reclamation"]),
     }
 
     # Site recovery.
@@ -294,7 +287,7 @@ def generate(now: datetime, seed: int = 7, enable: tuple = ()) -> dict:
     return {
         "now": now, "settings": st, "locations": locs, "total_cores": total_cores,
         "decisions": decisions, "in_plan": in_plan,
-        "next_round_closes": rel(est["procurement"]["next_round_closes"], now),
+        "next_round_closes": cap["next_round_closes"], "capacity": cap,
         "health": health, "value": value, "recovery": recovery, "speed": speed, "goals": goals,
         "region_stale": region_stale, "active_stories": sorted(active),
     }

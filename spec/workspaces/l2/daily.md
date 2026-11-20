@@ -5,7 +5,7 @@ role: l2
 cadence: [daily]
 vocabulary: catalog/vocabulary/l2.yaml
 design: design/l2-workspace.md
-decisions: [D-039, D-045, D-046, D-052]
+decisions: [D-029, D-039, D-045, D-046, D-050, D-052, D-079]
 ---
 
 # L2 daily check result
@@ -47,23 +47,27 @@ reads: [l2.daily_check]
 - **Agent E2:** "Explain this finding" (D-076).
 - **States:** normal, empty, loading, error.
 
-## Trust ladder
+## Action policies
 
 ```yaml
-question: "Which action types have earned automation?"
+question: "What runs automatically, and within which guardrails?"
 role: l2
 cadence: [weekly]
-reads: [l2.offer_promotion]
-api: /api/l2/action-types
+reads: [l2.action_policy, l2.action_record, l2.policy_replay]
+api: /api/l2/policies
 ```
 
 - **One row per action type:**
   - tier;
-  - approvals;
-  - rollbacks;
-  - whether promotion is offered.
-- **"Make automatic"** appears only when promotion is offered. It asks for a reason, and states: "You will be the person accountable for its automatic runs" (D-050).
-- **States:** normal, empty, loading, error.
+  - guardrails, in plain words;
+  - version and owner;
+  - the record as evidence: approvals, rejections, rollbacks.
+- **The record is evidence, never a gate.** No button turns it into automation (D-079).
+- **"Propose a policy change"** opens a form for that action type: tier, plus the guardrails it uses.
+  - **"Replay"** shows, over recent history, how many past runs would have run automatically and how many each guardrail would have stopped.
+  - **"Publish"** is enabled only after a replay, and asks for a reason. The new version is recorded with its owner.
+- **An automatic run shows its accountable party** as "policy <type> v<n>, owner <name>" (D-050). It has no approval.
+- **States:** normal, loading, error.
 
 ## Slipped alerts
 

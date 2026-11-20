@@ -1,0 +1,64 @@
+# Action policies: policy as code (D-029, D-079). One entry per action type: tier, guardrails, version, owner.
+# An automatic action never records an approval. A run that breaks a guardrail does not run: it becomes a
+# proposal for a person, with the guardrail named. L2 changes a policy through "Propose a policy change"
+# (replayed, versioned, owned). The record of approvals and rollbacks is evidence, never a gate.
+
+version: 1
+
+policies:
+
+  move_vms_between_clusters:
+    tier: approval
+    version: 1
+    owner: l2-engineer-1
+    guardrails:
+      max_vms_per_cluster_per_hour: 10
+      same_class_of_service_only: true
+      not_in_close_week: true
+      undo: move the VMs back
+      service_account: svc-pcm-vmotion   # vMotion rights only
+    workspace: l2
+
+  power_off_idle_vm:
+    tier: approval
+    version: 1
+    owner: l2-engineer-1
+    guardrails:
+      environment: non_production
+      idle_days_min: 30
+      undo: power on
+      service_account: svc-pcm-power
+    workspace: l2
+
+  delete_old_snapshot:
+    tier: approval
+    version: 1
+    owner: l2-engineer-1
+    guardrails:
+      older_than_days: 3
+      honour_exclusions: true
+      not_in_backup_window: true
+      undo: none (restore from backup)
+      service_account: svc-pcm-snapshot
+    workspace: l2
+
+  stop_provisioning:
+    tier: automatic
+    version: 1
+    owner: l2-engineer-1
+    guardrails:
+      undo: reopen provisioning
+      service_account: svc-pcm-placement
+    workspace: noc
+    note: "Run by an L1 SOP button: the person who pressed it is the accountable party (D-050)."
+
+  time_boxed_limit:
+    tier: automatic
+    version: 1
+    owner: l2-engineer-1
+    guardrails:
+      environment: non_production
+      expires: end_of_shift
+      undo: remove the limit
+      service_account: svc-pcm-limits
+    workspace: noc

@@ -9,8 +9,15 @@ catalog:
     given: { findings: [{ verdict: present_health, severity: red }, { verdict: risk, severity: amber }] }
     expect: { present_health: red, risk: amber, efficiency: green }
   - id: LCAT-2
-    entry: l2.offer_promotion
-    given: [{ approvals: 23, rollbacks: 0, expect: true }, { approvals: 23, rollbacks: 1, expect: false }, { approvals: 12, rollbacks: 0, expect: false }]
+    entry: l2.action_policy
+    given:
+      policy: { tier: automatic, guardrails: { max_vms_per_cluster_per_hour: 10, same_class_of_service_only: true, not_in_close_week: true } }
+      runs:
+        - { vms: 6, same_class: true, in_close_week: false, expect: run }
+        - { vms: 12, same_class: true, in_close_week: false, expect: "stopped: max_vms_per_cluster_per_hour" }
+        - { vms: 4, same_class: false, in_close_week: false, expect: "stopped: same_class_of_service_only" }
+        - { vms: 4, same_class: true, in_close_week: true, expect: "stopped: not_in_close_week" }
+    reason: Guardrails, not approvals, decide whether an automatic action runs (D-079).
   - id: LCAT-3
     entry: l2.threshold_replay
     given: { threshold: th-cluster-perf-red, current: 50, new: 60 }
@@ -28,7 +35,16 @@ story:
     expect: { correct_it_count: 2, fix_setting_creates_proposal: true, fix_standard_increments_version: true }
   - id: LST-4
     story: L-4
-    expect: { offered: true, without_reason: 400, with_reason: 200, tier_after: automatic, promoted_by_recorded: true }
+    expect:
+      replay_would_run: 18
+      replay_stopped: { max_vms_per_cluster_per_hour: 3, same_class_of_service_only: 1, not_in_close_week: 1 }
+      publish_without_replay: 400
+      publish_without_reason: 400
+      tier_after: automatic
+      version_after: 2
+      proposal_state_after: ran_automatically
+      accountable_after: "policy move_vms_between_clusters v2, owner l2-engineer-1"
+      approval_recorded_after: false
   - id: LST-5
     story: [N-1, N-4, L-3, C-1, C-6, L-7]
     expect: { present_health: red, risk: amber, efficiency: amber, first_finding_verdict: present_health }
@@ -64,4 +80,8 @@ page:
   - id: LPG-9
     rule: Without the Agent E2 service running, "Ask Agent E2 why" on /l2/investigate/sg-app-117 says "The Agent E2 service is not available" and shows no answer.
     decisions: [D-078]
+
+  - id: LPG-10
+    rule: The daily page has no "Make automatic" button; "Propose a policy change" shows Publish disabled until Replay has run.
+    decisions: [D-079]
 

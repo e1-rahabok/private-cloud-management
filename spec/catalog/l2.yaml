@@ -39,11 +39,21 @@ entries:
     guest_os: [run_queue_per_vcpu, context_switches_per_s, paging_per_s, guest_os_performance]
     decisions: [D-038]
 
-  l2.offer_promotion:
+  l2.action_policy:
     description: >
-      PCM offers to make an action type automatic when its record has at least
-      setting l2.promotion_min_approvals approvals and at most setting l2.promotion_max_rollbacks rollbacks.
-      Only a person promotes (L2 design, 3.7; D-029).
+      Each action type's tier and guardrails, versioned, with an owner (catalog/policies/actions.yaml). A fix runs
+      automatically only when its tier is automatic and every guardrail passes; otherwise it is a proposal with the
+      blocking guardrail named. No approval is ever recorded for an automatic run (D-079).
+    decisions: [D-029, D-079]
+
+  l2.action_record:
+    description: Per action type, approvals, rejections and rollbacks. Evidence for L2, never a gate (D-079).
+
+  l2.policy_replay:
+    description: >
+      Before a policy change is published, PCM replays it against the action type's recent history: which past runs
+      would have run automatically, and which each guardrail would have stopped.
+    decisions: [D-079]
 
   l2.threshold_replay:
     description: >

@@ -33,9 +33,11 @@ class Catalog(Base):
     def test_LCAT_1_three_verdicts(self):
         self.assertEqual(l2.verdicts(T["LCAT-1"]["given"]["findings"]), T["LCAT-1"]["expect"])
 
-    def test_LCAT_2_offer_promotion(self):
-        for g in T["LCAT-2"]["given"]:
-            self.assertEqual(l2.promotion_offered(g["approvals"], g["rollbacks"], SETTINGS), g["expect"], g)
+    def test_LCAT_2_guardrails_gate_automatic_runs(self):
+        g = T["LCAT-2"]["given"]
+        for r in g["runs"]:
+            blocked = l2.guardrail_block(g["policy"], r)
+            self.assertEqual("run" if blocked is None else f"stopped: {blocked}", r["expect"], r)
 
     def test_LCAT_3_replay(self):
         g, e = T["LCAT-3"]["given"], T["LCAT-3"]["expect"]
@@ -77,17 +79,28 @@ class Story(Base):
         code, out = l2.act(NOW, ["configuration", "c-va-esx-142-2", "decide"], {"choice": "fix_the_standard"})
         self.assertEqual(out["standard_version"], 2)
 
-    def test_LST_4_promotion(self):
+    def test_LST_4_policy_change(self):
         e = T["LST-4"]["expect"]
-        t = next(x for x in l2.action_types(SETTINGS) if x["action_type"] == "move_vms_between_clusters")
-        self.assertEqual(t["promotion_offered"], e["offered"])
-        self.assertEqual(l2.act(NOW, ["action-types", "move_vms_between_clusters", "promote"], {})[0], e["without_reason"])
-        code, out = l2.act(NOW, ["action-types", "move_vms_between_clusters", "promote"], {"reason": "23 clean approvals"})
-        self.assertEqual(code, e["with_reason"])
-        t = next(x for x in l2.action_types(SETTINGS) if x["action_type"] == "move_vms_between_clusters")
-        self.assertEqual(t["tier"], e["tier_after"])
-        self.assertTrue(t["promoted_by"])
-        self.assertEqual(noc.STATE.history[0]["action"], "promote")
+        prop = generator.load_spec()["stories"]["stories"]["L-4"]["plant"]["proposed_policy"]
+        t = "move_vms_between_clusters"
+        self.assertEqual(l2.act(NOW, ["policies", t, "publish"], {**prop, "reason": "x"})[0], e["publish_without_replay"])
+        code, rep = l2.act(NOW, ["policies", t, "replay"], prop)
+        self.assertEqual(rep["would_run_automatically"], e["replay_would_run"])
+        self.assertEqual(rep["stopped"], e["replay_stopped"])
+        self.assertEqual(l2.act(NOW, ["policies", t, "publish"], prop)[0], e["publish_without_reason"])
+        code, out = l2.act(NOW, ["policies", t, "publish"], {**prop, "reason": "Guardrails replace approval"})
+        self.assertEqual((code, out["tier"], out["version"]), (200, e["tier_after"], e["version_after"]))
+        p = next(x for x in l2.proposals() if x["id"] == "p-move-sg-s-04")
+        self.assertEqual(p["state"], e["proposal_state_after"])
+        self.assertEqual(p["accountable"], e["accountable_after"])
+        rec = next(h for h in noc.STATE.history if h["target"] == "p-move-sg-s-04")
+        self.assertEqual(rec["actor_human"], e["accountable_after"])
+        self.assertEqual(rec["actor_agent"], "pcm-policy")
+        self.assertFalse(any(h["action"] == "approve" and h["target"] == "p-move-sg-s-04" for h in noc.STATE.history))
+
+    def test_no_promotion_left(self):
+        self.assertFalse(hasattr(l2, "promotion_offered"))
+        self.assertNotIn("l2.promotion_min_approvals", SETTINGS)
 
     def test_LST_5_daily_verdicts(self):
         e = T["LST-5"]["expect"]

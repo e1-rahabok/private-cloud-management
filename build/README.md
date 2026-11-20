@@ -98,11 +98,15 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
 | Level | Tests | Result |
 |---|---|---|
 | Catalog | LCAT-1 to LCAT-3 | 3 passed |
-| Story | LST-1 to LST-8, plus the RCA draft record | 9 passed |
-| Page | LPG-1 to LPG-9 | 9 passed |
+| Story | LST-1 to LST-8, the RCA draft record, ask-why and no-promotion checks | 12 passed |
+| Page | LPG-1 to LPG-10 | 10 passed |
 
 - **The escalation loop works across workspaces.** The NOC escalates FR-S-02. L2 sees it with raw counters and drafts the root cause analysis with Agent E2. L2 closes it with a cause, a fix and a detection decision, and the NOC incident closes too.
 - **Live RCA draft, 2026-11-20 (Gemma 4 31B through the gateway):** grounded in the evidence. It separates what is proven from the fix, and reports only what L1 did. The wording is stiff.
+
+**Policy as code (D-079):** the trust ladder is gone. Action policies (tier and guardrails, versioned, owned) decide what runs automatically. The approval record is evidence only. "Propose a policy change" replays against history before Publish. The L-4 move runs automatically under v2, with the policy owner and version as its accountable party and no approval record.
+
+**Capacity engine:** decision dates on every page now come from `pcm_proto/capacity.py` (13-month forecast, usable capacity, purchase plan). They are no longer planted from stories.
 
 **Found in review and fixed in the specification first:** decision IDs ("D-039", "D-073", "D-040") appeared in page text and SOP steps. New builder rule 9: decision IDs never appear in page text. Tests PG-13, NPG-10 and LPG-8 now check every workspace, and the NOC test found two SOP steps that leaked one.
 
@@ -131,7 +135,6 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
 
 | Gap | Effect | Proposed fix |
 |---|---|---|
-| Capacity decision dates are planted from stories | No forecast engine yet | Comes with the Capacity workspace (D-053) |
 | Class group KPIs are planted from the background, not computed from VM daily KPIs | No VM KPI engine yet | Comes with the NOC and L2 workspaces (D-053) |
 | NOC and L2 drafts still use the direct model client (facts only) | Fast, but not grounded in the knowledge base | Move them to the Agent E2 service once its latency suits a draft |
 | L1 cannot split an incident yet | D-069 allows splitting | Add to the incident page |
@@ -141,7 +144,7 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
 | No sign-in: every action is by `operator-1` | Prototype | Single sign-on (PCM core, 3.10) |
 | "Is it up?" and "Is it set right?" have no planted story | Always green | Add stories with L2 |
 | L2 weekly, monthly and detailed inventory pages | Not built yet | Next L2 build |
-| Reject and promote ask for their reason in a browser dialog | Prototype | A proper form on the page |
+| Reject asks for its reason in a browser dialog | Prototype | A proper form on the page |
 | The ITSM change calendar connector is simulated by story U-1 | No ITSM in the prototype | Build the read connector; verify on the live system (D-062) |
 | L2 cannot yet reclassify a downtime as customer-caused | Specified (D-077) | Add to the L2 pages |
 | Capacity workspace | Not built yet | Next in order (D-053) |
@@ -158,7 +161,8 @@ Six of the nine L2 pages in this build: Today (daily check), Escalations, Invest
 | `web/fonts/` | Manrope, bundled, with its licence |
 | `pcm_proto/noc.py` | NOC data, grouping, SOPs and the action engine (in memory) |
 | `web/noc/` | The NOC wall and desktop pages |
-| `pcm_proto/l2.py` | L2 daily check, proposals, trust ladder, escalations, configuration, calendar, threshold replay |
+| `pcm_proto/l2.py` | L2 daily check, proposals, action policies, escalations, configuration, calendar, threshold replay |
+| `pcm_proto/capacity.py` | Capacity engine: usable capacity, forecast, decision dates, purchase plan, reclamation, what-if |
 | `web/l2/` | The L2 pages |
 | `pcm_proto/agent_e2.py` | Agent E2 client: drafts, vocabulary check, fallback |
 | `tests/` | Catalog and story tests (Python), page tests (Playwright) |

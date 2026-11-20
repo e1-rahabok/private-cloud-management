@@ -126,14 +126,14 @@ The core is everything the four workspaces share: data, definitions, engines, id
 ### 3.7 The action engine is the only way to change anything
 
 - **What:** every change PCM makes goes through one engine. A change can come from an L1 SOP button, an L2 approval, an automatic rule, or Agent E2. For each one, the engine:
-  1. checks the action tier (D-029) and the role of the human accountable (D-050);
-  2. checks the guardrails:
-     - the maintenance window;
+  1. reads the action type's policy (D-029, D-079): its tier and its guardrails, at its current version;
+  2. checks the guardrails; a run that breaks one does not run and becomes a proposal for a person:
      - the blast radius, for example no more than N VMs per cluster per hour;
-     - the class of service of the target;
+     - the time: maintenance windows, close weeks;
+     - the class of service and environment of the target;
   3. runs the action against vCenter or NSX with a service account that has only the rights for that action type;
   4. sets an expiry if the action is temporary, and undoes it at expiry (D-040: limits on villain VMs);
-  5. writes the action history: what, which object, the agent ID (if any), the human accountable, why, before and after. This is an operational record in 1.0. The audit log as a compliance record is phase 2 (D-063);
+  5. writes the action history: what, which object, the actor, the accountable party (the human who ordered it, or for an automatic run the policy owner and version, D-050), why, before and after. This is an operational record in 1.0. The audit log as a compliance record is phase 2 (D-063);
   6. optionally, sends a record to ITSM after the fact (D-025).
 - **Why:**
   - **One path means one place to audit and one place to stop.** If there are two paths, the second one is where the 03:00 incident comes from.

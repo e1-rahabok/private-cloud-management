@@ -265,14 +265,23 @@ objects:
       decided_by: { type: string, optional: true }
       rejection_reason: { type: string, optional: true, note: "Required to reject: a rejection is data about the rule" }
 
-  action_type_record:
-    description: Per action type, the record that earns automation (L2 design, 3.7).
+  action_policy:
+    description: Policy as code for one action type (D-029, D-079).
     fields:
       action_type: { type: string }
       tier: { type: enum, values: [automatic, approval, never] }
+      guardrails: { type: object, note: "Blast radius, time, class of service, expiry and undo, service account" }
+      version: { type: integer }
+      owner: { type: string, note: "L2 in 1.0; the Operations Manager reviews after 1.0" }
+      published_at: { type: datetime }
+
+  action_record_evidence:
+    description: Per action type, approvals, rejections and rollbacks. Evidence only, never a gate (D-079).
+    fields:
+      action_type: { type: string }
       approvals: { type: integer }
+      rejections: { type: integer }
       rollbacks: { type: integer }
-      promoted_by: { type: string, optional: true, note: "Only a person promotes; PCM never does (D-029, D-050)" }
 
   calendar_entry:
     description: Business context L2 records, read by the checks and Agent E2 (L2 design, 3.6).
