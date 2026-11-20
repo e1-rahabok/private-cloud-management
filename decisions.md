@@ -40,3 +40,117 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-034 | 2026-11-20 | PCM manages VMware infrastructure only. Not the mainframe, not VDI, not applications. | Keeps PCM focused on the VMware private cloud (D-030). |
 | D-035 | 2026-11-20 | L1 and the CIO see health as three plain questions, in this order: **Is it up? Is it fast? Is it safe?** They are not shown the split between security and compliance. Source: SP5 framework, https://github.com/e1-rahabok/agent-e2/tree/main/knowledge/sp5-framework | A system that is down has no security or performance problem. Up is not fast. Fast is not safe. The split between security and compliance helps experts, not L1 or the CIO. |
 | D-036 | 2026-11-20 | The NOC wall rotates through 5 screens, each titled as a question: **What changed?** (inventory), **Is it up?**, **Is it fast?**, **Is it safe?** (security and compliance together, VMware only), **Is it set right?** (configuration). This changes the 6-screen order in D-032. | Follows D-035: L1 does not need the split between security and compliance. Compliance changes slowly; a compliance drift that happens now is a safety event. Fewer screens means a shorter cycle, so red stays off screen for less time. |
+| D-037 | 2026-11-20 | The Operations Manager role has no workspace in release 1.0. | Scope control. The four workspaces come first. |
+| D-038 | 2026-11-20 | The Guest OS is in scope, limited to Windows and Linux at the OS level. Applications inside the Guest OS are out. macOS is out. | IT owns the OS build standard (SP5 People: OS teams). Applications belong to their owners (D-034). macOS on ESXi is rare in enterprises. See Rationale. |
+| D-039 | 2026-11-20 | The daily check is run by PCM, not by a person. It runs at the start and the end of each region's business day. The reviewer gets a verdict in under 1 minute when nothing needs a human. The owner is Platform (L2), not L1. | See Rationale. |
+| D-040 | 2026-11-20 | L1 acts only through SOP buttons in PCM, never through vCenter. The L1 action set is small, reversible and set by class of service. | See Rationale. |
+| D-041 | 2026-11-20 | Wall behaviour: a fixed status strip on every screen; red interrupts the rotation until acknowledged; stale data turns the wall grey, never green; with five or more displays, nothing rotates. | See Rationale. |
+
+## Rationale
+
+Longer reasons for decisions that need them.
+
+### D-038 Guest OS, limited
+
+- SP5 separates the VM from the Guest OS: they are different realms. The hypervisor does not see what runs inside Windows or Linux.
+- PCM keeps that split. The VM (the virtual motherboard) and the Guest OS are **separate objects**, each with its own health.
+  - A Guest OS that is slow because of its own run queue or paging does not turn the VM or the ESXi host red.
+  - This stops the most common false escalation in large estates: "the app is slow, so the host is bad".
+- Guest OS counters in scope are the ones SP5 lists for the OS teams: CPU run queue, context switches, memory paging, disk queue and free space.
+  - These are the evidence for "it is on my court" when L2 hands a problem to the Windows or Linux team.
+- Out of scope: processes, services and application counters. They lead into application monitoring (D-034).
+
+### D-039 The daily check
+
+**What the two sources say**
+- The SP5 source says the check takes about 1 minute.
+- The Agent E2 knowledge base says about 5 minutes.
+- Both are right for different setups:
+  - 5 minutes is a person walking VCF Operations dashboards top down: clusters, then hosts, then VMs.
+  - 1 minute is a person reading the verdict of a check that has already run.
+- PCM is built for the second case, as SP5 itself describes: a script runs from 08:00 to 09:00, a human expert reviews at 09:00, and the environment is prepared for the day by 10:00.
+
+**Why the 5-minute manual walk does not scale**
+- At 6,000 hosts, 300 clusters and 100,000 VMs, nobody walks the estate by hand in 5 minutes.
+- What makes the walk possible at all is the KPI models: 0–100%, worst first, built from the worst VM and the 90th percentile, never from averages.
+- Once the models exist, a machine can walk them. The person then reads only the exceptions.
+
+**Why the owner is Platform (L2), not L1**
+- The check produces insight, not alerts.
+- An insight needs knowledge of the environment and of the day's business context. Example: total IOPS is low on the day before a retail holiday. That means sales are not happening.
+- L1 follows the SOP and does not have that context.
+- The SP5 path ("L1 runs it once confident") was a workaround for a manual check. PCM does the walking, so L1 does not have to.
+
+**Why two runs a day, per region**
+- Start of day: prepare for the load expected today, for example approving a rebalance between clusters.
+- End of day: matters more than it looks. Nights have the fewest experts on site, only L1 and the L2 on call.
+  - Fixing an emerging problem at 17:00 prevents a page at 02:00.
+- A global enterprise runs both checks in each region's local time, because business load and change windows follow local time.
+
+**Under 1 minute**
+- This target applies when nothing needs a human.
+- If the check finds a problem, the review takes as long as the problem needs. That time is troubleshooting, not checking.
+
+**Each run also checks the alerts that slipped through**
+- It lists the alerts from the previous period that the check did not predict.
+- This is SP5's weekly improvement loop, run every day.
+- Over months, fewer alerts slip through.
+
+### D-040 L1 actions
+
+**Principles, from large-scale VMware operations**
+- **L1 never logs in to vCenter.**
+  - Every L1 action is an SOP button in PCM. PCM runs it with its own service account and writes the audit record (D-029).
+  - A shift of junior operators with vCenter admin rights is how large estates get unexplained changes at 03:00.
+- **Every L1 action is reversible and limited in reach.** If the action cannot be undone, or can affect more than one cluster, it is L2's.
+- **The action depends on class of service.** The same contention needs a different response for a Gold production VM than for a test VM.
+
+**The L1 action set in release 1.0**
+
+| Action | Scope | Why it is safe for L1 |
+|---|---|---|
+| Acknowledge, annotate, escalate | Any alert | Escalation carries the evidence automatically: the L1 exit criteria are the L2 entry criteria. PCM routes it to the right L2 group (platform, storage, network) by object type. |
+| Close an alert | Any alert | Only with a root cause chosen from a list. SP5: close when the cause is known, not when the symptom goes away. |
+| Stop provisioning (close a cluster), then reopen it | Cluster | No running VM is touched. It stops new load from landing on a cluster whose VMs are already waiting for resources. SP5 names this as a NOC action. |
+| Time-boxed limit on a "villain" VM | Non-production VMs only | Limits are the classic forgotten setting: an old limit causes mystery contention months later. PCM sets the limit with an expiry, removes it itself, and logs both actions. On production VMs a limit is L2's call. |
+| Restart an unresponsive VM | Non-production VMs only, and only when VMware Tools heartbeat is lost | A hung non-production VM is an availability fix of the kind an SOP covers. A production restart needs the application owner, so it goes to L2. |
+
+**Not for L1, and why**
+- **Manual vMotion.** In a fully automated DRS cluster, DRS moves the VM back. Moving to another cluster touches networks, storage, licensing and affinity rules.
+- **Host maintenance mode.** It moves load and uses up HA failover capacity. Proactive HA already handles predicted hardware failure automatically.
+- **Snapshot deletion.** Consolidation can stun the VM at peak time, and backups own the snapshots.
+- **Any change to vCenter, NSX or vSAN configuration.**
+
+**Where the actions are defined**
+- These actions live in the SOPs.
+- L2 adds an action when it turns a solved problem into an SOP (SP5: L2 updates the guide so L1 can handle the case next time).
+- The action tier (D-029) still decides whether L1 may run it.
+
+### D-041 Wall behaviour
+
+**Fixed status strip**
+- Every screen carries a strip of five chips, one per question, each showing that screen's worst state.
+- A red on another screen is never more than a glance away, even while it is off the wall.
+
+**Red interrupts the rotation**
+- When a screen turns red, the rotation stops on it.
+- It resumes when L1 **acknowledges** the red on the desktop. It does not wait for the red to clear.
+- Reason: pinning until the red clears would hide every other screen for the hours a fix can take. The wall's job is to show what is new.
+- After acknowledgement, the chip stays red and is marked as being worked on. A new red interrupts the rotation again.
+- With more than one red, the rotation cycles through the red screens only.
+
+**Stale data turns grey**
+- The most dangerous wall is one that shows green because it is blind: a collector down, a VCF Operations instance not answering, a stuck browser.
+- Every screen shows how old its data is.
+- Data older than two collection cycles turns the screen **grey with "No data"**, never green.
+- A grey screen is itself something L1 escalates.
+
+**No rotation on large walls**
+- Large NOCs have video walls with several displays.
+- With five or more displays, each question gets its own display and nothing rotates.
+- Rotation is a workaround for having one display.
+
+**Why all green by default**
+- A wall that is often red teaches the room to ignore red.
+- Red on the wall is only for what L1 can act on the same day (SP5).
+- Everything else goes to the daily check (D-039) or to an alert.
