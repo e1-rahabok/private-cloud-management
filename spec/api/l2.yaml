@@ -1,0 +1,38 @@
+openapi: 3.1.0
+info:
+  title: PCM API, L2 part
+  version: "1"
+  description: >
+    L2 endpoints (design/l2-workspace.md). Reads take the synthetic-only parameters now and enable.
+    Writes go through the action engine (PCM core, 3.7) and the action history (D-063), with both
+    identity fields (D-050).
+paths:
+  /api/l2/daily:
+    get: { summary: "Latest daily check run: three verdicts, findings worst first, proposals, slipped alerts (l2.daily_check)." }
+  /api/l2/proposals/{id}/approve:
+    post: { summary: "Approve a proposal. Counts toward its action type's record." }
+  /api/l2/proposals/{id}/reject:
+    post: { summary: "Reject. Requires a reason (400 without one): a rejection is data about the rule." }
+  /api/l2/action-types:
+    get: { summary: "Action type records: tier, approvals, rollbacks, whether promotion is offered (l2.offer_promotion)." }
+  /api/l2/action-types/{type}/promote:
+    post: { summary: "Make an action type automatic. Only when offered; requires a reason; the person who promotes is accountable for later automatic runs (D-050)." }
+  /api/l2/escalations:
+    get: { summary: "Incidents escalated by the NOC to L2, with their evidence (noc.escalation_evidence)." }
+  /api/l2/escalations/{id}/close:
+    post: { summary: "Close with root_cause, corrective_action, detection and detection_note. 400 if any is missing (l2.escalation_close)." }
+  /api/l2/escalations/{id}/agent:
+    post: { summary: "Agent E2 drafts the root cause analysis (task rca_draft). L2 vocabulary. Recorded (D-076)." }
+  /api/l2/investigate/{object}:
+    get: { summary: "Fixed-order checks for a VM or cluster, VM and Guest OS side by side, logs beside metrics (l2.investigation_order, l2.realms)." }
+  /api/l2/configuration:
+    get: { summary: "Configuration findings in SP5 time order, each with fix the setting or fix the standard (l2.config_order)." }
+  /api/l2/configuration/{id}/decide:
+    post: { summary: "choice = fix_the_setting (creates a proposal, approval tier) or fix_the_standard (records a new standard version)." }
+  /api/l2/calendar:
+    get: { summary: "Business calendar entries." }
+    post: { summary: "Add an entry. The next check reads it." }
+  /api/l2/thresholds/{id}/replay:
+    get: { summary: "Query value=<new value>. Alerts the current and the new value would have raised over l2.replay_days days." }
+  /api/l2/thresholds/{id}/publish:
+    post: { summary: "Publish a new value. Version increments; recorded in the action history." }

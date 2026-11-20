@@ -150,3 +150,7 @@ page:
     rule: "The incident page disables the limit button for the production villain and says: Production VM, escalate instead."
   - id: NPG-8
     rule: No request leaves the PCM host; text contrast is at least 4.5:1 on the desktop pages and the wall.
+
+  - id: NPG-10
+    rule: No decision ID (D-nnn) appears in the visible text of any page of this workspace, in any state.
+

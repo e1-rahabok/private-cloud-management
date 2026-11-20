@@ -215,3 +215,66 @@ stories:
       wall.pin_effect: none
     note: "Orange is end-of-day work. It appears in the alert list but does not stop the wall rotation."
     decisions: [D-040]
+
+  # ---------------------------------------------------------------- L2 stories (D-053 step 3)
+
+  L-1:
+    title: The Frankfurt escalation arrives at L2 complete, and closes only with a detection decision
+    depends_on: [N-1]
+    flow: "NOC escalates inc-fr-s-02 (NOC page or API), then L2 reads it on /l2/escalations"
+    expect:
+      escalation: { id: inc-fr-s-02, evidence_has: [sop_steps, villains, victims, l1_actions], villain_counters_shown: true }
+      close_without_detection: 400
+      close_complete: 200
+    note: "L2 sees raw counters of the villain and victims; L1 did not (NOC vocabulary)."
+    decisions: [D-040, D-050]
+
+  L-2:
+    title: An application owner says SG-APP-117 is slow; the cause is inside the Guest OS
+    objects: { vm: sg-app-117, cluster: SG-S-07, host: sg-esx-088 }
+    plant:
+      vm: { cpu_ready_percent: 0.6, co_stop_percent: 0.1, memory_wait_percent: 0.0, disk_latency_ms: 3, vm_performance: 96 }
+      guest_os: { run_queue_per_vcpu: 6.5, context_switches_per_s: 41000, paging_per_s: 12, guest_os_performance: 38 }
+    expect:
+      first_failing_step: null
+      realm_verdict: guest_os
+    decisions: [D-038]
+
+  L-3:
+    title: One host in VA-G-05 drifted from its peers
+    objects: { host: va-esx-142, cluster: VA-G-05 }
+    plant:
+      drift:
+        - { setting: ntp_server, actual: "10.20.1.9", standard: "ntp.acme.internal" }
+        - { setting: syslog_target, actual: "(none)", standard: "loginsight.acme.internal" }
+    expect: { group: correct_it, findings: 2 }
+
+  L-4:
+    title: A VM move earns automation
+    plant:
+      proposal: { id: p-move-sg-s-04, action_type: move_vms_between_clusters, from: SG-S-04, to: SG-S-06, vms: 6 }
+      record: { action_type: move_vms_between_clusters, approvals: 23, rollbacks: 0, tier: approval }
+    expect: { promotion_offered: true, promote_without_reason: 400, promote_with_reason: 200, tier_after: automatic }
+    decisions: [D-029, D-050]
+
+  L-5:
+    title: An alert the check did not predict
+    plant:
+      slipped: { object: va-db-033, title: "VM waiting for resources", raised: "now - 4 days" }
+    expect: { slipped_alerts: 1 }
+
+  L-6:
+    title: Quarter-end close explains rising load
+    plant:
+      calendar:
+        - { kind: quarter_end_close, location: null, when: next_quarter_end, note: "Quarter-end close, all locations" }
+        - { kind: payday, location: sg, when: next_25th, note: "Payday, Singapore" }
+      finding: { object: VA-S-03, summary: "Load rising toward the quarter-end close", pillar: capacity }
+    expect: { finding_explained_by: quarter_end_close, finding_sorted_last: true }
+
+  L-7:
+    title: London end-of-day batch ran 40 minutes longer; a datastore behind it is slowing
+    objects: { datastore: LD-DS-03, location: ld }
+    plant: { batch_overrun_minutes: 40, datastore_latency_trend: rising }
+    expect: { finding: { verdict: present_health, severity: amber, pillar: performance } }
+    note: "An insight before the batch window runs into the start of business (SP5 prevention window)."

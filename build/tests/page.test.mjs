@@ -61,6 +61,10 @@ try {
   }
   check('PG-2', bad.length === 0, bad.length ? `avoided words found: ${bad.join(', ')}` : 'no avoided word in any state');
 
+  // PG-13 no decision ID in page text
+  const ids = (normal + stale).match(/\bD-\d{3}\b/g) || [];
+  check('PG-13', ids.length === 0, ids.length ? `found ${[...new Set(ids)]}` : 'no decision ID in page text');
+
   // PG-3 no "Live" in the header
   await load();
   const header = await page.innerText('header');

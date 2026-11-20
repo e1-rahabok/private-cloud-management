@@ -7,4 +7,4 @@ steps:
   - kind: diagnosis
     text: Check the business calendar for an approved change on this object.
   - kind: escalate
-    text: Escalate to Platform. Configuration changes are not L1 actions (D-040).
+    text: Escalate to Platform. Configuration changes are not L1 actions.   # D-040

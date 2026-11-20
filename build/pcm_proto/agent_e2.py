@@ -28,6 +28,9 @@ Rules:
 TASKS = {
     "explain": "Explain this incident to the operator: what is wrong, where, what the SOP checks found, and what the SOP says to do next.",
     "escalation_note": "Draft the escalation note to the L2 group named in escalation_route: what happened, the SOP steps run and their results, the villain and the victims, and what L1 already did.",
+    "rca_draft": ("Draft a root cause analysis for an L2 engineer, from the evidence and the investigation: the root cause, "
+                  "the corrective action that prevents a repeat, and how the next occurrence will be detected (a check rule, "
+                  "an alert, or an SOP for L1). Raw counters are allowed here. Separate what is proven from what is assumed."),
 }
 
 
@@ -64,16 +67,26 @@ def fallback(detail: dict) -> str:
 
 
 def draft(detail: dict, task: str, settings: dict, avoided: list) -> dict:
+    """NOC incident drafts. Returns {text, source, model}."""
+    return draft_facts(facts_for(detail), task, settings, avoided, fallback(detail))
+
+
+def draft_facts(facts: dict, task: str, settings: dict, avoided: list, template: str) -> dict:
     """Returns {text, source, model}. source: model, fallback_vocabulary or fallback_unavailable."""
     model = settings["agent_e2.model"]
     if settings.get("agent_e2.mode") == "mock" or os.environ.get("PCM_AGENT_E2_MODE") == "mock":
-        return {"text": "Draft by Agent E2, to review (mock): " + fallback(detail).split(": ", 1)[-1],
+        return {"text": "Draft by Agent E2, to review (mock): " + template.split(": ", 1)[-1],
                 "source": "model", "model": "mock"}
     key = os.environ.get(settings["agent_e2.api_key_env"])
     if not key:
-        return {"text": fallback(detail), "source": "fallback_unavailable", "model": model}
-    messages = [{"role": "system", "content": SYSTEM.format(avoided=", ".join(avoided))},
-                {"role": "user", "content": TASKS[task] + "\n\nFacts (JSON):\n" + json.dumps(facts_for(detail), indent=1)}]
+        return {"text": template, "source": "fallback_unavailable", "model": model}
+    system = SYSTEM.format(avoided=", ".join(avoided))
+    if task == "rca_draft":  # L2 reads raw counters (L2 vocabulary); the L1 rule against units does not apply
+        system = system.replace("- Scores are from 0 to 100. Do not use raw counters or units such as milliseconds.\n", "")
+        system = system.replace("You help a Level 1 NOC operator.", "You help a Level 2 platform engineer.")
+        system = system.replace("At most 6 sentences.", "At most 10 sentences.")
+    messages = [{"role": "system", "content": system},
+                {"role": "user", "content": TASKS[task] + "\n\nFacts (JSON):\n" + json.dumps(facts, indent=1, default=str)}]
     try:
         for attempt in range(2):
             resp = _post(settings["agent_e2.endpoint"], key,
@@ -84,6 +97,6 @@ def draft(detail: dict, task: str, settings: dict, avoided: list) -> dict:
                 return {"text": "Draft by Agent E2, to review: " + text, "source": "model", "model": model}
             messages += [{"role": "assistant", "content": text},
                          {"role": "user", "content": f"Rewrite without these words: {', '.join(bad) or 'none'}. Keep the same facts."}]
-        return {"text": fallback(detail), "source": "fallback_vocabulary", "model": model}
+        return {"text": template, "source": "fallback_vocabulary", "model": model}
     except (urllib.error.URLError, TimeoutError, KeyError, ValueError):
-        return {"text": fallback(detail), "source": "fallback_unavailable", "model": model}
+        return {"text": template, "source": "fallback_unavailable", "model": model}

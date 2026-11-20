@@ -142,21 +142,21 @@ settings:
     description: A location's VM changes of one type are unexpected when the count is more than this many times the expected count.
     default: 3
     owner: l2
-    source: "proposal; confirm with the author"
+    source: "confirmed by the author"
     decisions: [D-036]
 
   noc.unexpected_change_min:
     description: And at least this many more than expected, so that 3 deletions against 1 expected is not red.
     default: 10
     owner: l2
-    source: "proposal; confirm with the author"
+    source: "confirmed by the author"
     decisions: [D-036]
 
   noc.shift_times:
     description: Start of the three shifts in each region's local time (D-031).
     default: { day: "07:00", evening: "15:00", night: "23:00" }
     owner: l2
-    source: "proposal; confirm with the author"
+    source: "confirmed by the author"
     decisions: [D-031]
 
   noc.actor_default:
@@ -192,4 +192,27 @@ settings:
     default: live
     owner: l2
     source: prototype
+
+  # ---------------------------------------------------------------- L2 (D-053 step 3)
+
+  l2.promotion_min_approvals:
+    description: Approvals an action type needs before PCM offers to make it automatic.
+    default: 20
+    owner: l2
+    source: "proposal; confirm with the author"
+    decisions: [D-029]
+
+  l2.promotion_max_rollbacks:
+    description: Rollbacks allowed in that record. Any rollback means a person should keep approving.
+    default: 0
+    owner: l2
+    source: "proposal; confirm with the author"
+    decisions: [D-029]
+
+  l2.replay_days:
+    description: Days of history a threshold change is replayed against before it is published.
+    default: 30
+    unit: days
+    owner: l2
+    source: "L2 design, 3.9"
 

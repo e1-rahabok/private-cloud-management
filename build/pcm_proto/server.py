@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import api, generator, noc
+from . import api, generator, l2, noc
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 
@@ -29,6 +29,8 @@ def route(path: str, query: dict):
     parts = [p for p in path.split("/") if p]
     if parts[:2] == ["api", "noc"]:
         return noc_get(parts[2:], now, enable)
+    if parts[:2] == ["api", "l2"]:
+        return l2_get(parts[2:], now, enable, query)
     if parts[:2] != ["api", "exec"]:
         return None
     rest = parts[2:]
@@ -62,7 +64,29 @@ def noc_get(rest, now, enable):
     return None
 
 
-PAGES = {"/exec": "/exec/index.html", "/noc": "/noc/index.html", "/noc/wall": "/noc/wall.html",
+def l2_get(rest, now, enable, query):
+    st = generator.load_spec()["settings"]
+    if rest == ["daily"]:
+        return l2.daily(now, enable)
+    if rest == ["action-types"]:
+        return l2.action_types(st, enable)
+    if rest == ["escalations"]:
+        return l2.escalations(now, enable)
+    if len(rest) == 2 and rest[0] == "investigate":
+        return l2.investigate(now, rest[1], enable)
+    if rest == ["configuration"]:
+        return l2.configuration(now, enable)
+    if rest == ["calendar"]:
+        return l2.calendar(now, enable)
+    if rest == ["thresholds"]:
+        return [{"id": k, **v, **l2.STATE.thresholds.get(k, {})} for k, v in l2.THRESHOLDS.items()]
+    if len(rest) == 3 and rest[0] == "thresholds" and rest[2] == "replay" and rest[1] in l2.THRESHOLDS:
+        return l2.replay(now, rest[1], float(query.get("value", ["50"])[0]), st)
+    return None
+
+
+PAGES = {"/l2": "/l2/index.html", "/l2/escalations": "/l2/escalations.html", "/l2/configuration": "/l2/configuration.html",
+         "/l2/context": "/l2/context.html", "/l2/authoring": "/l2/authoring.html","/exec": "/exec/index.html", "/noc": "/noc/index.html", "/noc/wall": "/noc/wall.html",
          "/noc/alerts": "/noc/alerts.html", "/noc/shift": "/noc/shift.html"}
 
 
@@ -94,6 +118,8 @@ class Handler(BaseHTTPRequestHandler):
         path = u.path.rstrip("/") or "/exec"
         if path.startswith("/noc/alert/"):
             path = "/noc/alert.html"
+        if path.startswith("/l2/investigate/"):
+            path = "/l2/investigate.html"
         path = PAGES.get(path, path)
         f = (WEB / path.lstrip("/")).resolve()
         if WEB not in f.parents or not f.is_file():
@@ -105,7 +131,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         u = urlparse(self.path)
         parts = [p for p in u.path.split("/") if p]
-        if parts[:2] != ["api", "noc"]:
+        if parts[:2] not in (["api", "noc"], ["api", "l2"]):
             return self.send(404, b'{"error":"not found"}', "application/json")
         q = parse_qs(u.query)
         length = int(self.headers.get("Content-Length") or 0)
@@ -115,10 +141,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(400, b'{"error":"bad json"}', "application/json")
         if parts[2:] == ["_reset"]:
             noc.STATE.reset()
+            l2.STATE.reset()
             return self.send(200, b'{"reset":true}', "application/json")
         now = generator.parse_now(q.get("now", [None])[0])
         enable = tuple(x for x in q.get("enable", [""])[0].split(",") if x)
-        code, data = noc.act(noc.build(now, enable), parts[2:], body)
+        if parts[1] == "l2":
+            code, data = l2.act(now, parts[2:], body, enable)
+        else:
+            code, data = noc.act(noc.build(now, enable), parts[2:], body)
         return self.send(code, json.dumps(data).encode(), "application/json")
 
 

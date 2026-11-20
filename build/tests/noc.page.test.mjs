@@ -49,6 +49,10 @@ try {
   const bad = avoided.filter(w => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(all));
   check('NPG-2', bad.length === 0, bad.length ? `avoided words: ${bad.join(', ')}` : 'no avoided word on any NOC page, in any state');
 
+  // NPG-10 no decision ID in page text
+  const ids = (all).match(/\bD-\d{3}\b/g) || [];
+  check('NPG-10', ids.length === 0, ids.length ? `found ${[...new Set(ids)]}` : 'no decision ID in page text');
+
   // NPG-3 no interactive element on the wall
   await go('/noc/wall');
   const interactive = await page.$$eval('button, a, input, select, textarea', els => els.length);

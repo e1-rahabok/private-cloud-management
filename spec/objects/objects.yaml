@@ -226,3 +226,86 @@ objects:
       after: { type: string }
       expires_at: { type: datetime, optional: true }
     decisions: [D-050, D-063]
+
+  # ---------------------------------------------------------------- Added for the L2 workspace (D-053 step 3)
+
+  check_run:
+    description: One run of the daily (or weekly) check by PCM (D-039, D-042).
+    fields:
+      kind: { type: enum, values: [daily, weekly] }
+      region: { type: ref, to: region }
+      started_at: { type: datetime }
+      finished_at: { type: datetime }
+      verdicts: { type: object, note: "present_health, risk, efficiency: three separate verdicts, never one score (L2 design, 3.2)" }
+      findings: { type: list, of: check_finding }
+      slipped_alerts: { type: list, of: alert, note: "Alerts in the period no check predicted (D-039)" }
+
+  check_finding:
+    description: One thing the check found that needs a human, worst first.
+    fields:
+      id: { type: string }
+      verdict: { type: enum, values: [present_health, risk, efficiency] }
+      pillar: { type: enum, values: [availability, performance, security, capacity, configuration] }
+      object: { type: string }
+      object_type: { type: string }
+      parent_chain: { type: list, of: string, note: "cluster, then host, then VM (L2 design, 3.3)" }
+      severity: { type: enum, values: [red, amber] }
+      summary: { type: string }
+      explained_by: { type: ref, to: calendar_entry, optional: true, note: "Business context that explains it (L2 design, 3.6)" }
+      proposal: { type: ref, to: proposal, optional: true }
+
+  proposal:
+    description: A fix PCM proposes. L2 approves or rejects it (D-029, L2 design 3.7).
+    fields:
+      id: { type: string }
+      action_type: { type: string, example: move_vms_between_clusters }
+      targets: { type: list, of: string }
+      reason: { type: string }
+      state: { type: enum, values: [waiting, approved, rejected, rolled_back] }
+      decided_by: { type: string, optional: true }
+      rejection_reason: { type: string, optional: true, note: "Required to reject: a rejection is data about the rule" }
+
+  action_type_record:
+    description: Per action type, the record that earns automation (L2 design, 3.7).
+    fields:
+      action_type: { type: string }
+      tier: { type: enum, values: [automatic, approval, never] }
+      approvals: { type: integer }
+      rollbacks: { type: integer }
+      promoted_by: { type: string, optional: true, note: "Only a person promotes; PCM never does (D-029, D-050)" }
+
+  calendar_entry:
+    description: Business context L2 records, read by the checks and Agent E2 (L2 design, 3.6).
+    fields:
+      id: { type: string }
+      location: { type: ref, to: location, optional: true, note: "None means all locations" }
+      kind: { type: enum, values: [quarter_end_close, month_end_close, payday, year_end_close, migration, dr_test, maintenance_window, other] }
+      starts_at: { type: datetime }
+      ends_at: { type: datetime }
+      note: { type: string }
+      added_by: { type: string }
+
+  standard:
+    description: A documented configuration standard. Drift means nothing without one (L2 design, 3.10).
+    fields:
+      id: { type: string }
+      setting: { type: string }
+      value: { type: string }
+      version: { type: integer }
+
+  threshold_rule:
+    description: A threshold L2 owns, in the catalog. Replayed over 30 days before it is published (L2 design, 3.9).
+    fields:
+      id: { type: string }
+      metric: { type: string }
+      operator: { type: enum, values: [below, above] }
+      value: { type: number }
+      version: { type: integer }
+
+  escalation_closure:
+    description: What an escalation needs to close at L2 (L2 design, 3.8).
+    fields:
+      root_cause: { type: string }
+      corrective_action: { type: string }
+      detection: { type: enum, values: [new_check_rule, new_alert, new_sop, sop_updated, none_with_reason] }
+      detection_note: { type: string }

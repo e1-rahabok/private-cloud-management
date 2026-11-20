@@ -7,4 +7,4 @@ steps:
   - kind: diagnosis
     text: Confirm the datastore is above its space threshold now.
   - kind: escalate
-    text: Escalate to Storage. Snapshot deletion and VM moves are not L1 actions (D-040).
+    text: Escalate to Storage. Snapshot deletion and VM moves are not L1 actions.   # D-040

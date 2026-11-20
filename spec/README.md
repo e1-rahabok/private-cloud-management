@@ -26,6 +26,7 @@ The reasons behind each item are in [`../design/`](../design) and [`../decisions
 6. **Settings are not thresholds invented by the builder.** Every threshold or target is a named setting in `catalog/settings.yaml`, with its default and who owns it.
 7. **No request leaves the PCM host.** Fonts, scripts and images ship with the build. An on-premises customer may have no internet access (D-004, D-074).
 8. **Times are shown in the viewer's time zone, with the zone named.** Example: "Updated 10:05 GMT+8". A global team reads the same page from several zones (D-074).
+9. **Decision IDs (D-nnn) and design section numbers never appear in page text.** They are for the specification and its reviewers, not for operators.
 
 ## Build and test
 
@@ -40,7 +41,7 @@ The reasons behind each item are in [`../design/`](../design) and [`../decisions
 |---|---|---|
 | Executive | Written (D-053, step 1) | First build: all tests pass (`../build/README.md`) |
 | NOC | Written (D-053, step 2) | First build: all tests pass (`../build/README.md`) |
-| L2 | Not started | Not started |
+| L2 | Written for 6 of 9 pages (D-053, step 3) | First build: all tests pass (`../build/README.md`) |
 | Capacity | Not started | Not started |
 
 ## Assumptions to verify on the live system (D-062)

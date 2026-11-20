@@ -20,6 +20,7 @@ Open:
 - `http://localhost:8080/exec`: Executive
 - `http://localhost:8080/noc/wall`: NOC wall, for a TV
 - `http://localhost:8080/noc`: NOC desktop
+- `http://localhost:8080/l2`: L2 Platform
 
 Options, in the page URL or on the API:
 
@@ -48,6 +49,14 @@ node build/tests/page.test.mjs
 node build/tests/noc.page.test.mjs
 ```
 
+```bash
+python3 -m unittest build.tests.test_l2 -v
+```
+
+```bash
+node build/tests/l2.page.test.mjs
+```
+
 The page test needs Node and Playwright with Chromium. It also writes the review screenshots to `screenshots/`.
 
 ## Results: Executive
@@ -56,7 +65,7 @@ The page test needs Node and Playwright with Chromium. It also writes the review
 |---|---|---|
 | Catalog | CAT-1 to CAT-18 | 18 passed |
 | Story | ST-1 to ST-8 | 8 passed |
-| Page | PG-1 to PG-12 | 12 passed |
+| Page | PG-1 to PG-13 | 13 passed |
 | Extra | Same inputs give the same data; stories hold on another day (D-067) | 2 passed |
 
 Second build: "Is it fast?" became a KPI with no target (D-072); "Is it safe?" became the Security SLA (D-073).
@@ -71,7 +80,7 @@ Third build: the three gaps from the first review are fixed in the specification
 |---|---|---|
 | Catalog | NCAT-1 to NCAT-6 | 6 passed |
 | Story | NST-1 to NST-12 | 12 passed |
-| Page | NPG-1 to NPG-9 | 9 passed |
+| Page | NPG-1 to NPG-10 | 10 passed |
 
 **Found while reviewing the screenshots, and fixed in the specification first:**
 - The SOP step "is the villain non-production?" showed "fail". It is a branch, not a failure. Branch steps now show their answer.
@@ -79,6 +88,21 @@ Third build: the three gaps from the first review are fixed in the specification
 - "Is it up?" turned red when Europe's VCF Operations stopped answering, with nothing on screen saying why. The screen now names the source and the time of its last good data.
 
 **One test expectation corrected in the specification:** NST-1 expected the wall to pin "Is it fast?". Stories N-1 and N-3 are both active, so the wall pins two screens and cycles through both. The test now checks that "Is it fast?" is among the pins.
+
+## Results: L2
+
+Six of the nine L2 pages in this build: Today (daily check), Escalations, Investigate, Configuration, Calendar, Thresholds. Weekly, monthly and detailed inventory follow in the next L2 build.
+
+| Level | Tests | Result |
+|---|---|---|
+| Catalog | LCAT-1 to LCAT-3 | 3 passed |
+| Story | LST-1 to LST-8, plus the RCA draft record | 9 passed |
+| Page | LPG-1 to LPG-8 | 8 passed |
+
+- **The escalation loop works across workspaces.** The NOC escalates FR-S-02. L2 sees it with raw counters and drafts the root cause analysis with Agent E2. L2 closes it with a cause, a fix and a detection decision, and the NOC incident closes too.
+- **Live RCA draft, 2026-11-20 (Gemma 4 31B through the gateway):** grounded in the evidence. It separates what is proven from the fix, and reports only what L1 did. The wording is stiff.
+
+**Found in review and fixed in the specification first:** decision IDs ("D-039", "D-073", "D-040") appeared in page text and SOP steps. New builder rule 9: decision IDs never appear in page text. Tests PG-13, NPG-10 and LPG-8 now check every workspace, and the NOC test found two SOP steps that leaked one.
 
 ## Agent E2 (D-076)
 
@@ -104,7 +128,9 @@ Third build: the three gaps from the first review are fixed in the specification
 | Limits record their expiry, but nothing removes them at expiry | No clock runs in the prototype | The action engine runs expiries (PCM core, 3.7) |
 | No sign-in: every action is by `operator-1` | Prototype | Single sign-on (PCM core, 3.10) |
 | "Is it up?" and "Is it set right?" have no planted story | Always green | Add stories with L2 |
-| L2 and Capacity workspaces | Not built yet | Next in order (D-053) |
+| L2 weekly, monthly and detailed inventory pages | Not built yet | Next L2 build |
+| Reject and promote ask for their reason in a browser dialog | Prototype | A proper form on the page |
+| Capacity workspace | Not built yet | Next in order (D-053) |
 
 ## Layout
 
@@ -118,6 +144,8 @@ Third build: the three gaps from the first review are fixed in the specification
 | `web/fonts/` | Manrope, bundled, with its licence |
 | `pcm_proto/noc.py` | NOC data, grouping, SOPs and the action engine (in memory) |
 | `web/noc/` | The NOC wall and desktop pages |
+| `pcm_proto/l2.py` | L2 daily check, proposals, trust ladder, escalations, configuration, calendar, threshold replay |
+| `web/l2/` | The L2 pages |
 | `pcm_proto/agent_e2.py` | Agent E2 client: drafts, vocabulary check, fallback |
 | `tests/` | Catalog and story tests (Python), page tests (Playwright) |
 | `screenshots/` | Screenshots for review, written by the page test |

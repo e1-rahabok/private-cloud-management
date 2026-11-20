@@ -237,3 +237,6 @@ page:
     rule: Loading /exec and opening every panel makes no request to any host other than the PCM host.
     decisions: [D-004, D-074]
 
+  - id: PG-13
+    rule: No decision ID (D-nnn) appears in the visible text of any page of this workspace, in any state.
+

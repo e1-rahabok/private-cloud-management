@@ -1,0 +1,14 @@
+# L2 vocabulary. Full technical terms in SP5 units: L2 sees raw counters (L2 design, 3.17 of Capacity
+# applies the same rule). No cost or price (D-033: L2 does not act on cost). Never one health score.
+version: 1
+workspace: l2
+allowed: [CPU Ready, Co-stop, latency, run queue, ESXi, vSAN, NSX, DRS, HA, cluster, host, datastore]
+avoided:
+  - cost
+  - price
+  - USD
+  - health score
+labels:
+  present_health: Present health
+  risk: Risk
+  efficiency: Efficiency

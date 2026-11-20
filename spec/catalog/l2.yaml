@@ -1,0 +1,60 @@
+# Catalog entries read by the L2 workspace (design/l2-workspace.md). Shared entries live in
+# executive.yaml and noc.yaml and are reused, so L2, the NOC and the CIO read one definition.
+
+version: 1
+
+entries:
+
+  l2.daily_check:
+    description: >
+      PCM runs the daily check before the start and the end of each region's day (D-039). It walks the SP5
+      order (up, fast, safe, enough) top down: clusters worst first, then the hosts of a failing cluster,
+      then its VMs (L2 design, 3.3). It reads business context from the calendar before judging (3.6).
+    verdicts:
+      present_health: "Findings on up, fast or safe now"
+      risk: "Configuration findings and capacity trend"
+      efficiency: "Waste: idle, oversized and powered-off VMs"
+    verdict_status:
+      red: "any red finding in that verdict"
+      amber: "any amber finding"
+      green: "none"
+    note: "Three verdicts, never one score (L2 design, 3.2)."
+    decisions: [D-039]
+
+  l2.slipped_alerts:
+    description: Alerts raised since the previous run that no check finding predicted (D-039).
+
+  l2.investigation_order:
+    description: The fixed SP5 order the investigate page follows (L2 design, 3.4).
+    down: [log, saturation, configuration, known_bug]
+    slow: [contention, consumption, configuration, known_bug, log]
+    note: "The what before the why. PCM runs the steps; L2 starts at the first that fails."
+
+  l2.realms:
+    description: >
+      VM and Guest OS shown side by side, each with its "on my court" values (L2 design, 3.5). If the VM
+      is not waiting and the Guest OS is, the cause is inside the Guest OS: hand the evidence to the
+      Windows or Linux team.
+    vm: [cpu_ready_percent, co_stop_percent, memory_wait_percent, disk_latency_ms, vm_performance]
+    guest_os: [run_queue_per_vcpu, context_switches_per_s, paging_per_s, guest_os_performance]
+    decisions: [D-038]
+
+  l2.offer_promotion:
+    description: >
+      PCM offers to make an action type automatic when its record has at least
+      setting l2.promotion_min_approvals approvals and at most setting l2.promotion_max_rollbacks rollbacks.
+      Only a person promotes (L2 design, 3.7; D-029).
+
+  l2.threshold_replay:
+    description: >
+      Before a threshold is published, PCM counts how many alerts the new value would have raised over the
+      last setting l2.replay_days days, next to the count the current value raised (L2 design, 3.9).
+
+  l2.escalation_close:
+    description: An escalation closes only with root cause, corrective action and a detection decision (L2 design, 3.8).
+    decisions: [D-040]
+
+  l2.config_order:
+    description: Configuration findings in SP5 time order (L2 design, 3.10).
+    order: [correct_it, update_it, simplify_it, optimize_it]
+    choices: [fix_the_setting, fix_the_standard]

@@ -422,7 +422,7 @@ def act(nd: dict, path: list, body: dict) -> tuple[int, dict]:
             if verb == "close":
                 cause = body.get("root_cause")
                 if cause not in ROOT_CAUSES:
-                    return 400, {"error": "A root cause from the list is required to close (D-040)."}
+                    return 400, {"error": "A root cause from the list is required to close."}
                 STATE.closed[iid] = cause
                 record("close", iid, human, cause, inc["state"], "closed", now, agent, incident=iid)
                 return 200, {"state": "closed"}
@@ -444,7 +444,7 @@ def act(nd: dict, path: list, body: dict) -> tuple[int, dict]:
                        "closed to new VMs" if stopped else "open to new VMs", now, agent, incident=iid)
                 return 200, {"target": target, "provisioning": "stopped" if stopped else "open"}
             if action == "restart_vm":
-                return 403, {"error": "Restart is allowed only for a non-production VM whose VMware Tools heartbeat is lost (D-040)."}
+                return 403, {"error": "Restart is allowed only for a non-production VM whose VMware Tools heartbeat is lost."}
         if path == ["shift"]:
             STATE.notes.insert(0, {"at": now.isoformat(), "by": human, "note": body.get("note", "")})
             return 200, {"saved": True}
