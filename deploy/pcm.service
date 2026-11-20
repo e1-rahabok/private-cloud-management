@@ -1,0 +1,23 @@
+# systemd unit for the PCM prototype on a lab VM (deploy/README.md).
+[Unit]
+Description=PCM prototype (Private Cloud Management)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pcm
+Group=pcm
+WorkingDirectory=/opt/pcm
+EnvironmentFile=-/etc/pcm/pcm.env
+ExecStart=/usr/bin/python3 -m build.pcm_proto.server --host ${PCM_HOST} --port ${PCM_PORT}
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/pcm
+
+[Install]
+WantedBy=multi-user.target

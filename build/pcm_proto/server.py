@@ -210,8 +210,10 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8080)
+    ap.add_argument("--host", default="127.0.0.1",
+                    help="address to listen on; 127.0.0.1 by default. Use 0.0.0.0 on a lab VM (deploy/README.md): there is no sign-in yet.")
     args = ap.parse_args()
-    ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
+    ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
 
 
 if __name__ == "__main__":

@@ -35,6 +35,10 @@ Options, in the page URL or on the API:
 
 **Database (D-080):** what people and policies do is kept in SQLite at `var/pcm.sqlite`, so it survives a restart. Set `PCM_DB` to use another file. Tests use `PCM_DB=:memory:`. To start clean, stop the server and delete the file. Synthetic metrics are generated from "now", never stored.
 
+## Install on a lab VM
+
+As a service, reachable from the lab network: [`../deploy/README.md`](../deploy/README.md). The server listens on 127.0.0.1 unless `--host` says otherwise.
+
 ## Demo
 
 The demo script and its rehearsal: [`../demo/README.md`](../demo/README.md).
