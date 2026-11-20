@@ -72,6 +72,8 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-065 | 2026-11-20 | ACME Corp, the synthetic customer, is a global bank. | Banking load follows a strong calendar: end-of-day batch at night, payday, month-end, quarter-end and financial year-end close, which differs by country. Banks also face the strictest regulators, so recovery and safety stories carry weight with the approval audience. |
 | D-066 | 2026-11-20 | Data residency is beyond release 1.0. Release 1.0 runs one central PCM that stores results from every region. | Scope control. Keeping detailed data in its region, with only model results sent to the central PCM, is the later option. |
 | D-067 | 2026-11-20 | The synthetic data uses the present time. "Now" is an input to the generator: the demo uses the present, and each acceptance test passes a fixed "now". Stories are written relative to now and to the real calendar, never to a named date or weekday. | A live demo convinces more than a frozen one. Tests stay exact because each sets its own clock. |
+| D-068 | 2026-11-20 | The NOC wall shows every location by default. Limiting a NOC to its region is a setting, not a separate design. An alert belongs to the region of its object; that region's shift acknowledges it. | See Rationale. |
+| D-069 | 2026-11-20 | PCM groups alerts into one incident by object relationship and time, using fixed rules, not the LLM. L1 can split an incident; L1 cannot merge alerts by hand. | See Rationale. |
 ## Rationale
 
 Longer reasons for decisions that need them.
@@ -304,4 +306,25 @@ Source: Cost n Price n Value (in `sources/`).
 - So the split is by purpose:
   - **1.0, the action history:** an operational record that the engines and people use day to day.
   - **Phase 2, the audit log:** the same events, with what an auditor needs: a retention policy, proof nothing was altered, and export to the security team's tools.
+
+### D-068 Global wall, regional scope as a setting
+
+- **Banks run both models.** Some run one central NOC, some run regional NOCs that follow the sun, and many run a mix: a central NOC with regional hubs, sometimes because a regulator expects local staff. PCM cannot assume one.
+- **So scope is a setting, not a fork.** The same five screens and the same pages serve a global and a regional NOC. A fork would double what the specification must hold (D-010) for no gain in the experience.
+- **Global by default, because some failures cross regions.** Examples: NSX Federation's global manager, identity services, the WAN between sites, or a bad configuration pushed to every region at once. A wall limited to one region shows each region a small problem and nobody the whole picture.
+- **Ownership follows the object.** An alert belongs to the region where its object lives, and that region's shift acknowledges it. This holds even when the global wall shows it to everyone, so a red on a shared wall is never "someone else's".
+- **Handover across regions uses the shift page** (NOC design, 3.9). In a follow-the-sun model, the handover note goes to the next region's shift, not only to the next shift in the same room.
+
+### D-069 Alert grouping
+
+- **Why group at all.** One host failure raises an alert for the host and for each of its 40 VMs. Forty-one items in the queue hide the one cause. SP5: L1 may group alerts rather than escalate each one.
+- **Grouped by relationship and time.** Alerts join an incident when their objects are related, and they fire within a short window of the first alert. Related means a host and its VMs, a datastore and the VMs on it, or a cluster and its hosts. The relationships come from VCF Operations.
+  - The incident is named after the parent object, the likely cause.
+  - The escalation routes by that object's type (NOC design, 3.7).
+- **Fixed rules, not the LLM.** L1 must be able to see why alerts were grouped. A rule ("VM alerts within 5 minutes of their host's alert") can be read and tested. An LLM grouping cannot, and a wrong grouping hides a second problem inside the first.
+- **Split yes, merge no.**
+  - **Splitting is safe.** If two alerts were grouped by coincidence, splitting shows more, not less.
+  - **Merging by hand loses information.** It folds a second, unrelated problem into an incident that will be closed with the first problem's cause. The second problem then has no cause recorded and comes back.
+  - A manual merge also breaks the rule that every alert closes with its own cause.
+- **Grouping is tuned by L2.** The rules live in the catalog (PCM core, 3.6). A split by L1 is recorded, and frequent splits of the same kind tell L2 a rule is wrong.
 

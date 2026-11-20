@@ -168,12 +168,7 @@ Path: `privatecloud.acme.com/noc` (D-028).
 
 - Five pages. SP5: L1 has simple needs. More pages would mean less use of each.
 
-## 5. Open questions for the author
+## 5. Settled questions
 
-1. **One global NOC or regional NOCs?**
-   - The design works for both: the wall shows every location, and a NOC can be scoped to its region.
-   - Which is more common in your target banks?
-   - Proposal: one global wall by default, with a per-region scope as a setting.
-2. **Alert grouping.** PCM groups alerts on the same cause into one incident (3.4).
-   - Proposal: PCM groups alerts by object relationship, for example a host failure and the alerts of its VMs.
-   - L1 can split a group, but not merge alerts by hand. Manual merging hides unrelated problems inside one incident.
+- **Global or regional NOC (D-068).** The wall shows every location by default, and region scope is a setting. Alerts belong to the region of their object. Reason: some failures cross regions, and a fork would double the specification.
+- **Alert grouping (D-069).** PCM groups alerts by object relationship and time, with fixed rules. L1 can split an incident but cannot merge alerts. Reason: splitting shows more; merging hides a second problem under the first problem's cause.
