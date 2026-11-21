@@ -1,12 +1,16 @@
 // GENERATED from spec/workspaces/l2/ (frame, monitor, troubleshoot, case, improve, rules, calendar). Do not edit by hand (D-070).
 'use strict';
-const QS = new URLSearchParams(location.search);
-const PASS = ['now', 'enable'].filter(k => QS.get(k)).map(k => `${k}=${encodeURIComponent(QS.get(k))}`).join('&');
+let QS = new URLSearchParams(location.search);
+const passOf = q => ['now', 'enable'].filter(k => q.get(k)).map(k => `${k}=${encodeURIComponent(q.get(k))}`).join('&');
+let PASS = passOf(QS);
 const qjoin = (...xs) => xs.filter(Boolean).join('&');
 const apiURL = (p, extra = '') => { const q = qjoin(PASS, extra); return `/api/l2/${p}${q ? '?' + q : ''}`; };
-const getJSON = (p, extra) => fetch(apiURL(p, extra)).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
-const postJSON = (p, body) => fetch(apiURL(p), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
-  .then(async r => ({ status: r.status, body: await r.json() }));
+// One signal per navigation: a slow answer for the page we left must never overwrite the page we are on. The tree and the top bar pass null.
+let SIG = null;
+const getJSON = (p, extra, sig = SIG) => fetch(apiURL(p, extra), { signal: sig }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const postJSON = (p, body) => { STATUS_CACHE.clear(); return fetch(apiURL(p), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+  .then(async r => ({ status: r.status, body: await r.json() })); };
+const STATUS_CACHE = new Map();
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const enc = encodeURIComponent;
 const fmtTime = iso => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
@@ -16,7 +20,7 @@ const STATUS = { green: 'Good', amber: 'Watch', red: 'Act now', no_data: 'No dat
 const chip = s => `<span class="chip ${s}">${STATUS[s] || esc(s)}</span>`;
 const PILLARS = ['availability', 'performance', 'capacity', 'security', 'configuration', 'inventory'];
 const PNAME = { summary: 'Summary', availability: 'Availability', performance: 'Performance', capacity: 'Capacity', security: 'Security', configuration: 'Configuration', inventory: 'Inventory' };
-const WINDOWS = [['1h', '1 hour'], ['24h', '24 hours'], ['7d', '7 days'], ['30d', '30 days'], ['1y', '1 year']];
+const WINDOWS = [['1h', 'Last hour'], ['24h', 'Last 24 hours'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days'], ['1y', 'Last year']];
 const KIND = { estate: 'Estate', region: 'Region', location: 'Location', vcf_instance: 'VCF instance', workload_domain: 'Workload domain', cluster: 'Cluster', host: 'ESXi host', vm: 'VM', guest_os: 'Guest OS', datastore: 'Datastore', virtual_disk: 'Virtual disk', distributed_switch: 'Distributed switch', port_group: 'Port group', vnic: 'vNIC', class_of_service: 'Class of service', resource_pool: 'Resource pool' };
 const TRIGGER = { complaint: 'Complaint', escalation: 'Escalation from L1', finding: 'Monitoring finding' };
 const GROUP = { correct_it: 'Correct it', update_it: 'Update it', simplify_it: 'Simplify it', optimize_it: 'Optimize it' };
@@ -43,10 +47,13 @@ function parseRoute() {
   return r;
 }
 let R = parseRoute();
-if (location.pathname.replace(/\/+$/, '') === '/l2') {
-  history.replaceState(null, '', `/l2/monitor/compute/estate/summary${PASS ? '?' + PASS : ''}`);
-  R = parseRoute();
-}
+const landing = () => {
+  if (location.pathname.replace(/\/+$/, '') === '/l2') {
+    history.replaceState(null, '', `/l2/monitor/compute/estate/summary${PASS ? '?' + PASS : ''}`);
+    R = parseRoute();
+  }
+};
+landing();
 const remember = () => { try { sessionStorage.setItem('l2.last', JSON.stringify({ view: R.view, object: R.object, window: R.window })); } catch (e) { /* per-viewer convenience only */ } };
 const recall = () => { try { return JSON.parse(sessionStorage.getItem('l2.last') || 'null'); } catch (e) { return null; } };
 function url(o = {}) {
@@ -91,61 +98,94 @@ function treeItems(rows, openPath, levels, selected) {
   return rows.map(r => {
     const open = openPath.includes(r.id) && levels[r.id];
     return `<li data-node="${esc(r.id)}"><div class="item"><button type="button" class="caret" aria-label="Expand ${esc(r.name)}" aria-expanded="${open ? 'true' : 'false'}"${r.expandable ? '' : ' hidden'}>${open ? '▾' : '▸'}</button>
-      <a class="node" href="${objURL(r.id)}"${r.id === selected ? ' aria-current="true"' : ''} title="${esc(r.name)}"><span class="dot ${r.status}" aria-label="${STATUS[r.status] || r.status}"></span><span class="nm">${esc(r.name)}</span>${r.open_cases ? `<span class="badge" title="Open cases">${r.open_cases}</span>` : ''}</a></div>
+      <a class="node" data-obj="${esc(r.id)}" href="${objURL(r.id)}"${r.id === selected ? ' aria-current="true"' : ''} title="${esc(r.name)}"><span class="dot ${r.status}" aria-label="${STATUS[r.status] || r.status}"></span><span class="nm">${esc(r.name)}</span>${r.open_cases ? `<span class="badge" title="Open cases">${r.open_cases}</span>` : ''}</a></div>
       ${open ? `<ul>${treeItems(levels[r.id], openPath, levels, selected)}</ul>` : ''}</li>`;
   }).join('');
 }
+const getTree = q => getJSON('tree', q, null);
+let TREE = null; // { view, object, selected } of the tree now on screen
 async function tree() {
   const box = document.getElementById('tree');
-  const first = await getJSON('tree', treeQ(R.object));
+  const first = await getTree(treeQ(R.object));
   if (first.node.view !== R.view) R.view = first.node.view;
   const path = first.node.path.map(p => p.id);
   const visible = path.filter((id, i) => i === 0 || !TREE_HIDDEN.has(first.node.path[i].kind) || (R.view === 'management' && first.node.path[i].kind === 'vm'));
   const selected = visible[visible.length - 1];
   const levels = {};
   const ids = visible.filter(id => id !== R.object);
-  const got = await Promise.all(ids.map(id => getJSON('tree', treeQ(id)).catch(() => null)));
+  const got = await Promise.all(ids.map(id => getTree(treeQ(id)).catch(() => null)));
   ids.forEach((id, i) => { if (got[i]) levels[id] = got[i].children; });
   if (!TREE_HIDDEN.has(first.node.kind) || R.object === 'estate') levels[R.object] = first.children;
   const root = levels.estate || [];
   box.innerHTML = `<label for="view">View</label><select id="view">${first.views.map(v => `<option value="${v.id}"${v.id === R.view ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
     <label for="find">Search</label><input id="find" type="text" placeholder="Name of any object" autocomplete="off"><ul class="results" id="results"></ul>
-    <ul><li data-node="estate"><div class="item"><span class="caret" hidden></span><a class="node" href="${objURL('estate')}"${selected === 'estate' ? ' aria-current="true"' : ''}><span class="dot ${['red', 'amber', 'no_data'].find(s => root.some(r => r.status === s)) || 'green'}"></span><span class="nm">ACME estate</span>${first.open_cases && R.object === 'estate' ? `<span class="badge">${first.open_cases}</span>` : ''}</a></div>
+    <ul><li data-node="estate"><div class="item"><span class="caret" hidden></span><a class="node" data-obj="estate" href="${objURL('estate')}"${selected === 'estate' ? ' aria-current="true"' : ''}><span class="dot ${['red', 'amber', 'no_data'].find(s => root.some(r => r.status === s)) || 'green'}"></span><span class="nm">ACME estate</span>${first.open_cases && R.object === 'estate' ? `<span class="badge">${first.open_cases}</span>` : ''}</a></div>
     <ul>${treeItems(root, visible, levels, selected)}</ul></li></ul>`;
-  document.getElementById('view').addEventListener('change', e => { location.href = url({ view: e.target.value, object: 'estate', caseId: undefined, newComplaint: undefined, activity: ['monitor', 'improve', 'troubleshoot'].includes(R.activity) ? R.activity : 'monitor', pillar: R.pillar || 'summary' }); });
+  TREE = { view: R.view, object: R.object, selected };
+  document.getElementById('view').addEventListener('change', e => { go(url({ view: e.target.value, object: 'estate', caseId: undefined, newComplaint: undefined, activity: ['monitor', 'improve', 'troubleshoot'].includes(R.activity) ? R.activity : 'monitor', pillar: R.pillar || 'summary' })); });
   let t;
   document.getElementById('find').addEventListener('input', e => {
     clearTimeout(t);
     t = setTimeout(async () => {
       const res = await getJSON('search', `q=${enc(e.target.value)}`).catch(() => []);
-      document.getElementById('results').innerHTML = res.map(x => `<li><a href="${objURL(x.id, x.view)}">${esc(x.name)} <span class="muted">${esc(KIND[x.kind] || x.kind)}${x.path.length ? ' · ' + esc(x.path.slice(-2).join(' › ')) : ''}</span></a></li>`).join('');
+      document.getElementById('results').innerHTML = res.map(x => `<li><a data-obj="${esc(x.id)}" data-view="${esc(x.view)}" href="${objURL(x.id, x.view)}">${esc(x.name)} <span class="muted">${esc(KIND[x.kind] || x.kind)}${x.path.length ? ' · ' + esc(x.path.slice(-2).join(' › ')) : ''}</span></a></li>`).join('');
     }, 200);
   });
-  box.addEventListener('click', async e => {
-    const b = e.target.closest('button.caret');
-    if (!b) return;
-    const li = b.closest('li');
-    const sub = li.querySelector(':scope > ul');
-    if (sub) { sub.remove(); b.textContent = '▸'; b.setAttribute('aria-expanded', 'false'); return; }
-    const d = await getJSON('tree', treeQ(li.dataset.node));
-    li.insertAdjacentHTML('beforeend', `<ul>${treeItems(d.children, [], {}, selected)}</ul>`);
-    b.textContent = '▾'; b.setAttribute('aria-expanded', 'true');
-  });
   return first;
+}
+// The tree is built once. A click on a caret opens a level; a click on a node is a navigation (below). Wired once, not on every rebuild.
+document.getElementById('tree').addEventListener('click', async e => {
+  const b = e.target.closest('button.caret');
+  if (!b) return;
+  const li = b.closest('li');
+  const sub = li.querySelector(':scope > ul');
+  if (sub) { sub.remove(); b.textContent = '▸'; b.setAttribute('aria-expanded', 'false'); return; }
+  const d = await getTree(treeQ(li.dataset.node));
+  li.insertAdjacentHTML('beforeend', `<ul>${treeItems(d.children, [], {}, TREE && TREE.selected)}</ul>`);
+  b.textContent = '▾'; b.setAttribute('aria-expanded', 'true');
+});
+// After a navigation the tree is kept: only the highlight moves and the links read the new pillar and window. It is rebuilt only when the object is not on it.
+async function syncTree() {
+  const box = document.getElementById('tree');
+  if (!TREE || TREE.view !== R.view) { await tree(); return; }
+  if (TREE.object !== R.object) {
+    const sel = [...box.querySelectorAll('a.node[data-obj]')].find(a => a.dataset.obj === R.object);
+    if (!sel) { await tree(); return; }
+    box.querySelectorAll('a.node[aria-current]').forEach(a => a.removeAttribute('aria-current'));
+    sel.setAttribute('aria-current', 'true'); TREE.object = R.object; TREE.selected = R.object;
+  }
+  box.querySelectorAll('a.node[data-obj]').forEach(a => { a.href = objURL(a.dataset.obj); });
 }
 
 // ---------------------------------------------------------------- shared pieces
 function objHead(o, windowFixed) {
   const crumbs = o.path.slice(0, -1).map(p => `<a href="${objURL(p.id, o.view)}">${esc(p.name)}</a>`).join(' › ');
+  const cur = WINDOWS.find(([w]) => w === R.window) || WINDOWS[1];
   const win = windowFixed ? `<div class="windows fixed">${esc(windowFixed)}</div>`
-    : `<nav class="windows" aria-label="Window">${WINDOWS.map(([w, l]) => `<a href="${url({ window: w })}"${w === R.window ? ' aria-current="true"' : ''}>${l}</a>`).join('')}</nav>`;
+    : `<div class="winpick"><button type="button" class="winbtn" id="winbtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="winlist" aria-label="Time window: ${esc(cur[1])}"><span class="lbl">${esc(cur[1])}</span><span class="car" aria-hidden="true">▾</span></button>
+      <ul class="winlist" id="winlist" role="listbox" aria-label="Time window" hidden>${WINDOWS.map(([w, l]) => `<li role="none"><a role="option" tabindex="-1" href="${url({ window: w })}" data-w="${w}" aria-selected="${w === cur[0]}">${l}</a></li>`).join('')}</ul></div>`;
   return `<div class="objhead"><div><div class="crumbs">${crumbs || '&nbsp;'}</div><div class="kind">${esc(KIND[o.kind] || o.kind)}</div><h1>${esc(o.name)}</h1></div>${win}</div>`;
 }
-const runLine = r => `<p class="runline">${r.kind === 'baseline' ? esc(r.review) : `${r.kind === 'daily' ? 'Daily' : 'Weekly'} check, ${esc(r.region)}: ran ${fmtTime(r.started_at)} to ${fmtTime(r.finished_at)}. ${esc(r.review)}`}</p>`;
 const CONSUMER_KINDS = ['vm', 'guest_os', 'virtual_disk', 'vnic'];
-function tabs(statuses, kind) {
+// The tabs are the titles of the panel under them: the selected tab and the panel are one shape (frame.md, Tabs).
+function tabbed(statuses, kind, inner) {
+  // Summary takes the worst of the others, never a score of its own (frame.md, Tabs).
+  const rank = { red: 3, amber: 2, no_data: 1, green: 0 };
+  const worst = Object.entries(statuses || {}).filter(([k]) => k !== 'summary').map(([, v]) => v).sort((a, b) => (rank[b] ?? -1) - (rank[a] ?? -1))[0];
+  if (worst) statuses = { ...statuses, summary: worst };
   const list = PILLARS.filter(p => !(p === 'inventory' && CONSUMER_KINDS.includes(kind)));
-  return `<nav class="tabs" aria-label="Pillars">${['summary', ...list].map(p => `<a href="${url({ pillar: p })}"${p === R.pillar ? ' aria-current="true"' : ''}>${statuses && statuses[p] ? `<span class="dot ${statuses[p]}"></span>` : ''}${PNAME[p]}</a>`).join('')}</nav>`;
+  return `<div class="tabbed"><nav class="tabs" role="tablist" aria-label="Pillars">${['summary', ...list].map(p => { const on = p === R.pillar;
+    return `<a role="tab" id="tab-${p}" data-pillar="${p}" href="${url({ pillar: p })}" aria-selected="${on}" aria-controls="panel" tabindex="${on ? 0 : -1}">${statuses && statuses[p] ? `<span class="dot ${statuses[p]}" role="img" aria-label="${STATUS[statuses[p]] || ''}"></span>` : ''}${PNAME[p]}</a>`; }).join('')}</nav>
+    <section class="tabpanel" id="panel" role="tabpanel" aria-labelledby="tab-${R.pillar}" tabindex="-1">${inner}</section></div>`;
+}
+// Every tab shows its status dot on every page. One read of the Summary per object and window, kept until something is written.
+async function pillarStatuses(first) {
+  if (first) { const k = `${R.view}|${R.object}|${R.window}|${PASS}`; STATUS_CACHE.set(k, first); return first; }
+  const k = `${R.view}|${R.object}|${R.window}|${PASS}`;
+  if (STATUS_CACHE.has(k)) return STATUS_CACHE.get(k);
+  const d = await getJSON(`monitor/${R.view}/${enc(R.object)}/summary`, `window=${R.window}`);
+  const st = Object.fromEntries(d.pillars.map(p => [p.pillar, p.status]));
+  STATUS_CACHE.set(k, st); return st;
 }
 const spark = (pts, key = 'v') => {
   if (!pts || pts.length < 2) return '';
@@ -179,7 +219,7 @@ function wireFindings(reload) {
   }));
   main.querySelectorAll('[data-trouble]').forEach(b => b.addEventListener('click', async () => {
     const r = await postJSON('cases', { trigger: 'finding', finding: b.dataset.trouble });
-    if (r.status === 200) location.href = url({ activity: 'troubleshoot', caseId: r.body.id }); else reload(r.body.error);
+    if (r.status === 200) go(url({ activity: 'troubleshoot', caseId: r.body.id })); else reload(r.body.error);
   }));
   main.querySelectorAll('[data-explain]').forEach(b => b.addEventListener('click', async () => {
     const out = main.querySelector(`[data-out="${b.dataset.explain}"]`); out.textContent = 'Agent E2 is reading…';
@@ -201,18 +241,19 @@ async function monitor(msg = '') {
       year = `<h2>Twelve months: the L2 measures</h2><div class="cards">${Object.entries(BL).map(([k, l]) => `<div class="card"><h3>${l}</h3>${bars(b[k])}<div class="muted">${b.months[0]} to ${b.months[11]}: ${b[k][0]} to ${b[k][11]}</div></div>`).join('')}</div>
         <h2>Repeated problems</h2><table class="data"><thead><tr><th>Problem</th><th class="num">Last 12 months</th><th>Loop</th></tr></thead><tbody>${d.repeated_problems.map(r => `<tr data-rep="${r.type}"><td>${esc(r.title)}</td><td class="num">${r.last_12m}</td><td>${r.loop_closed ? `<span class="chip green">Loop closed</span> ${esc(r.closed_by)}` : '<span class="chip amber">Still open</span> No check rule or SOP yet'}</td></tr>`).join('')}</tbody></table>`;
     }
-    main.innerHTML = objHead(d.object) + `${runLine(d.run)}` + tabs(st, d.object.kind) + `<div class="msg" role="status">${esc(msg)}</div>
+    pillarStatuses(st);
+    main.innerHTML = objHead(d.object) + tabbed(st, d.object.kind, `<div class="msg" role="status">${esc(msg)}</div>
       ${d.stale ? '<p class="why">No data from this location\'s VCF Operations. Shown grey, never green.</p>' : ''}
       <table class="data pillars"><thead><tr><th>Status</th><th>Pillar</th><th>Now</th><th class="num">Findings</th></tr></thead><tbody>${rows}</tbody></table>
       <h2>Findings, worst first</h2>${d.findings.length ? d.findings.map(findingRow).join('') : '<p>Nothing needs you under this object.</p>'}
       ${d.slipped_alerts.length ? `<h2>Alerts that slipped through</h2><ul>${d.slipped_alerts.map(s => `<li>${esc(s.object)}: ${esc(s.title)}, ${fmtTime(s.raised)}. No finding predicted it. ${esc(s.would_have_caught_it || '')} <a class="link" href="${url({ activity: 'rules' })}">Change the check rule</a></li>`).join('')}</ul>` : ''}
-      ${year}`;
+      ${year}`);
     wireFindings(monitor);
     return;
   }
-  const d = await getJSON(`monitor/${R.view}/${enc(R.object)}/${R.pillar}`, qjoin(`window=${R.window}`, R.group ? `group_by=${R.group}` : '',
-    R.pillar === 'performance' && R.cls ? `class=${enc(R.cls)}` : '', R.pillar === 'performance' && R.at ? `at=${enc(R.at)}` : ''));
-  const head = objHead(d.object) + `${runLine(d.run)}` + tabs({ [R.pillar]: d.status }, d.object.kind) + `<div class="msg" role="status">${esc(msg)}</div>`;
+  const [d, st] = await Promise.all([getJSON(`monitor/${R.view}/${enc(R.object)}/${R.pillar}`, qjoin(`window=${R.window}`, R.group ? `group_by=${R.group}` : '',
+    R.pillar === 'performance' && R.cls ? `class=${enc(R.cls)}` : '', R.pillar === 'performance' && R.at ? `at=${enc(R.at)}` : '')), pillarStatuses().catch(() => ({}))]);
+  const head = `<div class="msg" role="status">${esc(msg)}</div>`;
   const c = d.content;
   let body = '';
   if (R.pillar === 'performance' && d.perf) {
@@ -254,9 +295,9 @@ async function monitor(msg = '') {
       <h2>Distribution across children</h2><table class="data"><tbody>${c.distribution.map(x => `<tr><td>${objLink(x.id, x.name)}</td><td>${esc(KIND[x.kind] || x.kind)}</td><td class="num">${n0(x.vms)} VMs</td></tr>`).join('')}</tbody></table>`;
   }
   body += `<h2>Findings: ${PNAME[R.pillar]}</h2>${d.findings.length ? d.findings.map(findingRow).join('') : '<p class="muted">Nothing needs you under this object.</p>'}`;
-  main.innerHTML = head + (d.stale ? '<p class="why">No data from this location\'s VCF Operations. Shown grey, never green.</p>' : '') + body;
+  main.innerHTML = objHead(d.object) + tabbed({ ...st, [R.pillar]: d.status }, d.object.kind, head + (d.stale ? '<p class="why">No data from this location\'s VCF Operations. Shown grey, never green.</p>' : '') + body);
   const g = document.getElementById('grp');
-  if (g) g.addEventListener('change', () => { location.href = url({ group: g.value }); });
+  if (g) g.addEventListener('change', () => go(url({ group: g.value })));
   if (d.perf || d.layers) wireCharts();
   main.querySelectorAll('form.expect').forEach(fm => fm.addEventListener('submit', async e => {
     e.preventDefault();
@@ -327,9 +368,8 @@ function wireCharts() {
       tip.style.left = `${Math.min(left + 14, sr.width - tip.offsetWidth - 4)}px`; tip.style.top = `${ev.clientY - sr.top + 12}px`;
     });
     hit.addEventListener('mouseleave', () => { cross.setAttribute('visibility', 'hidden'); tip.hidden = true; });
-    if (!o.noclick) hit.addEventListener('click', ev => { location.href = url({ at: pts[idx(ev)].t }); });
+    if (!o.noclick) hit.addEventListener('click', ev => go(url({ at: pts[idx(ev)].t })));
   }
-  main.querySelectorAll('[data-cls]').forEach(a => a.addEventListener('click', ev => { ev.preventDefault(); location.href = url({ cls: a.dataset.cls }); }));
 }
 function groupBy(d, note = '') {
   let h = `<div class="toolbar"><label for="grp">Group by</label><select id="grp">${GROUP_BY.map(([k, l]) => `<option value="${k}"${k === R.group ? ' selected' : ''}>${l}</option>`).join('')}</select>${note}</div>`;
@@ -454,7 +494,7 @@ async function complaintForm(msg = '') {
     const iso = v => v ? new Date(v).toISOString() : '';
     body.since = iso(body.since); body.fine_until = iso(body.fine_until);
     const r = await postJSON('cases', { trigger: 'complaint', ...body });
-    if (r.status === 200) location.href = url({ caseId: r.body.id, newComplaint: undefined });
+    if (r.status === 200) go(url({ caseId: r.body.id, newComplaint: undefined }));
     else { document.getElementById('cfmsg').textContent = r.body.error; document.body.dataset.complaint = String(r.status); }
   });
 }
@@ -589,7 +629,7 @@ async function improve(msg = '') {
     body += `<h2>Opportunities, largest first</h2>${d.opportunities.length ? d.opportunities.map(opp).join('') : '<p class="muted">Nothing to improve under this object.</p>'}`;
   }
   body += d.findings.length ? `<h2>Risks the checks found</h2>${d.findings.map(findingRow).join('')}` : '';
-  main.innerHTML = objHead(d.object) + `<p class="runline">Framed in capacity: what it frees, how far it moves the next purchase decision.</p>` + tabs(st) + `<div class="msg" role="status">${esc(msg)}</div>` + body;
+  main.innerHTML = objHead(d.object) + `<p class="runline">Framed in capacity: what it frees, how far it moves the next purchase decision.</p>` + tabbed(st, d.object.kind, `<div class="msg" role="status">${esc(msg)}</div>` + body);
   wireFindings(improve);
   main.querySelectorAll('[data-fix]').forEach(b => b.addEventListener('click', async () => {
     const r = await postJSON(`configuration/${b.dataset.fix}/decide`, { choice: b.dataset.choice });
@@ -681,17 +721,103 @@ async function calendar(msg = '') {
   });
 }
 
-// ---------------------------------------------------------------- start
-(async () => {
-  const RUN = { monitor, troubleshoot, improve, rules, calendar };
+// ---------------------------------------------------------------- navigation without a page load
+// Every in-app link and every change of the address goes through go(). The page, the top bar and the tree stay; the content is replaced.
+let CTL = null, SEQ = 0, OPEN_CASES = 0, FOCUS = null;
+const RUN = { monitor, troubleshoot, improve, rules, calendar };
+const pathOf = u => u.split('?')[0];
+function go(href, replace = false) {
+  const ae = document.activeElement;
+  FOCUS = ae && ae.closest ? (ae.closest('[role="tab"]') ? 'tab' : ae.closest('#winlist') ? 'win' : null) : null;
+  closeWin();
+  const now = location.pathname + location.search;
+  if (href === now) return;
+  const moved = pathOf(href) !== pathOf(now);
+  try { history[replace ? 'replaceState' : 'pushState'](null, '', href); } catch (e) { location.href = href; return; }
+  route({ top: moved });
+}
+function preview() {
+  // Answer at once: the selected tab and the window follow the click while the data is on its way.
+  main.querySelectorAll('[role="tab"]').forEach(a => { const on = a.dataset.pillar === R.pillar; a.setAttribute('aria-selected', on); a.tabIndex = on ? 0 : -1; });
+  const cur = WINDOWS.find(([w]) => w === R.window);
+  const lbl = main.querySelector('.winbtn .lbl');
+  if (cur && lbl) lbl.textContent = cur[1];
+  main.querySelectorAll('.winlist a').forEach(a => a.setAttribute('aria-selected', a.dataset.w === R.window));
+}
+async function route({ top = false, first = false } = {}) {
+  QS = new URLSearchParams(location.search); PASS = passOf(QS);
+  landing(); R = parseRoute();
+  const seq = ++SEQ;
+  if (CTL) CTL.abort();
+  CTL = new AbortController(); SIG = CTL.signal;
+  document.body.dataset.ready = '0';
+  if (!first) { main.classList.add('loading'); main.setAttribute('aria-busy', 'true'); preview(); }
   try {
-    const counts = getJSON('cases').then(l => l.filter(c => c.state === 'open').length).catch(() => 0);
-    if (R.caseId) { const c = await getJSON(`cases/${enc(R.caseId)}`).catch(() => null); if (c) R.object = c.object; }
-    const treeDone = tree().catch(() => { document.getElementById('tree').innerHTML = '<p class="muted">Could not load the tree.</p>'; });
-    await Promise.all([topBar(await counts), (RUN[R.activity] || monitor)()]);
+    const counts = getJSON('cases', '', null).then(l => l.filter(c => c.state === 'open').length).catch(() => OPEN_CASES);
+    if (R.caseId) { const c = await getJSON(`cases/${enc(R.caseId)}`).catch(e => { if (e.name === 'AbortError') throw e; return null; }); if (c) R.object = c.object; }
+    if (seq !== SEQ) return;
+    const treeDone = (first ? tree() : syncTree()).catch(() => { document.getElementById('tree').innerHTML = '<p class="muted">Could not load the tree.</p>'; });
+    await Promise.all([counts.then(n => { OPEN_CASES = n; return topBar(n); }), (RUN[R.activity] || monitor)()]);
+    if (seq !== SEQ) return;
     await treeDone;
+    main.classList.remove('loading'); main.removeAttribute('aria-busy');
+    if (top) window.scrollTo(0, 0);
+    // The header is redrawn, so a keyboard user would lose their place: put the focus back where it was.
+    if (FOCUS === 'tab') { const t = main.querySelector('[role="tab"][aria-selected="true"]'); if (t) t.focus({ preventScroll: true }); }
+    else if (FOCUS === 'win') { const w = document.getElementById('winbtn'); if (w) w.focus({ preventScroll: true }); }
+    FOCUS = null;
     document.body.dataset.ready = '1';
   } catch (e) {
+    if (e && e.name === 'AbortError' || seq !== SEQ) return; // a newer navigation owns the page
+    main.classList.remove('loading'); main.removeAttribute('aria-busy');
     main.innerHTML = '<p>Could not load data. Try again later.</p>'; document.body.dataset.ready = 'error';
   }
-})();
+}
+document.addEventListener('click', e => {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const a = e.target.closest('a[href]');
+  if (!a || a.target || a.hasAttribute('download')) return;
+  let u; try { u = new URL(a.href, location.href); } catch (err) { return; }
+  if (u.origin !== location.origin || !/^\/l2(\/|$)/.test(u.pathname)) return;
+  e.preventDefault();
+  // A tree or search link names an object; its pillar and window are read now, not when it was drawn.
+  go(a.dataset.obj ? objURL(a.dataset.obj, a.dataset.view || undefined) : u.pathname + u.search);
+});
+window.addEventListener('popstate', () => route({ top: false }));
+
+// ---------------------------------------------------------------- the time dropdown and the tab keys
+function closeWin() {
+  document.querySelectorAll('.winbtn[aria-expanded="true"]').forEach(b => { b.setAttribute('aria-expanded', 'false'); const l = document.getElementById('winlist'); if (l) l.hidden = true; });
+}
+function openWin(focusSelected) {
+  const b = document.getElementById('winbtn'), l = document.getElementById('winlist');
+  if (!b || !l) return;
+  l.hidden = false; b.setAttribute('aria-expanded', 'true');
+  if (focusSelected) (l.querySelector('[aria-selected="true"]') || l.querySelector('a')).focus();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('#winbtn');
+  if (b) { b.getAttribute('aria-expanded') === 'true' ? closeWin() : openWin(false); return; }
+  if (!e.target.closest('#winlist')) closeWin();
+});
+document.addEventListener('keydown', e => {
+  const b = document.getElementById('winbtn'), l = document.getElementById('winlist');
+  if (e.key === 'Escape' && l && !l.hidden) { closeWin(); b.focus(); return; }
+  if (e.target === b && ['ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); openWin(true); return; }
+  if (l && !l.hidden && l.contains(e.target)) {
+    const items = [...l.querySelectorAll('a')], i = items.indexOf(e.target);
+    const to = { ArrowDown: items[(i + 1) % items.length], ArrowUp: items[(i - 1 + items.length) % items.length], Home: items[0], End: items[items.length - 1] }[e.key];
+    if (to) { e.preventDefault(); to.focus(); }
+    if (e.key === 'Tab') closeWin();
+  }
+  // Tabs: the arrows move between them, Enter opens one. A tab fetches data, so moving is not choosing.
+  const tab = e.target.closest && e.target.closest('[role="tab"]');
+  if (tab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+    const all = [...tab.parentElement.querySelectorAll('[role="tab"]')], i = all.indexOf(tab);
+    const to = { ArrowRight: all[(i + 1) % all.length], ArrowLeft: all[(i - 1 + all.length) % all.length], Home: all[0], End: all[all.length - 1] }[e.key];
+    e.preventDefault(); to.focus();
+  }
+});
+
+// ---------------------------------------------------------------- start
+route({ first: true });
