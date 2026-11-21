@@ -307,7 +307,7 @@ class Troubleshoot(Base):
             self.assertIn(k, keys, k)
         self.assertEqual(m["name"], "Run Queue")
         self.assertNotEqual(m["now"], g["now_sent_by_browser"])  # the browser's number is ignored
-        self.assertEqual(len(m["points"]), 288)
+        self.assertEqual(len(m["values"]), 288)
         self.assertEqual(seen["role"], e["role"])
         r = out["record"]
         self.assertEqual((r["action"], r["actor_agent"], r["actor_human"]), (e["recorded"]["action"], e["recorded"]["actor_agent"], e["recorded"]["actor_human"]))
@@ -336,6 +336,25 @@ class Troubleshoot(Base):
             code, out = A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}})
             self.assertFalse(A.health(SETTINGS)["available"])
         self.assertEqual((code, out["source"], out["content"]), (e["service_down"]["status"], e["service_down"]["source"], e["service_down"]["content"]))
+
+
+    def test_LST_28_whole_page_question_carries_the_page(self):
+        """LST-28 (D-097): an overall question is answered from the numbers on screen."""
+        t = T["LST-28"]; g, e = t["given"], t["expect"]
+        code, got = A.facts_for(NOW, g["vm_performance"])
+        f = got["facts"]
+        self.assertEqual(code, 200)
+        self.assertEqual([x["layer"] for x in f["layers"]], e["vm_performance_layers"])
+        self.assertEqual(sum(len(x["metrics"]) for x in f["layers"]), e["vm_performance_metrics"])
+        self.assertTrue(all("values" not in m and "worst" in m and "percentile_95" in m for x in f["layers"] for m in x["metrics"]))
+        code, got = A.facts_for(NOW, g["vm_summary"])
+        self.assertEqual([x["pillar"] for x in got["facts"]["pillars"]], e["vm_summary_pillars"])
+        code, got = A.facts_for(NOW, g["vm_layer"])
+        f = got["facts"]
+        self.assertEqual((code, got["label"]), (200, "Guest OS layer · fr-svc-5526 · Performance · Last 24 hours"))
+        self.assertEqual(sum(1 for m in f["asked_about_layer"]["metrics"] if len(m["values"]) == 288), e["vm_layer_metrics_with_points"])
+        self.assertTrue(all("values" not in m for x in f["other_layers"] for m in x["metrics"]))
+        self.assertEqual(A.facts_for(NOW, {**g["vm_layer"], "layer": "no_such_layer"})[0], e["unknown_layer"])
 
 
 class Improve(Base):

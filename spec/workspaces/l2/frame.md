@@ -62,6 +62,7 @@ api: /api/l2/agent/health
   - Checked when the workspace opens and each time the panel opens. Never a guess.
   - A click opens the panel about the current page: object, tab and window, or the case.
 - **On a card:** the same mark, small, at the right of the title of:
+  - each layer heading of a VM's Performance tab, Guest OS and Virtual Motherboard (monitor.md);
   - each metric of a VM's Performance tab (monitor.md);
   - each KPI of the Capacity tab on a cluster (monitor.md);
   - each finding row, in Monitor and Improve (monitor.md, Findings);
@@ -84,12 +85,19 @@ api: /api/l2/agent/ask
   - the card asked about has an outline, until another card is asked about or the panel closes.
 - **Head:** "Agent E2", the context in one line (object · tab · window, or the case), and Close (×). Esc closes it and returns the focus to the mark that opened it.
 - **The panel stays open across pages** (no page load). Its context follows the page. Each context (object and tab, or case) keeps its own conversation for the browser session.
-- **Suggested questions** when a conversation starts, three at most, by what was clicked:
+- **Suggested questions** when a conversation starts, and again when its context changes (another card or the page itself), three at most, by what was clicked:
   - metric or KPI: "Is {95th percentile} a problem for this {kind}?", "Why the worst at {time}?", "What should I check next?";
+  - layer of a VM: "Is the {layer} layer the problem?", "Which of its metrics matters most here?", "What should I check next?";
   - finding: "Explain this finding.", "What should I check next?";
-  - case, chain link or layer: "Is the VMware platform the cause?", "What should I check next?";
-  - page: "What needs me on this {kind}?".
+  - case, chain link or case layer: "Is the VMware platform the cause?", "What should I check next?";
+  - page, on a VM's Performance tab: "Is this VM performing well over the {window}?", "Which layer is the problem, if any?", "What should I check next?";
+  - page, anywhere else: "What needs me on this {kind}?", "What should I check next?".
   - A click sends it. The question box under them takes any question; Enter sends.
+- **What PCM sends for a whole-page question** (the top bar mark), so an overall question is answered from the numbers on screen:
+  - always: the object and its path, the tab, the window, the tab's status and score, the findings under the object (ten at most), the worst children (ten at most), the calendar entries in the window;
+  - on the Summary tab: every pillar with its status and headline;
+  - on a VM's Performance tab: both layers, each with its status and, per metric, Now, Worst with its time, 95th percentile and which way is better. No points: those go with a question about one metric.
+- **What PCM sends for a layer of a VM:** that layer's status and every metric with its points, Now, Worst, 95th percentile; the other layer's status and figures without points.
 - **While Agent E2 works:** "Agent E2 is reading the knowledge base and the facts PCM sent." with the seconds elapsed. A local model takes 10 to 40 seconds; no made-up progress steps.
 - **An answer:**
   - the text, direct answer first, as Agent E2 wrote it;

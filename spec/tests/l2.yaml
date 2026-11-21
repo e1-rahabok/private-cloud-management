@@ -310,7 +310,7 @@ story:
       finding: { finding: first finding under the estate }
       case: { case: case-sg-app-117, link: its first link }
     expect:
-      metric_facts: [object, path, metric, now, worst, percentile_95, points, better, layer_status, other_metrics, calendar]
+      metric_facts: [object, path, metric, now, worst, percentile_95, values, first_point, point_minutes, better, layer_status, other_metrics, calendar]
       browser_number_ignored: true
       role: l2
       recorded: { action: agent_ask, actor_agent: agent-e2, actor_human: l2-engineer-1 }
@@ -318,6 +318,21 @@ story:
       unknown_metric: 404
       service_down: { status: 200, source: unavailable, content: "" }
     decisions: [D-050, D-078, D-097]
+  - id: LST-28
+    name: A whole-page question carries what the page shows
+    given:
+      vm_performance: { kind: page, object: fr-svc-5526, pillar: performance, window: 24h }
+      vm_summary: { kind: page, object: fr-svc-5526, pillar: summary, window: 24h }
+      vm_layer: { kind: vm_layer, object: fr-svc-5526, layer: guest_os, window: 24h }
+    expect:
+      vm_performance_layers: [Guest OS, Virtual Motherboard]
+      vm_performance_metrics: 9
+      vm_performance_points: none
+      vm_summary_pillars: [availability, performance, capacity, security, configuration]
+      vm_layer_metrics_with_points: 4
+      vm_layer_other_layer_points: none
+      unknown_layer: 404
+    decisions: [D-097]
 
 page:
   - id: LPG-1
@@ -395,6 +410,12 @@ page:
       With the service running, a suggested question returns an answer with its sources as chips, the computed values boxed, an object of the
       estate named in it as a link, and the footer "recorded in the action history". A move to another tab keeps the panel open with the new context;
       Esc closes it, the tree comes back, and the focus returns to the mark.
+    decisions: [D-097]
+  - id: LPG-22
+    rule: >
+      On fr-svc-5526's Performance tab each layer heading has a mark named "Ask Agent E2 about the {layer} layer"; it opens the panel
+      with the layer in the context and suggests "Is the Guest OS layer the problem?". The top bar mark on the same tab suggests
+      "Is this VM performing well over the last 24 hours?", and a question sent from it carries both layers' figures.
     decisions: [D-097]
   - id: LPG-21
     rule: >

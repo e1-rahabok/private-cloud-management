@@ -136,8 +136,8 @@ Third L2 build: the workspace is rebuilt around three activities, **Monitor, Tro
 | Level | Tests | Result |
 |---|---|---|
 | Catalog | LCAT-1 to LCAT-16 | all passed |
-| Story | LST-1 to LST-27, plus tree, stale, realms, generic complaint, agent and money checks | all passed |
-| Page | LPG-1 to LPG-21 | 20 browser checks and the specification check passed |
+| Story | LST-1 to LST-28, plus tree, stale, realms, generic complaint, agent and money checks | all passed |
+| Page | LPG-1 to LPG-22 | 21 browser checks and the specification check passed |
 | Demo rehearsal | 21 steps, 8 of them L2 | all OK |
 
 - **The whole estate is in the tree:** 1,200 hosts, 106 clusters, about 27,900 VMs, built from `spec/data/estate.yaml` (`l2_tree`). Every object a story names sits where the story says. Five views: Compute, Storage, Network, Class of service, Management.
@@ -230,7 +230,7 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 
 ## Agent E2 service (D-078)
 
-- **Where L2 meets it (D-097):** the E2 mark in the top bar (dark with a green dot when the service answers, grey when not) and on each metric of a VM's Performance tab, each KPI of a cluster's Capacity tab, each finding row, the case header, each chain link and each layer row. A click opens the Agent E2 panel on the right: it pushes the content, and the tree folds to a strip.
+- **Where L2 meets it (D-097):** the E2 mark in the top bar (dark with a green dot when the service answers, grey when not; it asks about the whole page) and on each layer heading and each metric of a VM's Performance tab, each KPI of a cluster's Capacity tab, each finding row, the case header, each chain link and each layer row. A click opens the Agent E2 panel on the right: it pushes the content, and the tree folds to a strip.
 - **One endpoint:** `POST /api/l2/agent/ask` with the question and what was clicked. PCM rebuilds the facts on the server (`build/pcm_proto/l2_agent.py`) and calls the Agent E2 service (`harness/answer_service.py` in the Agent E2 repository). `GET /api/l2/agent/health` asks the service's `/v1/health`.
 - **Run it next to PCM:** `python3 harness/answer_service.py --port 8090` from the Agent E2 repository. It takes about 50 s to start. The URL is the setting `agent_e2.service_url`; `PCM_AGENT_E2_URL` replaces it.
 - **Page tests** run a stub service: no model and no network. A live check of the panel against the real service has not run yet.

@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 
 from . import agent_e2, generator, l2, l2_cases as C, l2_estate as X, l2_monitor as M, noc
 
-KINDS = ("page", "metric", "kpi", "finding", "case", "link", "layer")
+KINDS = ("page", "vm_layer", "metric", "kpi", "finding", "case", "link", "layer")
 HEALTH_SECONDS = 3  # spec: never cached longer than 30 seconds
 _HEALTH: dict = {}
 HUMAN = "l2-engineer-1"
@@ -75,10 +75,17 @@ def _metric(m: dict, full: bool) -> dict:
     out = {"name": m["label"], "unit": m["unit"].strip(), "better": m["better"], "now": m["now"],
            "worst": m["worst"], "percentile_95": m["percentile_95"]}
     if full:
+        # Values only, oldest first, one per point_minutes from first_point: a timestamp per point would triple the size.
         out["point_minutes"] = m["minutes"]
-        out["points"] = [[p["t"], p["v"]] for p in m["points"]]
+        out["first_point"] = m["points"][0]["t"] if m["points"] else None
+        out["values"] = [p["v"] for p in m["points"]]
         out["each_point_holds"] = "the worst value inside it"
     return out
+
+
+def _layer(x: dict) -> dict:
+    """A layer's status and its figures, without points."""
+    return {"layer": LAYER[x["key"]], "status": x["status"], "metrics": [_metric(m, False) for m in x["metrics"]]}
 
 
 def facts_for(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
@@ -133,6 +140,16 @@ def facts_for(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
         facts = {**base, "pillar": "Performance", "layer": LAYER[layer["key"]], "layer_status": layer["status"],
                  "asked_about_metric": _metric(m, True), "other_metrics": others}
         return 200, {"facts": facts, "label": f"{m['label']} · {o['name']} · Performance · {WNAME[window]}"}
+    if kind == "vm_layer":
+        pv = M.pillar_view(now, view, o["id"], "performance", window, enable=enable)
+        layers = (pv or {}).get("layers") or []
+        layer = next((x for x in layers if x["key"] == ctx.get("layer")), None)
+        if not layer:
+            return 404, {"error": "no such layer on this object"}
+        facts = {**base, "pillar": "Performance", "asked_about_layer": {"layer": LAYER[layer["key"]], "status": layer["status"],
+                                                                      "metrics": [_metric(m, True) for m in layer["metrics"]]},
+                 "other_layers": [_layer(x) for x in layers if x is not layer]}
+        return 200, {"facts": facts, "label": f"{LAYER[layer['key']]} layer · {o['name']} · Performance · {WNAME[window]}"}
     if kind == "kpi":
         pv = M.pillar_view(now, view, o["id"], "capacity", window, enable=enable)
         cap = (pv or {}).get("capacity") or {}
@@ -146,12 +163,17 @@ def facts_for(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
                  "contention_now": cap.get("contention_now"), "asked_about_kpi": kpi,
                  "other_kpis": [{key: x.get(key) for key in ("label", "now", "worst", "percentile_95", "check_value")} for x in cap["kpis"] if x is not k]}
         return 200, {"facts": facts, "label": f"{k['label']} · {o['name']} · Capacity · {WNAME[window]}"}
-    # page: the object, the tab's status, its findings and its worst children
+    # page: what the page shows, so an overall question is answered from the numbers on screen (frame.md, Agent E2 panel)
     pv = M.pillar_view(now, view, o["id"], pillar, window, enable=enable) if pillar != "summary" else None
     found = M.findings_under(now, o["id"], enable, None if pillar == "summary" else pillar, window)
     facts = {**base, "status": (pv or {}).get("status"), "score": (pv or {}).get("score"),
              "findings": [_finding(f) for f in found[:10]],
              "worst_children": [{k: c.get(k) for k in ("name", "kind", "status", "score")} for c in ((pv or {}).get("children") or [])[:10]]}
+    if pillar == "summary":
+        sm = M.summary(now, view, o["id"], window, enable) or {}
+        facts["pillars"] = [{k: x.get(k) for k in ("pillar", "status", "headline", "findings")} for x in sm.get("pillars", [])]
+    if (pv or {}).get("layers"):
+        facts["layers"] = [_layer(x) for x in pv["layers"]]
     return 200, {"facts": facts, "label": where}
 
 

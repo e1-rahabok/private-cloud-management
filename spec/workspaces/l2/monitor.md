@@ -117,6 +117,7 @@ On a VM, the tab shows detail. The Guest OS runs on top of the Virtual Motherboa
   - **Worst:** the worst point of the window, with its time.
   - **95th percentile:** the value that 95% of the points were better than.
   - **Never an average.** It hides the peak the VM's owner felt.
+- **Agent E2 mark** at the right of each layer heading: "Ask Agent E2 about the {layer} layer", for a question about the layer as a whole (frame.md; D-097).
 - **Agent E2 mark** at the right of each metric's name: "Ask Agent E2 about {metric}" (frame.md, Agent E2 mark; D-097). PCM sends the metric's points, Now, Worst with its time, 95th percentile, which way is better, the layer and its status, the other metrics of both layers, and the calendar entries in the window.
 - **Names and units:** Title Case; abbreviations in capitals (CPU, VM, OS, vCPU); the unit follows the number and is never part of the name: "CPU Ready 2.5%", "Disk Latency 5.6 ms", "Context Switches 7,346/s".
 - **Under the layers:** "Log a complaint about this VM"; Children, worst first (the Guest OS); Findings.

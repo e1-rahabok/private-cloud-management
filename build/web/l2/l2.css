@@ -183,6 +183,9 @@ table[data-hosts] td:first-child, table[data-clusters-at] td:first-child { white
 .e2mark.top[aria-expanded="true"] { box-shadow: 0 0 0 3px var(--accent-soft); }
 .e2mark.big { height: 30px; min-width: 34px; font-size: 13px; background: var(--text); color: #fff; border-color: var(--text); cursor: default; }
 .top .utils { align-items: center; }
+.layer > h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.layer > h2 .e2mark { margin-left: auto; }
+section.layer.e2-asked { outline-offset: 6px; }
 .mname { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .mname h4 { margin: 0; }
 .finding { grid-template-columns: 92px 1fr auto; }
