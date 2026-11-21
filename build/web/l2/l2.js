@@ -392,7 +392,8 @@ const withUnit = (v, m, tick) => v == null ? '–' : `${Number(v).toLocaleString
 const LAYER_NOTE = { guest_os: 'Runs on top of the Virtual Motherboard.', virtual_motherboard: 'The VM\'s virtual hardware, under the Guest OS.' };
 function metricBlock(m, layer) {
   const score = !!m.scale, lowest = m.better === 'higher';
-  const top = score ? 100 : niceMax(Math.max(...m.points.map(p => p.v)) * 1.1);
+  const hiV = Math.max(...m.points.map(p => p.v));
+  const top = score ? 100 : m.unit === '%' && hiV > 50 && hiV <= 100 ? 100 : niceMax(hiV * 1.1);  // a percentage near full reads on 0 to 100%, never 200%
   const fmt = (v, tick) => withUnit(v, m, tick);
   const series = [score ? { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
