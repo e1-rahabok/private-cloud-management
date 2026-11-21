@@ -12,8 +12,8 @@ regions:
   emea: { name: Europe,       vcf_operations_instance: vcf-ops-emea }
 
 host_generations:
-  current:  { cores: 64, threads: 128, memory_gb: 768, note: "2 x 32 cores, Hyper-Threading on" }
-  previous: { cores: 40, threads: 80,  memory_gb: 512, note: "2 x 20 cores, Hyper-Threading on" }
+  current:  { cores: 64, threads: 128, memory_gb: 768, note: "2 x 32 cores, Hyper-Threading on", model: "Gen-2024, 2 x 32 cores", firmware: "BIOS 2.19", cores_per_numa_node: 32, memory_gb_per_numa_node: 384 }
+  previous: { cores: 40, threads: 80,  memory_gb: 512, note: "2 x 20 cores, Hyper-Threading on", model: "Gen-2019, 2 x 20 cores", firmware: "BIOS 1.12", cores_per_numa_node: 20, memory_gb_per_numa_node: 256 }
 
 # Host counts follow the mockup's location shares (28, 25, 22, 14, 11 percent of 1,200).
 # London has the oldest fleet, for the hardware refresh story (C-5).
@@ -128,3 +128,63 @@ goals:
     metric: l2.found_by_check_percent
     target: 60
     direction: at_least
+
+# The L2 inventory tree (l2.tree, D-087). The generator builds every host, VM and datastore from these rules
+# and the cluster layout above; stories pin their named objects into the right place.
+l2_tree:
+  vcf_instance: "vcf-{loc}-01"
+  workload_domains:
+    management: { id: "wld-{loc}-mgmt", classes: [management, edge] }
+    production: { id: "wld-{loc}-prod", classes: [gold, silver] }
+    general:    { id: "wld-{loc}-gen",  classes: [bronze, mixed] }
+  cluster_ids: "{LOC}-{letter}-{nn}; letters G, S, B, X for gold, silver, bronze, mixed (as the NOC), M management, E edge"
+  host_ids: "{loc}-esx-{nnn}, numbered through the location in cluster order"
+  vm_ids: "{loc}-{role}-{nnnn}; four digits, so generated names never meet a story's three-digit names"
+  datastore_ids: "{LOC}-DS-{nn}, numbered through the location in cluster order"
+  datastores_per_cluster: { gold: "VMFS on the array, 1 per 4 hosts", silver: "1 vSAN", bronze: "1 vSAN", mixed: "1 vSAN", management: "1 vSAN", edge: "1 vSAN" }
+  previous_generation_hosts: "the location's previous-generation hosts fill its clusters from the last cluster of each class backwards; a cluster can mix both generations while a refresh runs"
+  esxi_builds: { n: "9.0.2", n_minus_1: "9.0.1", n_minus_2: "8.0 U3" }
+  esxi_build_rule: "current-generation hosts run N; previous-generation hosts run N-1; overrides below, then story pins"
+  esxi_build_overrides: { VA-B-01: n_minus_2, VA-B-02: n_minus_2, LD-B-01: n }
+  host_pins:
+    note: "Story hosts placed in their clusters (L-2, L-3, L-10, N-4, T-1, M-1). A pin swaps names with a generated host of that cluster."
+    sg-esx-088: { cluster: SG-S-07 }
+    va-esx-142: { cluster: VA-G-05 }
+    ld-esx-201: { cluster: LD-B-01, esxi_build: n_minus_1 }
+    ld-esx-202: { cluster: LD-B-01, esxi_build: n_minus_1 }
+    ld-esx-203: { cluster: LD-B-01, esxi_build: n_minus_1 }
+    sg-esx-031: { cluster: SG-G-02, generation: previous }
+    sg-esx-035: { cluster: SG-G-02 }
+    ld-esx-005: { cluster: LD-G-01, generation: current }
+    ld-esx-077: { cluster: LD-G-01, generation: previous }
+  ssh_hosts: { story: N-4, cluster: LD-S-01, first: 3 }
+  datastore_pins: { SG-DS-11: SG-S-02, SG-DS-21: SG-G-02, LD-DS-03: LD-B-01, LD-DS-07: LD-S-01 }
+  vm_pins:
+    note: "Story VMs and where they run. A VM a story names without a place runs in the location's first Silver cluster."
+    fr-bat-017: { cluster: FR-S-02, class: bronze, role: bat, vcpu: 16 }
+    fr-app-101: { cluster: FR-S-02 }
+    fr-app-114: { cluster: FR-S-02 }
+    fr-db-022: { cluster: FR-S-02 }
+    fr-app-131: { cluster: FR-S-02 }
+    sg-app-117: { cluster: SG-S-07, host: sg-esx-088, vcpu: 8, memory_gb: 32 }
+    va-db-033: { cluster: VA-G-01 }
+    sg-app-301: { cluster: SG-S-02, datastore: SG-DS-11 }
+    sg-db-044: { cluster: SG-G-01, vcpu: 8 }
+    ld-db-021: { cluster: LD-G-01, class: gold }
+    tk-app-208: { cluster: TK-S-02 }
+    tk-app-211: { cluster: TK-S-02 }
+    sg-gl-db-01: { cluster: SG-G-02, host: sg-esx-031, datastore: SG-DS-21, vcpu: 24, memory_gb: 384 }
+    ld-sql-014: { cluster: LD-G-01, host: ld-esx-077, vcpu: 24, memory_gb: 300 }
+    va-fs-002: { cluster: VA-S-04, vcpu: 8 }
+    va-jmp-001: { cluster: VA-B-01, vcpu: 2 }
+  tools_versions: ["12.5", "12.4", "12.3", "12.1", "11.3"]
+  vm_roles: [app, web, db, bat, fs, svc, mq, api]
+  vm_vcpu: { gold: [4, 8, 16], silver: [2, 4, 8], bronze: [2, 4], mixed: [2, 4, 8] }
+  appliances:
+    per_location: [vcenter-mgmt, vcenter-wld, nsx-manager-1, nsx-manager-2, nsx-manager-3, nsx-edge-1, nsx-edge-2, sddc-manager]
+    per_region: [vcf-operations, vcf-automation]
+    region_home: { apj: sg, amer: va, emea: fr }
+  vm_performance:
+    note: "Mostly green (realism). A VM's base sits near its cluster's; about 1% of VMs sit in the yellow band and 3% just above the green line."
+    window_spread: { "1h": 0, "24h": 1.5, "7d": 3, "30d": 4, "1y": 5 }
+

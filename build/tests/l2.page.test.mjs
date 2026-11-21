@@ -1,4 +1,4 @@
-// Page tests LPG-2 to LPG-7 for /l2, in a real browser.
+// Page tests LPG-2 to LPG-13 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
 // GENERATED from spec/tests/l2.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/l2.page.test.mjs
 import { spawn } from 'node:child_process';
@@ -11,101 +11,108 @@ const PORT = 8768;
 const NOW = readFileSync(ROOT + 'spec/tests/l2.yaml', 'utf8').match(/^now:\s*"([^"]+)"/m)[1];
 const avoided = readFileSync(ROOT + 'spec/catalog/vocabulary/l2.yaml', 'utf8').split('avoided:')[1].split('labels:')[0]
   .split('\n').map(l => l.trim()).filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
-// No Agent E2 service on port 8090 during page tests: LPG-9 checks the unavailable state.
+// No Agent E2 service on port 8090 during page tests: LPG-8 checks the unavailable state.
 const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DEMO_SWITCHER: '0', PCM_AGENT_E2_MODE: 'mock', PCM_DB: ':memory:' } });
-// Wait until the server answers, not a fixed time: a slow start made the first request fail.
 for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/exec`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
 const BASE = `http://127.0.0.1:${PORT}`;
-const q = `?now=${encodeURIComponent(NOW)}`;
-const reset = () => fetch(`${BASE}/api/noc/_reset${q}`, { method: 'POST', body: '{}' });
+const NQ = `now=${encodeURIComponent(NOW)}`;
+const withNow = p => p + (p.includes('?') ? '&' : '?') + NQ;
+const reset = () => fetch(`${BASE}/api/noc/_reset?${NQ}`, { method: 'POST', body: '{}' });
 const results = [];
 const check = (id, ok, detail = '') => { results.push({ ok }); console.log(`${ok ? 'PASS' : 'FAIL'} ${id}${detail ? ' - ' + detail : ''}`); };
 const browser = await chromium.launch();
 const hosts = new Set();
+const PAGES = ['/l2', '/l2/monitor/compute/estate/performance', '/l2/monitor/compute/ld/performance?window=7d&group=host_model', '/l2/monitor/compute/estate/capacity',
+  '/l2/monitor/compute/estate/security', '/l2/monitor/compute/estate/configuration', '/l2/monitor/compute/estate/inventory', '/l2/monitor/compute/estate/availability',
+  '/l2/monitor/compute/estate/summary?window=1y', '/l2/monitor/compute/sg-app-117/performance', '/l2/monitor/storage/estate/performance',
+  '/l2/troubleshoot/compute/estate', '/l2/troubleshoot/new', '/l2/troubleshoot/case/case-sg-app-117', '/l2/troubleshoot/case/case-inc-tk-s-03',
+  '/l2/improve/compute/estate/summary', '/l2/improve/compute/estate/configuration', '/l2/improve/compute/estate/capacity', '/l2/rules', '/l2/calendar'];
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on('request', r => hosts.add(new URL(r.url()).host));
   page.on('dialog', d => d.accept('Reason given in the test'));
-  const go = async p => { await page.goto(BASE + p + q); await page.waitForSelector('body[data-ready="1"]'); };
-
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  const go = async p => { await page.goto(BASE + withNow(p)); await page.waitForSelector('body[data-ready="1"]', { timeout: 60000 }); };
   await reset();
-  // The NOC escalates first: the loop between the two workspaces (LPG-4).
-  await go('/noc/alert/inc-fr-s-02'); await page.click('button[data-escalate]'); await page.waitForTimeout(300);
 
+  // LPG-2, LPG-13: words and decision IDs, on every page
   const texts = [];
-  for (const p of ['/l2', '/l2/weekly', '/l2/monthly', '/l2/inventory', '/l2/escalations', '/l2/investigate/sg-app-117', '/l2/investigate/FR-S-02', '/l2/configuration', '/l2/context', '/l2/authoring']) {
-    await go(p); texts.push(await page.innerText('body'));
-  }
-  await go('/l2/escalations'); await page.click('button[data-rca]'); await page.waitForSelector('body[data-agent]'); texts.push(await page.innerText('body'));
+  for (const p of PAGES) { await go(p); texts.push(await page.innerText('body')); }
   const all = texts.join('\n');
   const bad = avoided.filter(w => new RegExp(`\\b${w}\\b`, 'i').test(all));
   check('LPG-2', bad.length === 0, bad.length ? `avoided: ${bad}` : 'no avoided word on any L2 page');
+  const ids = all.match(/\bD-\d{3}\b/g) || [];
+  check('LPG-13', ids.length === 0 && errors.length === 0, ids.length ? `found ${[...new Set(ids)]}` : errors.length ? errors.join('; ') : 'no decision ID; no page error');
 
-  // LPG-8 no decision ID in page text
-  const ids = (all).match(/\bD-\d{3}\b/g) || [];
-  check('LPG-8', ids.length === 0, ids.length ? `found ${[...new Set(ids)]}` : 'no decision ID in page text');
-
+  // LPG-3 the top bar
   await go('/l2');
-  const verdicts = await page.$$eval('.verdict', els => els.map(e => e.dataset.verdict));
-  check('LPG-3', verdicts.join() === 'present_health,risk,efficiency' && !/health score/i.test(await page.innerText('body')), verdicts.join(', '));
+  const acts = await page.$$eval('nav.acts a', as => as.map(a => a.textContent.replace(/\d+$/, '').trim()));
+  const utils = await page.$$eval('nav.utils a', as => as.map(a => a.textContent.trim()));
+  const topText = await page.innerText('#top');
+  check('LPG-3', acts.join() === 'Monitor,Troubleshoot,Improve' && utils.join() === 'Rules,Calendar' && !/Weekly|Monthly|Escalations|Inventory|Configuration/.test(topText), `${acts} | ${utils}`);
 
-  // LPG-10 no "Make automatic"; Publish only after Replay
-  await go('/l2');
+  // LPG-4 /l2 opens Monitor on the estate, Summary, 24 hours, one row per pillar
+  const landed = new URL(page.url()).pathname;
+  const rows = await page.$$eval('tr[data-pillar]', r => r.map(x => x.dataset.pillar));
+  const win = await page.innerText('.windows a[aria-current="true"]');
+  check('LPG-4', landed === '/l2/monitor/compute/estate/summary' && rows.join() === 'availability,performance,capacity,security,configuration,inventory' && win === '24 hours' && !/health score/i.test(await page.innerText('main')), `${landed}; ${rows.length} pillar rows; ${win}`);
+
+  // LPG-5 the tree keeps activity and window; switching activity keeps the object
+  await go('/l2/monitor/compute/estate/performance?window=7d');
+  await page.click('aside.tree li[data-node="emea"] > .item > button.caret'); await page.waitForSelector('li[data-node="fr"]');
+  await page.click('li[data-node="fr"] > .item > a.node'); await page.waitForSelector('body[data-ready="1"]');
+  const u1 = new URL(page.url());
+  await page.click('nav.acts a:has-text("Troubleshoot")'); await page.waitForSelector('body[data-ready="1"]');
+  const u2 = new URL(page.url());
+  check('LPG-5', u1.pathname === '/l2/monitor/compute/fr/performance' && u1.searchParams.get('window') === '7d' && u2.pathname === '/l2/troubleshoot/compute/fr', `${u1.pathname}?window=${u1.searchParams.get('window')} then ${u2.pathname}`);
+
+  // LPG-6 a complaint opens a case; the chain grows in the T-1 order; Rule out asks for a reason
+  await go('/l2/troubleshoot/new?vm=sg-gl-db-01');
+  await page.fill('input[name="requester"]', 'General ledger application owner');
+  await Promise.all([page.waitForURL(/\/case\//), page.click('#cf button[type="submit"]')]); await page.waitForSelector('body[data-ready="1"]');
+  for (let i = 1; i <= 3; i++) { await page.click('#propose'); await page.waitForFunction(n => document.querySelectorAll('[data-link]').length >= n, i); }
+  const order = await page.$$eval('[data-link]', xs => xs.map(x => x.dataset.link));
+  await page.click('[data-ruleout="t1-guest"]'); await page.waitForSelector('[data-link="t1-guest"].ruled_out');
+  const ruled = await page.innerText('[data-link="t1-guest"]');
+  check('LPG-6', order.join() === 't1-guest,t1-disk,t1-cpu' && ruled.includes('Reason given in the test'), `${order}; ruled out with a reason: ${ruled.includes('Reason given')}`);
+
+  // LPG-7 the L-2 case hands over to the Guest OS team
+  await go('/l2/troubleshoot/case/case-sg-app-117');
+  const ho = await page.innerText('[data-handover]');
+  check('LPG-7', ho === 'The cause is inside the Guest OS. Hand this evidence to the Windows or Linux team.', ho);
+
+  // LPG-8 Agent E2 service not running
+  await page.click('#ask button[type="submit"]'); await page.waitForSelector('body[data-ask]', { timeout: 30000 });
+  const askText = await page.innerText('#answer');
+  check('LPG-8', askText.includes('The Agent E2 service is not available'), askText.split('\n')[0]);
+
+  // LPG-9 Rules: no "Make automatic"; Publish only after Replay, for policies and thresholds
+  await go('/l2/rules');
   const noAuto = !(await page.innerText('body')).includes('Make automatic');
+  const thBefore = await page.isDisabled('[data-publish]');
+  await page.fill('form[data-t] input[name="value"]', '60'); await page.click('form[data-t] button[type="submit"]'); await page.waitForSelector('body[data-replayed]');
+  const thAfter = await page.isDisabled('[data-publish]');
   await page.click('button[data-propose="move_vms_between_clusters"]');
   const pubBefore = await page.isDisabled('#publish');
   await page.selectOption('#pf select[name="tier"]', 'automatic');
   await page.click('#pf button[type="submit"]'); await page.waitForSelector('body[data-policy-replayed]');
   const replayText = await page.innerText('#replay');
-  const pubAfter = await page.isDisabled('#publish');
-  check('LPG-10', noAuto && pubBefore && !pubAfter && /18/.test(replayText), replayText.trim());
+  check('LPG-9', noAuto && thBefore && !thAfter && pubBefore && !(await page.isDisabled('#publish')) && /18/.test(replayText), replayText.trim());
 
-  // LPG-11 weekly: Assign needs an owner and an action
-  await go('/l2/weekly');
-  await page.fill('form.assign[data-f="w-sg-ds-11"] input[name="owner"]', 'l2-engineer-1');
-  await page.click('form.assign[data-f="w-sg-ds-11"] button'); await page.waitForSelector('body[data-assign="400"]');
-  const err = await page.innerText('.msg');
-  await page.fill('form.assign[data-f="w-sg-ds-11"] input[name="owner"]', 'l2-engineer-1');
-  await page.fill('form.assign[data-f="w-sg-ds-11"] input[name="action"]', 'Remove the backup snapshot on sg-app-301');
-  await page.click('form.assign[data-f="w-sg-ds-11"] button'); await page.waitForSelector('body[data-assign="200"]');
-  const assigned = await page.innerText('[data-weekly="w-sg-ds-11"]');
-  check('LPG-11', /owner and an action/.test(err) && assigned.includes('Assigned to l2-engineer-1'), `${err} / ${assigned.split('\n').pop()}`);
+  // LPG-10 group by host model in London, 7 days
+  await go('/l2/monitor/compute/ld/performance?window=7d&group=host_model');
+  const g = await page.innerText('[data-group="Gen-2019, 2 x 20 cores"]');
+  const g24 = await page.innerText('[data-group="Gen-2024, 2 x 32 cores"]');
+  const wider = row => row.split('\t').map(s => s.trim())[5];
+  check('LPG-10', wider(g) === '9' && wider(g24) === '0', `wider than their host's NUMA node: Gen-2019 ${wider(g)}, Gen-2024 ${wider(g24)}`);
 
-  // LPG-12 monthly opens with last month's decisions
-  await go('/l2/monthly');
-  const firstH2 = await page.innerText('main h2');
+  // LPG-11 Improve at the estate shows the decision register
+  await go('/l2/improve/compute/estate/summary');
   const snap = await page.innerText('[data-decision="d-snapshots"]');
-  check('LPG-12', firstH2 === "Last month's decisions" && snap.includes('Overdue'), `${firstH2}; ${snap.replace(/\s+/g, ' ')}`);
+  check('LPG-11', snap.includes('Overdue'), snap.replace(/\s+/g, ' '));
 
-  // LPG-13 inventory: ld-db-021 first among unexplained; DRS moves only counted
-  await go('/l2/inventory');
-  const firstChange = await page.getAttribute('[data-change]', 'data-change');
-  const listed = await page.$$eval('[data-change] strong', els => els.map(e => e.parentElement.innerText));
-  const moves = listed.filter(t => /: Moved\./.test(t)).length;
-  check('LPG-13', firstChange === 'chg-ld-db-021' && moves === 0 && listed.length === 2, `first unexplained: ${firstChange}; ${listed.length} listed; moves listed: ${moves}`);
-
-  await go('/l2/escalations');
-  const escText = await page.innerText('[data-escalation="inc-fr-s-02"]');
-  check('LPG-4', /CPU Ready 1.2%/.test(escText) && /fr-bat-017/.test(escText), 'escalation from the NOC arrived with counters');
-
-  await go('/l2/investigate/sg-app-117');
-  const concl = await page.innerText('.conclusion');
-  check('LPG-5', concl.includes('inside the Guest OS'), concl);
-
-  await go('/l2/authoring');
-  const before = await page.isDisabled('[data-publish]');
-  await page.fill('input[name="value"]', '60'); await page.click('form[data-t] button[type="submit"]');
-  await page.waitForSelector('body[data-replayed]');
-  const after = await page.isDisabled('[data-publish]');
-  check('LPG-6', before && !after, `publish disabled before replay: ${before}; after: ${after}`);
-
-  // LPG-9 Agent E2 service not running: the page says so and shows no answer
-  await go('/l2/investigate/sg-app-117');
-  await page.click('#ask button[type="submit"]');
-  await page.waitForSelector('body[data-ask]', { timeout: 30000 });
-  const askText = await page.innerText('#answer');
-  check('LPG-9', askText.includes('The Agent E2 service is not available'), askText.split('\n')[0]);
-
+  // LPG-12 contrast and no foreign request
   const contrast = async () => page.evaluate(() => {
     const parse = c => (c.match(/[\d.]+/g) || []).map(Number);
     const lum = ([r, g, b]) => [r, g, b].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -119,27 +126,28 @@ try {
     return fails;
   });
   const fails = [];
-  for (const p of ['/l2', '/l2/weekly', '/l2/monthly', '/l2/inventory', '/l2/escalations', '/l2/investigate/sg-app-117', '/l2/configuration', '/l2/context', '/l2/authoring']) { await go(p); fails.push(...(await contrast()).map(f => `${p}: ${f}`)); }
+  for (const p of ['/l2', '/l2/monitor/compute/ld/performance?window=7d&group=host_model', '/l2/troubleshoot/compute/estate', '/l2/troubleshoot/case/case-inc-tk-s-03', '/l2/improve/compute/estate/summary', '/l2/rules', '/l2/calendar']) {
+    await go(p); fails.push(...(await contrast()).map(f => `${p}: ${f}`));
+  }
   const foreign = [...hosts].filter(h => h !== `127.0.0.1:${PORT}`);
-  check('LPG-7', !fails.length && !foreign.length, fails.slice(0, 4).join(' | ') || 'contrast ok; no foreign request');
+  check('LPG-12', !fails.length && !foreign.length, fails.slice(0, 4).join(' | ') || 'contrast ok; no foreign request');
 
-  // Screenshots for review: approve-then-promote flow on Today, the escalation, the investigation.
+  // Screenshots for review.
   mkdirSync(ROOT + 'build/screenshots', { recursive: true });
   const shot = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 2 });
   shot.on('dialog', d => d.accept('Reason given in the test'));
-  await shot.goto(BASE + '/l2' + q); await shot.waitForSelector('body[data-ready="1"]');
-  await shot.screenshot({ path: ROOT + 'build/screenshots/l2-today.png', fullPage: true });
-  await shot.goto(BASE + '/l2/investigate/sg-app-117' + q); await shot.waitForSelector('body[data-ready="1"]');
-  await shot.screenshot({ path: ROOT + 'build/screenshots/l2-investigate-guest-os.png', fullPage: true });
-  await shot.goto(BASE + '/l2/escalations' + q); await shot.waitForSelector('body[data-ready="1"]');
-  await shot.screenshot({ path: ROOT + 'build/screenshots/l2-escalation.png', fullPage: true });
-  for (const [p, name] of [['/l2/weekly', 'l2-weekly'], ['/l2/monthly', 'l2-monthly'], ['/l2/inventory', 'l2-inventory']]) {
-    await shot.goto(BASE + p + q); await shot.waitForSelector('body[data-ready="1"]');
-    await shot.screenshot({ path: ROOT + `build/screenshots/${name}.png`, fullPage: true });
+  for (const [p, name, full] of [['/l2', 'l2-monitor-estate', false], ['/l2/monitor/compute/ld/performance?window=7d&group=host_model', 'l2-monitor-group-by', false],
+    ['/l2/troubleshoot/compute/estate', 'l2-troubleshoot-cases', false], ['/l2/troubleshoot/case/case-inc-tk-s-03', 'l2-case-escalation', true],
+    ['/l2/troubleshoot/case/case-sg-app-117', 'l2-case-guest-os', true], ['/l2/improve/compute/estate/summary', 'l2-improve', false], ['/l2/rules', 'l2-rules', false]]) {
+    await shot.goto(BASE + withNow(p)); await shot.waitForSelector('body[data-ready="1"]', { timeout: 60000 });
+    await shot.screenshot({ path: ROOT + `build/screenshots/${name}.png`, fullPage: full });
   }
-  await shot.goto(BASE + '/l2/authoring' + q); await shot.waitForSelector('body[data-ready="1"]');
-  await shot.fill('input[name="value"]', '60'); await shot.click('form[data-t] button[type="submit"]'); await shot.waitForSelector('body[data-replayed]');
-  await shot.screenshot({ path: ROOT + 'build/screenshots/l2-threshold-replay.png', fullPage: true });
+  await shot.goto(BASE + withNow('/l2/troubleshoot/compute/estate')); await shot.waitForSelector('body[data-ready="1"]');
+  const t1 = await shot.$$eval('tr[data-case]', trs => trs.map(t => [t.dataset.case, t.innerText]).find(([, x]) => /sg-gl-db-01/.test(x)));
+  if (t1) {
+    await shot.goto(BASE + withNow(`/l2/troubleshoot/case/${t1[0]}`)); await shot.waitForSelector('body[data-ready="1"]');
+    await shot.screenshot({ path: ROOT + 'build/screenshots/l2-case-complaint.png', fullPage: true });
+  }
 } finally {
   await browser.close(); await reset().catch(() => {}); server.kill();
 }

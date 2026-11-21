@@ -188,10 +188,14 @@ def build(now: datetime, enable: tuple = (), seed: int = 7) -> dict:
 
     # 3. Is it fast?
     cl = clusters(ds, seed)
+    # Any active story that plants a cluster's performance (N-1, T-2) drives that cluster, here and in L2.
+    planted = {s["objects"]["cluster"]: s for s in active.values()
+               if "cluster_performance" in s.get("plant", {}) and s.get("objects", {}).get("cluster")}
     for c in cl:
-        c["score"] = cluster_score(c, now, n1, now, seed)
+        story = planted.get(c["id"])
+        c["score"] = cluster_score(c, now, story, now, seed)
         c["trend"] = [{"t": (now - timedelta(minutes=m)).isoformat(),
-                       "v": cluster_score(c, now - timedelta(minutes=m), n1, now, seed)} for m in range(60, -1, -5)]
+                       "v": cluster_score(c, now - timedelta(minutes=m), story, now, seed)} for m in range(60, -1, -5)]
         c["status"] = wall_status_from_kpi(c["score"])
 
     # 4. Is it safe? (same numbers as the CIO page: one definition)
@@ -208,6 +212,9 @@ def build(now: datetime, enable: tuple = (), seed: int = 7) -> dict:
         for a in n1["plant"]["alerts"]:
             alerts.append({**a, "raised": generator.rel(a["raised"], now), "location": "fr",
                            "sop": "sop-cluster-contention" if a["object_type"] == "cluster" else None})
+    if "T-2" in active:
+        for a in active["T-2"]["plant"]["alerts"]:
+            alerts.append({**a, "raised": generator.rel(a["raised"], now), "location": "tk", "sop": "sop-cluster-contention"})
     if "O-1" in active:
         for a in active["O-1"]["plant"]["alerts"]:
             alerts.append({**a, "raised": generator.rel(a["raised"], now), "location": "ld", "sop": "sop-datastore-space"})
@@ -241,7 +248,9 @@ def build(now: datetime, enable: tuple = (), seed: int = 7) -> dict:
         # A stale location hides its incidents: the wall shows only what it knows (N-2 note).
         if inc.get("location") and stale.get(inc["location"]):
             inc["hidden_by_stale"] = True
-        inc["state"] = ("closed" if inc["id"] in STATE.closed else "escalated" if inc["id"] in STATE.escalated
+        planted_esc = any(s.get("plant", {}).get("escalated") and s["objects"].get("cluster") == inc["root_object"]
+                          for s in active.values())
+        inc["state"] = ("closed" if inc["id"] in STATE.closed else "escalated" if inc["id"] in STATE.escalated or planted_esc
                         else "acknowledged" if inc["id"] in STATE.acks else "new")
         inc["acknowledged_by"] = STATE.acks.get(inc["id"])
 

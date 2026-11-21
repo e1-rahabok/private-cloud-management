@@ -1,5 +1,5 @@
-"""L2 workspace data, the daily check, proposals, the trust ladder, escalations, configuration,
-calendar and threshold replay (prototype).
+"""L2 workspace data behind Monitor, Improve and Rules: the daily and weekly check runs, proposals, action policies,
+configuration, calendar, threshold replay, decisions and detailed inventory (prototype). Cases are in l2_cases.py.
 
 GENERATED from spec/catalog/l2.yaml, spec/data/stories.yaml and spec/workspaces/l2/.
 Do not edit by hand (D-070). State is in memory, like the NOC (noc.STATE).
@@ -249,70 +249,10 @@ def daily(now: datetime, enable=()) -> dict:
             "policies": policies(enable)}
 
 
-def escalations(now: datetime, enable=()) -> list:
-    nd = noc.build(now, enable)
-    out = []
-    for iid, route in noc.STATE.escalated.items():
-        d = noc.incident_detail(nd, iid)
-        if not d:
-            continue
-        ev = {"sop_steps": [{"kind": s["kind"], "text": s["text"], "result": s.get("result"), "passed": s.get("passed")}
-                            for s in d["sop"]["steps"]],
-              "l1_actions": [{"action": h["action"], "target": h["target"], "by": h["actor_human"], "after": h["after"]}
-                             for h in d["history"] if h["action"] not in ("agent_draft",)],
-              "villains": [], "victims": []}
-        if iid == "inc-fr-s-02":
-            ev["villains"] = [{"vm": "fr-bat-017", "class": "bronze", "environment": "production",
-                               "cpu_usage_percent": 95.0, "vcpu": 16, "cpu_ready_percent": 1.2}]
-            ev["victims"] = [{"vm": vm, "cpu_ready_percent": r, "co_stop_percent": c, "vm_performance": p}
-                             for vm, r, c, p in (("fr-app-101", 9.8, 1.1, 31), ("fr-app-114", 8.1, 0.9, 36),
-                                                 ("fr-db-022", 7.4, 0.6, 41))]
-        out.append({**{k: d[k] for k in ("id", "title", "root_object", "severity", "location_name", "escalation_route")},
-                    "evidence": ev, "closure": STATE.closures.get(iid), "agent_history":
-                    [h for h in d["history"] if h["action"] == "agent_draft"]})
-    return out
-
-
-def investigate(now: datetime, obj: str, enable=()) -> dict | None:
-    act = stories(enable)
-    nd = noc.build(now, enable)
-    if obj == "sg-app-117" and "L-2" in act:
-        p = act["L-2"]["plant"]
-        return {"object": obj, "object_type": "vm",
-                "parents": [{"object": "SG-S-07", "kind": "cluster", "status": "green", "note": "Cluster Performance 92: the cluster serves its VMs well."},
-                            {"object": "sg-esx-088", "kind": "host", "status": "green", "note": "ESXi Performance 94."}],
-                "steps": [
-                    {"step": "contention", "status": "pass", "values": f"CPU Ready {p['vm']['cpu_ready_percent']}%, Co-stop {p['vm']['co_stop_percent']}%, memory wait {p['vm']['memory_wait_percent']}%, disk latency {p['vm']['disk_latency_ms']} ms"},
-                    {"step": "consumption", "status": "pass", "values": "CPU usage 35% of 8 vCPU; memory 61% of 32 GB"},
-                    {"step": "configuration", "status": "pass", "values": "No limit, normal shares, VMware Tools current"},
-                    {"step": "known_bug", "status": "pass", "values": "No known issue for this ESXi build"},
-                    {"step": "log", "status": "pass", "values": "No vSphere log events for this VM in the window"}],
-                "first_failing": None,
-                "realms": {"vm": {"status": "green", **p["vm"]}, "guest_os": {"status": "red", **p["guest_os"]}},
-                "realm_verdict": "guest_os",
-                "conclusion": "The cause is inside the Guest OS. Hand this evidence to the Windows or Linux team.",
-                "logs": [{"at": (now - timedelta(minutes=50)).isoformat(), "text": "No vSphere events for sg-app-117 in the last 24 hours."}]}
-    if obj == "FR-S-02" and "N-1" in act:
-        c = next(x for x in nd["clusters"] if x["id"] == "FR-S-02")
-        return {"object": obj, "object_type": "cluster", "parents": [],
-                "steps": [
-                    {"step": "contention", "status": "fail", "values": f"Cluster Performance {round(c['score'])}. Worst VM CPU Ready 9.8%, 90th percentile CPU Ready 6.8%"},
-                    {"step": "consumption", "status": "fail", "values": "fr-bat-017 uses 95% of its 16 vCPU since its batch started"},
-                    {"step": "configuration", "status": "fail", "values": "fr-bat-017 is a Bronze VM in a Silver cluster: wrong placement for its class"},
-                    {"step": "known_bug", "status": "pass", "values": "No known issue for this ESXi build"},
-                    {"step": "log", "status": "info", "values": "DRS migrations in FR-S-02 three times the usual rate in the last hour"}],
-                "first_failing": "contention",
-                "realms": None, "realm_verdict": "platform",
-                "conclusion": "The platform is the cause: contention from one oversized Bronze VM placed in a Silver cluster.",
-                "logs": [{"at": (now - timedelta(minutes=21)).isoformat(), "text": "fr-bat-017 powered on job batch-eod-fr (vCenter task)."},
-                         {"at": (now - timedelta(minutes=15)).isoformat(), "text": "DRS: 14 migrations in FR-S-02 in 15 minutes."}]}
-    return None
-
-
 # Planted background findings; their standards come from catalog/standards.yaml (Docs design, 2.8).
 CONFIG_BASE = [
-    {"id": "c-esx-version", "group": "update_it", "object": "VA-B-01, VA-B-02", "setting": "esxi_version", "actual": "N-2 on 18 hosts"},
-    {"id": "c-tools-variants", "group": "simplify_it", "object": "Estate", "setting": "vmware_tools_variants", "actual": "5 versions"},
+    {"id": "c-esx-version", "group": "update_it", "object": "VA-B-01, VA-B-02", "objects": ["VA-B-01", "VA-B-02"], "setting": "esxi_version", "actual": "8.0 U3 (N-2) on every host"},
+    {"id": "c-tools-variants", "group": "simplify_it", "object": "Estate", "objects": ["estate"], "setting": "vmware_tools_variants", "actual": "5 versions"},
 ]
 
 
@@ -322,7 +262,11 @@ def configuration(now: datetime, enable=()) -> dict:
     if "L-3" in act:
         for i, d in enumerate(act["L-3"]["plant"]["drift"]):
             items.append({"id": f"c-va-esx-142-{i + 1}", "group": "correct_it", "object": "va-esx-142 (VA-G-05)",
-                          "setting": d["setting"], "actual": d["actual"]})
+                          "objects": [act["L-3"]["objects"]["host"]], "setting": d["setting"], "actual": d["actual"]})
+    if "L-10" in act:
+        o, d = act["L-10"]["objects"], act["L-10"]["plant"]["drift"]
+        items.append({"id": "c-ld-b-01-patch", "group": "simplify_it", "object": o["cluster"], "objects": [o["cluster"]],
+                      "setting": "esxi_version", "actual": f"{d['behind_peers']} hosts one patch behind the rest of the cluster"})
     items += [dict(c) for c in CONFIG_BASE]
     std = generator.load_spec()["standards"]
     for it in items:
@@ -425,31 +369,6 @@ def _act(now: datetime, path: list, body: dict, enable=()) -> tuple[int, dict]:
                                    actor_agent="pcm-policy")
                         ran.append(p["id"])
             return 200, {**new, "ran_automatically": ran}
-        if path[:1] == ["escalations"] and len(path) == 3:
-            iid, verb = path[1], path[2]
-            esc = next((e for e in escalations(now, enable) if e["id"] == iid), None)
-            if not esc:
-                return 404, {"error": "no such escalation"}
-            if verb == "close":
-                need = ("root_cause", "corrective_action", "detection", "detection_note")
-                missing = [k for k in need if not body.get(k)]
-                if missing:
-                    return 400, {"error": f"Missing: {', '.join(missing)}. An escalation closes with a cause, a fix and a detection decision."}
-                STATE.closures[iid] = {k: body[k] for k in need} | {"by": human}
-                noc.STATE.closed[iid] = body["root_cause"]
-                rec("close_escalation", iid, body["root_cause"], "escalated", "closed", incident=iid)
-                return 200, {"state": "closed"}
-            if verb == "agent":
-                vocab = yaml.safe_load((SPEC / "catalog/vocabulary/l2.yaml").read_text())
-                facts = {"incident": {k: esc[k] for k in ("title", "root_object", "location_name", "escalation_route")},
-                         "evidence": esc["evidence"],
-                         "investigation": investigate(now, esc["root_object"], enable)}
-                template = (f"Draft by Agent E2, to review: {esc['root_object']}: contention from fr-bat-017, a production Bronze VM "
-                            "placed in a Silver cluster. Corrective action: move it to a Bronze cluster. Detection: a check rule "
-                            "for class mismatch on placement.")
-                out = agent_e2.draft_facts(facts, "rca_draft", st, vocab["avoided"], template)
-                r = rec("agent_draft", iid, "rca_draft", "-", out["source"], actor_agent="agent-e2", incident=iid)
-                return 200, {**out, "record": r}
         if path[:1] == ["configuration"] and len(path) == 3 and path[2] == "decide":
             cfg = configuration(now, enable)
             item = next((i for g in cfg["groups"].values() for i in g if i["id"] == path[1]), None)
@@ -470,13 +389,6 @@ def _act(now: datetime, path: list, body: dict, enable=()) -> tuple[int, dict]:
                 rec("change_standard", item["setting"], body.get("reason", ""), item["standard"], item["actual"])
                 return 200, {"standard_version": v}
             return 400, {"error": "choice must be fix_the_setting or fix_the_standard"}
-        if path[:1] == ["investigate"] and len(path) == 3 and path[2] == "ask":
-            facts = investigate(now, path[1], enable)
-            if not facts or not body.get("question"):
-                return 400, {"error": "an object this page knows and a question are required"}
-            out = agent_e2.ask_service(st["agent_e2.service_url"], body["question"], facts, "l2")
-            r = rec("agent_ask", path[1], body["question"], "-", out["source"], actor_agent="agent-e2")
-            return 200, {**out, "record": r}
         if path == ["calendar"]:
             need = ("kind", "starts_at", "ends_at", "note")
             if any(not body.get(k) for k in need):

@@ -90,13 +90,17 @@ Each story is one or more objects with a planted condition, and the expected res
 
 | ID | Story | Expected result |
 |---|---|---|
-| L-1 | The escalation from N-1 arrives | Evidence is filled automatically: VM owner and the VM metrics showing it is not the cause. Agent E2 drafts the cause: a Bronze VM in a Silver cluster. L2 closes it with a cause, a fix and a new check rule (L2 design, 3.8). |
-| L-2 | An application owner complains that VM SG-APP-117 is slow | VM health is green; Guest OS run queue is high. The page shows the cause is inside the Guest OS, with evidence for the Windows team (L2 design, 3.5). |
-| L-3 | Daily check: one host in cluster VA-G-05 has a different NTP and log configuration from its peers | Configuration, "Correct it" (L2 design, 3.10). Option: fix the host, or fix the standard. |
+| L-1 | The escalation from N-1 arrives | Evidence is filled automatically: VM owner and the VM metrics showing it is not the cause. Agent E2 drafts the cause: a Bronze VM in a Silver cluster. L2 closes it with a cause, a fix and a new check rule (L2 design, 5.9). |
+| L-2 | An application owner complains that VM SG-APP-117 is slow | VM health is green; Guest OS run queue is high. The page shows the cause is inside the Guest OS, with evidence for the Windows team (L2 design, 5.6). |
+| L-3 | Daily check: one host in cluster VA-G-05 has a different NTP and log configuration from its peers | Configuration, "Correct it" (L2 design, 6.2). Option: fix the host, or fix the standard. |
 | L-4 | Daily check proposes moving 6 VMs from the hot cluster SG-S-04 to SG-S-06 | The proposal waits for L2 approval under policy v1 (tier approval). The record (23 approvals, 0 rollbacks) is evidence. L2 proposes policy v2 (automatic, with guardrails), replays it, publishes it; the waiting move then runs under v2 with no approval record (D-079). |
 | L-5 | An alert 4 days ago was not predicted by any check | It appears in "slipped through" (D-039). |
-| L-6 | Business calendar: the next quarter-end close in all locations, and the next payday in Singapore | The checks explain the rise instead of flagging an anomaly (L2 design, 3.6). |
+| L-6 | Business calendar: the next quarter-end close in all locations, and the next payday in Singapore | The checks explain the rise instead of flagging an anomaly (L2 design, 7.2). |
 | L-7 | The end-of-day batch in London ran 40 minutes longer last night; a datastore behind it shows rising latency | The daily check flags it as insight, before the batch window closes late and hits the start of business (SP5 prevention window). |
+| T-1 | The general ledger is slow since the weekend change window (from Agent E2 `L4-037`) | L2 logs the complaint against sg-gl-db-01. Agent E2 proposes nine links: Windows, VM CPU and "add vCPUs" are ruled out; a snapshot the backup left doubles the reads (root cause); a NUMA split on a previous-generation host contributes. |
+| T-2 | Every web application in Tokyo is slow (from Agent E2 `L4-074`) | L1 escalated it. Web VMs wait on every host while hosts run at 30 to 48%. A change script put the 200 GHz limit on the web pool instead of the batch pool. "Add two hosts" is ruled out. |
+| M-1 | Remote memory rises on large VMs on older hosts in London (from Agent E2 `L4-049`) | Monitor, 7 days, grouped by host model: 9 VMs wider than a Gen-2019 NUMA node. The case: the virtual NUMA layout was built at power-on on a newer host; DRS moved the VM. |
+| M-2 | Other Wait on two VMs after the weekend backup (from Agent E2 `L4-045`) | One symptom, two causes: a real wait from a leftover snapshot, and an accounting issue of an older ESXi build on an idle VM. |
 
 ### Capacity
 

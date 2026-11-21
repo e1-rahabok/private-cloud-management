@@ -1,5 +1,5 @@
 # Configuration standards: what every host and VM should look like. Moved from the prototype code (Docs design, 2.8).
-# L2 decides per finding: fix the setting, or fix the standard (L2 design, 3.10). Fixing the standard publishes a new version.
+# L2 decides per finding: fix the setting, or fix the standard (L2 design, 6.2). Fixing the standard publishes a new version.
 
 version: 1
 

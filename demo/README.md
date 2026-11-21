@@ -1,8 +1,8 @@
 # PCM demo script
 
-One story across every workspace, about 15 minutes. It shows that PCM is one system with one set of numbers, not five dashboards.
+One story across every workspace, about 17 minutes. It shows that PCM is one system with one set of numbers, not five dashboards.
 
-**The story:** a Bronze batch VM lands in a Silver cluster in Frankfurt. The NOC sees it in seconds, follows the SOP, and escalates. L2 finds the cause and closes the loop with a new check rule. Capacity sees the same cluster as "full now". Docs shows exactly which number decided it. The CIO page tells the board the same thing in plain words.
+**The story:** a Bronze batch VM lands in a Silver cluster in Frankfurt. The NOC sees it in seconds, follows the SOP, and escalates. L2 monitors the whole estate top down, troubleshoots the escalation as a case, and closes the loop with a new check rule. Capacity sees the same cluster as "full now". Docs shows exactly which number decided it. The CIO page tells the board the same thing in plain words.
 
 **Before every demo, rehearse it.** The rehearsal clicks through every step below in a browser and checks that each screen still says what this script says. It also writes a screenshot per step to `demo/screens/`, which doubles as a handout. It needs Node and Playwright with Chromium, like the page tests.
 
@@ -33,7 +33,7 @@ curl -s -X POST "http://localhost:8080/api/noc/_reset" -d '{}'
 | 1 | `http://localhost:8080/exec?now=2026-10-19T10:05:00%2B08:00` |
 | 2 | `http://localhost:8080/noc/wall?now=2026-10-19T10:05:00%2B08:00&rotate=8` |
 | 3 | `http://localhost:8080/noc/alert/inc-fr-s-02?now=2026-10-19T10:05:00%2B08:00` |
-| 4 | `http://localhost:8080/l2/escalations?now=2026-10-19T10:05:00%2B08:00` |
+| 4 | `http://localhost:8080/l2?now=2026-10-19T10:05:00%2B08:00` |
 | 5 | `http://localhost:8080/capacity?now=2026-10-19T10:05:00%2B08:00` |
 | 6 | `http://localhost:8080/docs/threshold/th-cluster-perf-red?now=2026-10-19T10:05:00%2B08:00` |
 
@@ -84,31 +84,51 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 
 **Why it matters:** fewer people per shift, because the SOP, the allowed actions and the evidence are on one page.
 
-### 4. L2 closes the loop (3 minutes) — tab 4
+### 4. L2 monitors the whole estate (2 minutes) — tab 4
 
-**Refresh the tab.** The escalation is there.
+**Point at:**
+- The top bar: three activities, **Monitor, Troubleshoot, Improve**. Rules and Calendar sit apart. No page per day, week or month: those are the window.
+- The tree on the left is the inventory, and the menu. Europe is red.
+- Summary: one row per pillar, never one score. The findings say where each goes: "Troubleshoot this" for a problem, "Improve this" for a risk.
 
-**Point at:** it arrived with raw counters: CPU Ready on the victims, the villain fr-bat-017.
+**Click:** Europe › London in the tree, then **Performance**, then **7 days**, then **Group by: Host model**.
 
-**Click:** "Draft the root cause analysis". Agent E2 drafts; L2 decides.
+**Point at:** 9 VMs wider than their host's NUMA node, all on Gen-2019 hosts; none on Gen-2024. 3,000 VMs read at once.
 
-**Fill the Close form:**
-- Root cause: `Bronze batch VM placed in a Silver cluster`
+**Say:** "An alert is the tip of the iceberg. Monitoring reads every VM, top down, and finds what objects share."
+
+**Why it matters:** a pattern across the estate is found before it spreads. No alert would show it.
+
+### 5. L2 troubleshoots the escalation as a case (3 minutes) — tab 4
+
+**Click:** **Troubleshoot** in the top bar. The NOC's escalation is a case, beside a Tokyo escalation and a complaint.
+
+**Open** the Frankfurt case. **Point at:** it arrived with raw counters: CPU Ready on the victims, the villain fr-bat-017.
+
+**Click:**
+1. "Accept".
+2. "Propose the next link", four times. Agent E2 follows its flows; each link names the flow and the evidence.
+3. Confirm the wait, the villain and the class mismatch. Rule out "the cluster is short of hosts", with a reason: it ran at 94 an hour ago.
+4. "Draft the root cause analysis". Agent E2 drafts; L2 decides.
+
+**Fill the Close form** (the root cause is prefilled from the deepest confirmed link):
 - Corrective action: `Move fr-bat-017 to FR-B-02`
 - Detection: `New check rule`
 - Detection note: `Daily check flags class mismatch on placement`
 
-**Click:** "Close escalation".
+**Click:** "Close the case".
 
-**Say:** "An escalation closes only with a detection decision. The next time, a check finds it before anyone complains."
+**Say:** "A case closes only with a detection decision. The next time, a check finds it before anyone complains."
 
-**Then open** `/l2/monthly` (same clock): under Repeated escalations, "Bronze VM placed in a Silver cluster" now says **Loop closed**, with the new check rule. It was "Still open" a minute ago.
+**Then open** Monitor, estate, **1 year**: under Repeated problems, "Bronze VM placed in a Silver cluster" now says **Loop closed**. It was "Still open" a minute ago.
 
-**Why it matters:** L2 is measured by fewer repeats, not faster closures. The monthly review shows it on the day it happens.
+**Optional, 3 minutes — a complaint several layers deep:** Troubleshoot › "Log complaint" for `sg-gl-db-01` (the general ledger is slow). Propose the links one by one: Windows is ruled out, then disk latency, a snapshot chain, the backup job that left it in the weekend change window, and a NUMA split that contributes. "Add 8 vCPUs" and "add a ninth host" are ruled out with evidence. The timeline reaches back 40 days.
 
-### 5. Policy as code (2 minutes) — `/l2`
+**Why it matters:** L2 is measured by fewer repeats, not faster closures. Escalation is one way a case starts; a complaint and a monitoring finding are the others.
 
-**Point at:** the Action policies section. There is no "Make automatic" button.
+### 6. Policy as code (2 minutes) — Rules
+
+**Click:** **Rules** in the top bar. **Point at:** the Action policies section. There is no "Make automatic" button.
 
 **Click:** "Propose a policy change" on "Move VMs between clusters". Choose tier **automatic**, then **Replay**.
 
@@ -116,13 +136,13 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 
 **Type a reason, then click:** "Publish".
 
-**Point at:** "Published v2", and the waiting move in SG-S-04 that ran automatically under it. No one approved it.
+**Point at:** "Published v2", and the waiting move in SG-S-04 that ran automatically under it. No one approved it. Improve shows it as "Ran automatically".
 
 **Say:** "Nobody approves an automatic action. If an approval can be automated, it was never needed. Guardrails make it safe; the policy owner and version are accountable."
 
 **Why it matters:** no approval logs nobody reads. The record stays, as evidence.
 
-### 6. Capacity (2 minutes) — tab 5
+### 7. Capacity (2 minutes) — tab 5
 
 **Point at:** "FR-Silver: decision 130 days earlier, now 7 Jan 2027, because of dr-ocp-wave-2 (Migration, OpenShift)". The change is the news; the cause is named.
 
@@ -136,7 +156,7 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 
 **Why it matters:** one engine, one date, one cost, read by every workspace.
 
-### 7. Docs (1 minute) — tab 6
+### 8. Docs (1 minute) — tab 6
 
 **Point at:**
 - The threshold "Cluster Performance below 50" and who owns it.
@@ -152,7 +172,7 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 
 - **What is real in this demo:** every screen, every rule, every calculation, the database, the action record, Agent E2.
 - **What is synthetic:** ACME's data. A bank with five locations, about 1,200 hosts. Stories are planted so every screen has something to show.
-- **What is still planted, not computed:** class performance scores, the L2 weekly and monthly measures, repeated escalations and goal history. Next build replaces them with computed values.
+- **What is still planted, not computed:** class performance scores, the L2 twelve-month measures, repeated problems and goal history, and the chains Agent E2 proposes for the planted stories (its flow executor is not called yet). Next build replaces them with computed values.
 - **Next:** connect to a live VCF Operations and check every API assumption.
 
 ## Questions the audience asks
@@ -169,7 +189,7 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 
 | Symptom | Fix |
 |---|---|
-| The escalation is not on tab 4 | Refresh tab 4. If still missing, the Escalate click in step 3 did not land: click it again on tab 3. |
+| The Frankfurt case is not in Troubleshoot | Refresh. If still missing, the Escalate click in step 3 did not land: click it again on tab 3. |
 | The wall does not rotate | Check the URL has `rotate=8`. |
 | Agent E2 shows a fixed text | Expected without `AI_GATEWAY_API_KEY`. Say "this is the offline fallback". |
 | Numbers differ from this script | The clock is missing: every URL needs `now=2026-10-19T10:05:00%2B08:00`. |

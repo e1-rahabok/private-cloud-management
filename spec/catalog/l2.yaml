@@ -1,43 +1,251 @@
 # Catalog entries read by the L2 workspace (design/l2-workspace.md). Shared entries live in
 # executive.yaml and noc.yaml and are reused, so L2, the NOC and the CIO read one definition.
+# The L2 workspace has three activities (Monitor, Troubleshoot, Improve) and four dimensions:
+# activity, object, pillar, time (D-083, D-086).
 
-version: 1
+version: 2
 
 entries:
 
-  l2.daily_check:
+  # ---------------------------------------------------------------- the frame (L2 design, 3)
+
+  l2.tree:
     description: >
-      PCM runs the daily check before the start and the end of each region's day (D-039). It walks the SP5
-      order (up, fast, safe, enough) top down: clusters worst first, then the hosts of a failing cluster,
-      then its VMs (L2 design, 3.3). It reads business context from the calendar before judging (3.6).
-    verdicts:
-      present_health: "Findings on up, fast or safe now"
-      risk: "Configuration findings and capacity trend"
-      efficiency: "Waste: idle, oversized and powered-off VMs"
-    verdict_status:
-      red: "any red finding in that verdict"
-      amber: "any amber finding"
-      green: "none"
-    note: "Three verdicts, never one score (L2 design, 3.2)."
-    decisions: [D-039]
+      The inventory tree is the menu (D-086, D-087). Five views, each a hierarchy operations uses. Selecting a
+      node scopes every view to it; the root is the whole estate.
+    views:
+      compute: [estate, region, location, vcf_instance, workload_domain, cluster, host, vm, guest_os]
+      storage: [estate, location, datastore, vm, virtual_disk]
+      network: [estate, location, distributed_switch, port_group, vm, vnic]
+      class: [estate, class_of_service, location, cluster, vm]
+      management: [estate, location, vcf_instance, appliance]
+    default_view: compute
+    expand_to: cluster
+    below_expand: "children listed worst first, found with search"
+    child_sort:
+      monitor: "worst first on the current pillar"
+      troubleshoot: "objects with open cases first"
+      improve: "largest opportunity first"
+    rules:
+      - "The Guest OS is a child of its VM, never merged into it (D-038)."
+      - "An appliance appears in Compute (as a VM in the management domain) and in Management; one object, one record."
+      - "Search covers all five views."
+    decisions: [D-086, D-087]
+
+  l2.slice_attributes:
+    description: >
+      Attributes are not trees. Every list can be grouped by them, to find what objects share (L2 design, 4.2).
+    attributes:
+      host: [host_model, esxi_build, firmware, class_of_service]
+      vm: [class_of_service, environment, guest_os, tools_version, host_model, vcpu_band]
+    decisions: [D-087]
+
+  l2.pillars:
+    description: >
+      The tabs in Monitor and Improve. Summary first, then one tab per L2 pillar. Never one combined score.
+      Troubleshoot has no pillar tabs: one case crosses pillars. Compliance is out until after 1.0 (D-022);
+      cost, price and value are FinOps (D-027).
+    tabs: [summary, availability, performance, capacity, security, configuration, inventory]
+    troubleshoot: { availability: true, performance: true, capacity: false, security: "breach goes to the security team (D-044)" }
+    decisions: [D-086]
+
+  l2.time_window:
+    description: >
+      One picker per page, kept when the object or tab changes. Inside a case the window is the case's own and fixed.
+    windows: ["1h", "24h", "7d", "30d", "1y"]
+    defaults: { monitor: "24h", improve: "30d" }
+    sources:
+      "24h": "the latest daily check run (D-039)"
+      "7d": "the latest weekly check run (D-042)"
+      "1y": "baselines"
+
+  # ---------------------------------------------------------------- Monitor (L2 design, 4)
+
+  l2.node_score:
+    description: >
+      An object's KPI over a window is the value it meets or beats 95% of the time: the 95th percentile of its
+      contention, read from the 20-second peak of each 5-minute interval. Not the average (it hides problems), not
+      the worst (too noisy). Source: the author's sample dashboard.
+    kpi:
+      vm: "VM Performance, Guest OS included"
+      host: "ESXi Performance"
+      cluster: "Cluster Performance: contention of its running VMs only, from the worst VM and the 90th percentile"
+      datastore: "Disk latency of every VM on it, from any cluster"
+    now: "Every row also shows the last hour, the NOC's view. A row's status is the worse of the two, so a problem that started minutes ago is not hidden by a 24-hour window."
+    bands: "SP5 bands, as the NOC (catalog.kpi_band): green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
+    note: "The green zone 75 to 100 is the sample dashboard's. The NOC alert line, 50, is th-cluster-perf-red."
+
+  l2.iceberg:
+    description: >
+      For a node and its children: how many sit just above the green line (75 to 80), and how that count moved over
+      the window. A rising count under the waterline warns before any alert fires (SP5: an alert is the tip).
+    near_line: { from: 75, to: 80 }
+    decisions: [D-088]
+
+  l2.node_summary:
+    description: >
+      Every node in Monitor shows three parts: a summary (its own trend for the pillar and the count of children
+      outside the green zone), its children worst first, and the detail of the selected child.
+    decisions: [D-088]
+
+  l2.pillar_status:
+    description: >
+      One line per pillar on the Summary tab, for the selected node and window. The worst status of the pillar's
+      findings and scores under the node.
+    status: { red: "any red under the node", amber: "any amber", green: "none" }
+
+  l2.findings:
+    description: >
+      What monitoring found under a node, per pillar, worst first. The 24-hour window reads the daily check
+      (D-039); the 7-day window adds what a day cannot show (D-042): slow drift, hidden in the average,
+      configuration drift. No finding is repeated across windows. Each finding ends in an outcome.
+    outcomes:
+      problem: "present health (down, slow, a security event): opens a troubleshooting case"
+      improve: "a risk or an opportunity: shown in Improve on the same object"
+    explained_by_calendar: "drops to the bottom and names the calendar entry"
+    drift_rule: "the same direction on at least 5 of the 6 steps between the last 7 nights, and a total change of at least 10% of the first night"
+    hidden_rule: "one instance at or above its red threshold at peak while the VM total is green"
+    decisions: [D-039, D-042, D-083]
 
   l2.slipped_alerts:
-    description: Alerts raised since the previous run that no check finding predicted (D-039).
+    description: Alerts raised since the previous run that no finding predicted (D-039). Each links to the rule that would have caught it.
 
-  l2.investigation_order:
-    description: The fixed SP5 order the investigate page follows (L2 design, 3.4).
-    down: [log, saturation, configuration, known_bug]
-    slow: [contention, consumption, configuration, known_bug, log]
-    note: "The what before the why. PCM runs the steps; L2 starts at the first that fails."
+  l2.measures:
+    description: The four L2 outcomes (L2 design, 2), for a week, against last week, and for twelve months.
+    measures:
+      urgent_alerts: "count of red alerts"
+      repeated_problems: "cases whose problem type was seen before in the last 12 months"
+      found_by_check_percent: "share of cases started by a monitoring finding, not by a complaint or an escalation"
+      diagnose_known_minutes: "median time from case open to cause, for problem types seen before"
+
+  l2.repeated_problems:
+    description: Cases per problem type over 12 months, and whether the loop closed (a check rule or an SOP added at close).
+
+  l2.inventory_counts:
+    description: Per node, its children by type and the change since the start of the window (D-020).
+
+  l2.change_explanation:
+    description: >
+      Each change is matched to what explains it, in order: the PCM action record, an approved change window,
+      a VCF Automation request, DRS (moves). Unmatched changes are unexplained until L2 records them as expected,
+      with a reason. Explained changes are counted; unexplained ones are listed (D-081).
+    order: [pcm_action, change_window, request, drs, l2_expected]
+    decisions: [D-020, D-062, D-063, D-081]
+
+  l2.configuration_variance:
+    description: >
+      Configuration under a node: drift against the standard (catalog/standards.yaml) and variance across peers,
+      for example the ESXi builds and VMware Tools versions in use. SP5: keep variance minimal.
+
+  l2.security_hygiene:
+    description: >
+      Present security under a node: platform hygiene only (D-049). SSH or ESXi Shell enabled outside a maintenance
+      window, lockdown mode off, root logins, certificates near expiry. Read from the same numbers as the NOC and
+      the CIO page.
+    decisions: [D-044, D-049]
+
+  l2.availability_events:
+    description: >
+      Availability under a node: VMs down this month, counted or not counted against the class target (D-077),
+      hosts not connected, HA restarts.
+    decisions: [D-077]
+
+  l2.short_term_capacity:
+    description: >
+      Capacity as L2 sees it: today, not the forecast. Per cluster, CPU and memory utilization (average and 95th
+      percentile across hosts) and the imbalance between hosts. A cluster whose VMs wait is full now, whatever the
+      utilization (SP5). The forecast and purchase dates belong to the Capacity workspace (D-014).
+
+  # ---------------------------------------------------------------- Troubleshoot (L2 design, 5)
+
+  l2.case:
+    description: >
+      Every troubleshooting effort is a case (D-084). A case has one trigger, an object, a symptom (slow or down),
+      a window, a chain of causes, a timeline, the layers, and a close.
+    triggers:
+      complaint: "logged by L2 in PCM (l2.complaint)"
+      escalation: "handed over by L1 after its SOP, with the evidence attached (D-040)"
+      finding: "opened from a monitoring finding (l2.findings)"
+    states: [open, closed]
+    list_order: "open first, then closed; newest first within each"
+    decisions: [D-084]
+
+  l2.complaint:
+    description: >
+      The complaint form. A complaint names a VM or its Guest OS, never an application or a transaction (D-085).
+    required: [vm, requester, symptom, since]
+    optional: [via, fine_until, already_checked, note]
+    symptoms: [slow, down]
+    decisions: [D-084, D-085]
+
+  l2.chain:
+    description: >
+      The chain of causes, a graph built one link at a time. Each link joins a cause to an effect, both inventory
+      objects or events. A link is main or contributing, and proposed, confirmed or ruled out. Ruled-out links stay
+      visible. Agent E2 proposes links with their evidence, following its flows; L2 confirms or rules them out
+      (D-089). In the prototype, the flow results for a planted story come from the story file.
+    link_kinds: [main, contributing]
+    link_states: [proposed, confirmed, ruled_out]
+    order:
+      slow: [contention, consumption, configuration, known_bug, log]
+      down: [log, saturation, configuration, known_bug]
+    start: "the Guest OS (step 1 of Agent E2's vm-slow flow): quantify where the requester sees it, then read the VM"
+    decisions: [D-084, D-085, D-089]
+
+  l2.layers:
+    description: >
+      The layers in scope, each with its own "on my court" verdict (D-085). A layer is clear, waiting, or not read.
+    layers: [guest_os, vm, host, cluster, storage, network]
+    hand_over:
+      guest_os: "Guest OS waits and the VM does not: the Windows or Linux team"
+      array: "storage device latency high while the ESXi layers are clean: the storage team"
+      application: "every layer clean: the application owner, with what was checked"
+    decisions: [D-038, D-085]
 
   l2.realms:
     description: >
-      VM and Guest OS shown side by side, each with its "on my court" values (L2 design, 3.5). If the VM
-      is not waiting and the Guest OS is, the cause is inside the Guest OS: hand the evidence to the
-      Windows or Linux team.
+      VM and Guest OS side by side, each with its "on my court" values. If the VM is not waiting and the Guest OS is,
+      the cause is inside the Guest OS: hand the evidence to the Windows or Linux team.
     vm: [cpu_ready_percent, co_stop_percent, memory_wait_percent, disk_latency_ms, vm_performance]
     guest_os: [run_queue_per_vcpu, context_switches_per_s, paging_per_s, guest_os_performance]
     decisions: [D-038]
+
+  l2.timeline:
+    description: >
+      One timeline across every object in the chain, over the case window and the weeks before it: metric anomalies,
+      events (vMotion, snapshot, maintenance, HA), log messages, changes with their explanation (l2.change_explanation),
+      calendar entries and alerts.
+    lookback_days: 42
+
+  l2.who_else:
+    description: >
+      For a symptom in a case, the same test across the estate: other objects that share the cluster, datastore,
+      host model, ESXi build or change, and show the same symptom.
+
+  l2.case_close:
+    description: >
+      A case closes only with: the root cause (a confirmed main link), a corrective action, and a detection decision
+      (new check rule, new alert, new SOP, SOP updated, or none with a reason) with its note (L2 design, 5.9).
+    detection: [new_check_rule, new_alert, new_sop, sop_updated, none_with_reason]
+    decisions: [D-084]
+
+  l2.log_validation:
+    description: >
+      Before a log message becomes a detection, PCM counts it on healthy objects over the last 5 working days.
+      A message seen on healthy objects more than setting l2.log_noise_max times is noise (SP5 VDI example).
+
+  # ---------------------------------------------------------------- Improve (L2 design, 6)
+
+  l2.opportunities:
+    description: >
+      What monitoring found that is not broken, under a node, per pillar: risk (configuration drift, short-term
+      capacity) and efficiency (reclaim, rebalance, standardize, update). Framed in capacity, never in money (D-027).
+      Counts roll up the tree.
+
+  l2.config_order:
+    description: Configuration opportunities in SP5 time order (L2 design, 6.2).
+    order: [correct_it, update_it, simplify_it, optimize_it]
+    choices: [fix_the_setting, fix_the_standard]
 
   l2.action_policy:
     description: >
@@ -55,55 +263,15 @@ entries:
       would have run automatically, and which each guardrail would have stopped.
     decisions: [D-079]
 
+  l2.team_decision:
+    description: >
+      An improvement decision, with what, owner and due date, all required (D-043). State: done, open, or overdue
+      (open past its due date). The monthly review opens with every open decision.
+    decisions: [D-043]
+
+  # ---------------------------------------------------------------- Rules (L2 design, 7.1)
+
   l2.threshold_replay:
     description: >
       Before a threshold is published, PCM counts how many alerts the new value would have raised over the
-      last setting l2.replay_days days, next to the count the current value raised (L2 design, 3.9).
-
-  l2.escalation_close:
-    description: An escalation closes only with root cause, corrective action and a detection decision (L2 design, 3.8).
-    decisions: [D-040]
-
-  l2.config_order:
-    description: Configuration findings in SP5 time order (L2 design, 3.10).
-    order: [correct_it, update_it, simplify_it, optimize_it]
-    choices: [fix_the_setting, fix_the_standard]
-
-  l2.weekly_check:
-    description: >
-      PCM runs the weekly check early Sunday in each region's local time (D-042). It reads a week of per-instance
-      metrics (each vCPU, each virtual disk), the full configuration against the baseline, and a week of logs. It
-      reports only what the daily check cannot see: slow drift, a peak hidden in a VM average, configuration drift.
-    drift_rule: "the same direction on at least 5 of the 6 steps between the last 7 nights, and a total change of at least 10% of the first night"
-    hidden_rule: "one instance at or above its red threshold at peak while the VM total is green"
-    owner_rule: "each finding is assigned an owner and an action; an unassigned finding shows first next week"
-    decisions: [D-042]
-
-  l2.weekly_measures:
-    description: The four L2 outcomes (L2 design, 2) for a week or a month.
-    measures:
-      urgent_alerts: "count of red alerts"
-      repeated_escalations: "escalations whose problem type was escalated before in the last 12 months"
-      found_by_check_percent: "share of problems first found by a check, not by an alert or a complaint"
-      diagnose_known_minutes: "median time from escalation to cause, for problem types seen before"
-
-  l2.repeated_escalations:
-    description: Escalations per problem type over 12 months, and whether the loop closed (a check rule or an SOP added).
-
-  l2.team_decision:
-    description: >
-      A decision of the monthly review, with what, owner and due date, all required (D-043). State: done, open, or
-      overdue (open past its due date). The next month's pack opens with every open decision.
-    decisions: [D-043]
-
-  l2.inventory_counts:
-    description: Hosts, clusters, VMs and datastores per location, and the change over the window (D-020).
-
-  l2.change_explanation:
-    description: >
-      Each change is matched to what explains it, in order: the PCM action record, an approved change window,
-      a VCF Automation request, DRS (moves). Unmatched changes are unexplained until L2 records them as expected,
-      with a reason. Explained changes are counted; unexplained ones are listed (D-020).
-    order: [pcm_action, change_window, request, drs, l2_expected]
-    decisions: [D-020, D-062, D-063]
-
+      last setting l2.replay_days days, next to the count the current value raised (L2 design, 7.1).

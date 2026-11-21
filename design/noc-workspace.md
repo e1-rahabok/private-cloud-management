@@ -30,7 +30,7 @@ Path: `privatecloud.acme.com/noc` (D-028).
 |---|---|---|
 | Nothing missed | Reds acknowledged within minutes, on every shift | The wall exists to make red impossible to miss. |
 | Good escalations | Share of escalations L2 accepts without asking for more | SP5: L2 does not accept an escalation without its context. A rejected escalation costs both teams time. |
-| Known problems solved at L1 | Share of alerts L1 closes by SOP, without L2, trend over months | Each solved problem should become an SOP that L1 can run (L2 design, 3.8). |
+| Known problems solved at L1 | Share of alerts L1 closes by SOP, without L2, trend over months | Each solved problem should become an SOP that L1 can run (L2 design, 5.9). |
 | Alerts closed with a cause | Share of alerts closed with a root cause, not because the symptom went away | SP5: closing without knowing why prevents learning and can backfire. |
 
 ## 3. Design considerations
@@ -68,7 +68,7 @@ Path: `privatecloud.acme.com/noc` (D-028).
 - **What:** the desktop opens the same five screens with drill-down: from a red tile to the cluster, then the hosts, then the VMs. Around them sits the work: alerts, SOPs, escalation, the shift.
 - **Why:**
   - **The wall and the desk must say the same thing.** An operator who sees red on the wall and green on the desk stops trusting both.
-  - **Drill-down is top down,** the same order L2 uses (L2 design, 3.3). An escalation then starts where L2 would start.
+  - **Drill-down is top down,** the same order L2 uses (L2 design, 4.1). An escalation then starts where L2 would start.
 
 ### 3.4 Only urgent alerts reach the NOC
 
@@ -89,7 +89,7 @@ Path: `privatecloud.acme.com/noc` (D-028).
 - **Why:**
   - SP5 People: SOPs are ideally automated and take inputs, so human error stays low.
   - The SOP L1 reads and the buttons L1 presses are the same object, so they cannot drift apart.
-  - When L2 updates the SOP after solving a problem (L2 design, 3.9), the NOC sees the new steps at once.
+  - When L2 updates the SOP after solving a problem (L2 design, 7.1), the NOC sees the new steps at once.
 
 ### 3.6 L1 acts only through PCM, within a small set (D-040)
 
@@ -115,7 +115,7 @@ Path: `privatecloud.acme.com/noc` (D-028).
     - the VM owner;
     - the steps already run and their results;
     - the "on my court" metrics for that object type.
-  - PCM routes the escalation by object type to the right L2 lens: platform, storage or network (L2 design, 3.11).
+  - PCM routes the escalation by object type to the right L2 lens: platform, storage or network (L2 design, 9).
 - **Why:**
   - SP5: L2 does not accept an escalation without its context.
   - L1 is a generalist and often cannot tell which specialist group to escalate to. PCM can, from the object type.

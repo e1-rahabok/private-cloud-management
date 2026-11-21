@@ -24,7 +24,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-018 | 2026-11-20 | The prototype uses synthetic ACME data. A lab with a full VCF 9.1 instance follows later. | No customer data is needed for the prototype. |
 | D-019 | 2026-11-20 | Money has three parts. **Cost** is what the company pays: hardware and software line items, used in Capacity Management. **Price** is what tenants pay: per VM, per Kubernetes pod and so on. **Value** is what the Executive sees: total cost, ROI, TCO, with no line items. | Each part answers a different role's question. |
 | D-020 | 2026-11-20 | Inventory has two parts. **Basic inventory** is foundational: every workspace has its own purpose-built variant. **Detailed inventory** tracks changes for analysis and belongs to the L2 role. | Every role needs to know what exists. Only L2 analyses how it changes. |
-| D-021 | 2026-11-20 | The L2 role covers escalation (reactive) and proactive health checks, across availability, performance and configuration. | L2 is the expert behind the NOC. |
+| D-021 | 2026-11-20 | The L2 role covers escalation (reactive) and proactive health checks, across availability, performance and configuration. Revised by D-083 and D-084: L2 works in three activities (Monitor, Troubleshoot, Improve); escalation is one trigger of troubleshooting. | L2 is the expert behind the NOC. |
 | D-022 | 2026-11-20 | Compliance is parked under security, after release 1.0. | It needs security expertise (D-008). |
 | D-023 | 2026-11-20 | VMware is mandatory. Competitors are included only for migration into VMware, not for management. Migration runs one way only: into VMware. Red Hat OpenShift is the first. | The goal is to bring the whole private cloud infrastructure onto VMware (D-002). |
 | D-024 | 2026-11-20 | Documentation has its own URL, for example `privatecloud.acme.com/docs`. Revised by D-082: `/docs` documents PCM's own objects only. | Follows D-011. |
@@ -42,12 +42,12 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-036 | 2026-11-20 | The NOC wall rotates through 5 screens, each titled as a question: **What changed?** (inventory), **Is it up?**, **Is it fast?**, **Is it safe?** (security and compliance together, VMware only), **Is it set right?** (configuration). This changes the 6-screen order in D-032. | Follows D-035: L1 does not need the split between security and compliance. Compliance changes slowly; a compliance drift that happens now is a safety event. Fewer screens means a shorter cycle, so red stays off screen for less time. |
 | D-037 | 2026-11-20 | The Operations Manager role has no workspace in release 1.0. | Scope control. The four workspaces come first. |
 | D-038 | 2026-11-20 | The Guest OS is in scope, limited to Windows and Linux at the OS level. Applications inside the Guest OS are out. macOS is out. | IT owns the OS build standard (SP5 People: OS teams). Applications belong to their owners (D-034). macOS on ESXi is rare in enterprises. See Rationale. |
-| D-039 | 2026-11-20 | The daily check is run by PCM, not by a person. It runs before the start and before the end of each region's business day. Platform (L2) owns the review, not L1. The human review takes about 10 minutes when there is no problem. | See Rationale. |
+| D-039 | 2026-11-20 | The daily check is run by PCM, not by a person. It runs before the start and before the end of each region's business day. Platform (L2) owns the review, not L1. The human review takes about 10 minutes when there is no problem. Revised by D-083: the result is what Monitor shows for the 24-hour window; there is no daily-check page. | See Rationale. |
 | D-040 | 2026-11-20 | L1 acts only through SOP buttons in PCM, never through vCenter. The L1 action set is small, reversible and set by class of service. | See Rationale. |
 | D-041 | 2026-11-20 | Wall behaviour: a fixed status strip on every screen; red interrupts the rotation until acknowledged; stale data turns the wall grey, never green; with five or more displays, nothing rotates. | See Rationale. |
-| D-042 | 2026-11-20 | PCM also runs the weekly check, a deeper analysis. It runs when load is low, by default Sunday early morning in each region's local time. Platform (L2) reviews the result in about 1 hour. | The weekly check loads the systems it reads. See Rationale. |
+| D-042 | 2026-11-20 | PCM also runs the weekly check, a deeper analysis. It runs when load is low, by default Sunday early morning in each region's local time. Platform (L2) reviews the result in about 1 hour. Revised by D-083: the result is what Monitor shows for the 7-day window; there is no weekly-check page. | The weekly check loads the systems it reads. See Rationale. |
 
-| D-043 | 2026-11-20 | The monthly review (1 day) is also the bigger team meeting: everyone meets to discuss important but not urgent matters, plan the next month, and review progress for the year against goals. PCM prepares the review pack; L2 (Platform) hosts it. | See Rationale. |
+| D-043 | 2026-11-20 | The monthly review (1 day) is also the bigger team meeting: everyone meets to discuss important but not urgent matters, plan the next month, and review progress for the year against goals. PCM prepares the review pack; L2 (Platform) hosts it. Revised by D-083: the pack is Improve's decision register and Monitor at the estate root with the 1-year window, on one screen; there is no monthly page (L2 design, 6.4). | See Rationale. |
 | D-044 | 2026-11-20 | A suspected breach is not investigated in PCM. L2 secures the evidence and hands it to the security team. Security is parked until after release 1.0. | "Is it breached?" is a forensic investigation, not troubleshooting (SP5), and needs security expertise (D-008, D-022). |
 | D-045 | 2026-11-20 | L2 owns PCM's own settings (class-of-service definitions, action tiers) in release 1.0. After 1.0, the Operations Manager approves changes. | L2 knows what the settings do. A second approver comes with the Operations Manager workspace. |
 | D-046 | 2026-11-20 | PCM is designed for a lean team of senior, highly experienced people. L2 is not 100% dedicated to operations; it also does architecture and engineering. Most routine and easy work is assisted by AI. | In the agentic AI era, the team is likely a few times smaller than today. |
@@ -85,8 +85,16 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-078 | 2026-11-20 | Agent E2 is a service behind PCM: it owns the knowledge base, the reading plan, the flow executor and the model call, behind one HTTP endpoint (`POST /v1/answer`, Agent E2 `harness/answer_service.py`). PCM owns the data, the actions, the user's identity and every screen, and sends the question with the live facts and the role. The Agent E2 repository becomes part of PCM eventually. | See Rationale. |
 | D-079 | 2026-11-20 | Replace the trust ladder with policy as code. No "Make automatic" button and no promotion thresholds. The approval and rollback record per action type is evidence for L2, never a gate. L2 changes an action type's tier and guardrails through "Propose a policy change": versioned, replayed against recent history, owned (L2 in 1.0; the Operations Manager reviews after 1.0). Guardrails make automatic safe: blast-radius limits, maintenance windows, class-of-service conditions, automatic expiry and undo, and a service account scoped to the action type. | See Rationale. |
 | D-080 | 2026-11-20 | The prototype keeps what people and policies do in SQLite: the action record (append-only), the demand register, and workflow state. Synthetic metrics are generated from "now" and never stored. Plain SQL, so the schema ports to the product database. This does not choose the product database (PCM core, 5). | See Rationale. |
-| D-081 | 2026-11-20 | Detailed inventory matches every change to what explains it, in a fixed order: the PCM action record, an approved change window, a VCF Automation request, DRS. Explained changes are counted; unexplained ones are listed one by one, production and Gold first. L2 can record an unexplained change as expected, with a reason. | Tens of thousands of changes a week cannot be read one by one. L2's question is "is it expected?", so PCM answers it and shows only the exceptions. Details: L2 design, 3.17. |
+| D-081 | 2026-11-20 | Detailed inventory matches every change to what explains it, in a fixed order: the PCM action record, an approved change window, a VCF Automation request, DRS. Explained changes are counted; unexplained ones are listed one by one, production and Gold first. L2 can record an unexplained change as expected, with a reason. | Tens of thousands of changes a week cannot be read one by one. L2's question is "is it expected?", so PCM answers it and shows only the exceptions. Details: L2 design, 4.7 and 5.7. |
 | D-082 | 2026-11-20 | PCM `/docs` documents only what PCM owns and acts on: the definition of every number, SOPs, action policies, thresholds, configuration standards and settings, each with version, owner, where it is used and its change history. It is read-only: each object is changed in the workspace that owns it. Documentation for colleagues (architecture, decisions, guides, team structure, learning modes) is private-cloud-explained, a separate product. PCM exports its objects as Markdown into private-cloud-explained, through its review. | See Rationale. |
+| D-083 | 2026-11-21 | L2 works in three activities, SP5's Day 2 verbs: **Monitor**, **Troubleshoot**, **Improve**. They are the top bar of the L2 workspace. Monitoring ends in a problem (→ Troubleshoot) or an opportunity (→ Improve). Daily, weekly and monthly are time windows, not activities and not pages: PCM still runs the checks (D-039, D-042), and Monitor shows their results by window. | See Rationale. |
+| D-084 | 2026-11-21 | Every troubleshooting effort is a case, with one of three triggers: a complaint that L2 logs in PCM, an L1 escalation, or a monitoring finding. Escalation is a handover with entry criteria, not an activity. A case builds a chain of causes over several layers, as a graph: main and contributing causes, ruled-out links kept. It closes only with confirmed causes, a corrective action and a detection decision. | See Rationale. |
+| D-085 | 2026-11-21 | Troubleshooting covers infrastructure only: server, storage as ESXi sees it, network, Windows and Linux. No application troubleshooting and no business transaction correlation. A chain starts at the Guest OS. When the evidence points outside scope (the Guest OS, the storage array, the application), the case hands the evidence to the owning team. | Follows D-030, D-034 and D-038. The infrastructure team can act on these layers; it can only hand over the others. |
+| D-086 | 2026-11-21 | The L2 workspace has four dimensions, each in its own place: **activity** in the top bar; **object** in the left pane, where the inventory tree is the menu; **pillar** as tabs in Monitor and Improve (Summary, Availability, Performance, Capacity, Security, Configuration, Inventory); **time** as one picker per page. Troubleshoot has no pillar tabs: a case crosses pillars. Compliance is left out until after 1.0 (D-022). Cost, price and value are FinOps (D-027). | One menu that mixes time, activity and pillar tells the user none of them. vCenter and VCF Operations are the starting point; their top bar groups product functions, and their tabs mix pillars with types of data. L2 design, 3. |
+| D-087 | 2026-11-21 | The inventory tree has five views: Compute (Estate → Region → Location → VCF instance → Workload domain → Cluster → ESXi host → VM → Guest OS), Storage, Network, Class of service, and Management (the appliances that run VCF). Attributes such as host model, firmware, ESXi build and Tools version are not trees; every list can be grouped by them. | Each view is a hierarchy operations uses; vCenter's datacenters and folders are admin constructs. SP5's two sides of VCF need the Management view. Grouping by attribute is how a shared cause is found across the estate. L2 design, 3.2. |
+| D-088 | 2026-11-21 | Monitor works on the whole estate, top down: on every node, a summary, its children worst first, and the detail one level down. An object's score over a window is its 95th percentile. Monitor shows the count just below each red line and its trend, not only what crossed it. | SP5: insight is top down and needs the whole data set; an alert is the tip of the iceberg. Source: the author's sample dashboards in `sources/`. L2 design, 4. |
+| D-089 | 2026-11-21 | Agent E2's flows decide the order of checks in a case: at each node the SP5 order, and a failed step proposes the next object. Agent E2 proposes links with evidence; L2 confirms or rules them out. Agent E2 never closes a case. | The flows are already written and benchmarked in Agent E2. PCM supplies the data; Agent E2 supplies the order (D-078). A human confirmation keeps a wrong link out of the SOPs (D-050). |
+| D-090 | 2026-11-21 | The L2 demo's troubleshooting stories come from Agent E2's benchmark, renamed into the ACME estate: `L4-037` (complaint), `L4-074` (L1 escalation), `L4-049` and `L4-045` (monitoring findings). | Each has several layers, causes that build up over time, and red herrings. Together they show all three triggers. L2 design, 11. |
 
 ## Rationale
 
@@ -315,8 +323,8 @@ Source: Cost n Price n Value (in `sources/`).
 - Several 1.0 decisions still need a record of each action. Without it, they do not work:
   - **D-040:** a limit on a villain VM expires and is undone automatically. The engine must remember what it set and when.
   - **D-050:** every Agent E2 task names the human who ordered it. That name must be stored to mean anything.
-  - **L2 design, 3.7:** an action type earns automation through its record of approvals and rollbacks. No record, no automation.
-  - **L2 design, 3.8:** escalations close with a cause and a fix. That history is what the monthly review reads.
+  - **L2 design, 6.3:** an action type earns automation through its record of approvals and rollbacks. No record, no automation.
+  - **L2 design, 5.9:** escalations close with a cause and a fix. That history is what the monthly review reads.
 - So the split is by purpose:
   - **1.0, the action history:** an operational record that the engines and people use day to day.
   - **Phase 2, the audit log:** the same events, with what an auditor needs: a retention policy, proof nothing was altered, and export to the security team's tools.
@@ -453,4 +461,38 @@ Source: Cost n Price n Value (in `sources/`).
 - PCM's SOPs start from an alert. In private-cloud-explained's content model that is a runbook, not an SOP. They are exported as runbooks.
 - The export is Markdown with private-cloud-explained's front matter, and it goes through the same pull-request review as every other page.
 - Two changes are needed on the private-cloud-explained side: a source type `pcm` and an origin `generated`. Neither exists in its content model today.
+
+### D-083 Three activities, not three cadences
+
+**What was wrong**
+- The first L2 build had one menu row: Today, Weekly, Monthly, Escalations, Configuration, Inventory, Calendar, Thresholds.
+- That row mixes three things: time (Today, Weekly, Monthly), activity (Escalations) and pillar (Configuration, Inventory).
+- The landing page mixed the activities too: its top finding was a cluster "escalated to you by the NOC", an escalation inside a proactive check.
+
+**Why activities**
+- SP5 Monitor and Troubleshoot are different jobs: what against why, top down against bottom up, one KPI against many metrics, minutes against days, logs optional against logs required.
+- SP5 Optimize is the third job: nothing is broken, but something can be better.
+- A user needs to know first whether they are looking for problems, solving one, or improving.
+
+**Why cadence is a window**
+- Daily, weekly and monthly are when PCM runs and how far back it reads. The work is the same work: monitoring.
+- A page per cadence repeats the same views with a different window, and teaches people to read the same finding three times.
+
+### D-084 Troubleshooting is the activity; escalation is a trigger
+
+**What was wrong**
+- The first build investigated one object at one point in time: five steps, pass or fail, and it stopped at the first failure.
+- Its stories had one link each: "Bronze VM in a Silver cluster", "the cause is inside the Guest OS".
+- A complaint had no way in. Only L1 escalations existed.
+
+**What troubleshooting is (SP5)**
+- It starts with a complaint from users or a manager, or an escalation from L1 after its SOP, or a problem found by monitoring. It does not start with a raw alert: L1 handles alerts.
+- The root cause is usually several layers down: A is caused by B, which is caused by C, which is caused by D.
+- It is rarely a single chain. Several changes and events over weeks meet on one day. SP5's story: "it was not slow yesterday", but VMs were added for months and soft errors were investigated for weeks.
+- The root cause is often on another object, and starts as a log message that never became an alarm.
+
+**What PCM does**
+- One case model for all three triggers, so every open problem is in one place, and the trigger mix measures prevention (L2 design, 2).
+- The chain is a graph with link states (proposed, confirmed, ruled out), one timeline across its objects, and the layers each with its own verdict.
+- Details: L2 design, 5.
 

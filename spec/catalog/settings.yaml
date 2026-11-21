@@ -201,7 +201,20 @@ settings:
     default: 30
     unit: days
     owner: l2
-    source: "L2 design, 3.9"
+
+  l2.log_noise_max:
+    description: A log message seen on healthy objects more often than this over the last 5 working days is noise, not a detection (l2.log_validation).
+    default: 10
+    unit: occurrences
+    owner: l2
+    source: "L2 design, 7.1"
+
+  l2.log_noise_max:
+    description: A log message seen on healthy objects more often than this over the last 5 working days is noise, not a detection (l2.log_validation).
+    default: 10
+    unit: occurrences
+    owner: l2
+    source: "L2 design, 5.9"
 
   agent_e2.service_url:
     description: "Agent E2 service (D-078): POST /v1/answer with question, facts and role. Answers 'why' questions from the knowledge base, with sources."

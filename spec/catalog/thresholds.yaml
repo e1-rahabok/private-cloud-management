@@ -1,5 +1,5 @@
 # Thresholds that raise alerts or change a status. Moved from the prototype code (Docs design, 2.8).
-# L2 changes a threshold on /l2/authoring: replayed against history before it is published (l2.threshold_replay).
+# L2 changes a threshold on /l2/rules: replayed against history before it is published (l2.threshold_replay).
 
 version: 1
 

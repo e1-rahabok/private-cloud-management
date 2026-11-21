@@ -19,7 +19,7 @@ The reference for what PCM owns and acts on (D-082). Documentation for colleague
 ### 2.1 The object is the documentation
 
 - **What:** each page is generated from the object PCM runs: the catalog entry, the SOP, the policy, the threshold, the setting. No page is written by hand.
-- **Why:** an SOP that L1 reads and an SOP that drives L1's buttons must be one thing (L2 design, 3.9). A hand-written copy is correct on the day it is written and wrong after the next change.
+- **Why:** an SOP that L1 reads and an SOP that drives L1's buttons must be one thing (L2 design, 7.1). A hand-written copy is correct on the day it is written and wrong after the next change.
 
 ### 2.2 Read-only
 

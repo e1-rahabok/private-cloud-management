@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import api, capacity, docs, generator, l2, noc
+from . import api, capacity, docs, generator, l2, l2_cases, l2_estate, l2_improve, l2_monitor, noc
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 
@@ -76,32 +76,68 @@ def noc_get(rest, now, enable):
 
 def l2_get(rest, now, enable, query):
     st = generator.load_spec()["settings"]
-    if rest == ["daily"]:
-        return l2.daily(now, enable)
+    q = lambda k, d=None: query.get(k, [d])[0]
+    window = q("window", "24h")
+    if window not in l2_estate.WINDOWS:
+        raise ValueError("window must be one of " + ", ".join(l2_estate.WINDOWS))
+    if rest == ["tree"]:
+        return l2_monitor.tree(now, q("view", "compute"), q("node", "estate"), q("activity", "monitor"), q("pillar", "summary"), window, enable)
+    if rest == ["search"]:
+        return l2_monitor.search(q("q", ""), enable)
+    if len(rest) == 4 and rest[0] == "monitor":
+        view, obj, pillar = rest[1], rest[2], rest[3]
+        if pillar == "summary":
+            return l2_monitor.summary(now, view, obj, window, enable)
+        g = q("group_by")
+        if g and g not in GROUP_ATTRS:
+            raise ValueError("group_by must be one of " + ", ".join(GROUP_ATTRS))
+        return l2_monitor.pillar_view(now, view, obj, pillar, window, g, enable)
+    if len(rest) == 4 and rest[0] == "improve":
+        return l2_improve.view(now, rest[1], rest[2], rest[3], q("window", "30d"), enable)
+    if rest == ["cases"]:
+        return l2_cases.list_cases(now, q("object", "estate"), enable)
+    if len(rest) == 2 and rest[0] == "cases":
+        return l2_cases.detail(now, rest[1], enable)
+    if rest == ["log-validation"]:
+        return l2_cases.log_validation(q("message", ""), st)
+    if rest == ["rules", "drafts"]:
+        return l2_cases.rule_drafts(now, enable)
+    if rest == ["findings"]:
+        return l2_monitor.findings(now, enable)
     if rest == ["policies"]:
         return l2.policies(enable)
-    if rest == ["escalations"]:
-        return l2.escalations(now, enable)
-    if len(rest) == 2 and rest[0] == "investigate":
-        return l2.investigate(now, rest[1], enable)
     if rest == ["configuration"]:
         return l2.configuration(now, enable)
     if rest == ["calendar"]:
         return l2.calendar(now, enable)
-    if rest == ["weekly"]:
-        return l2.weekly(now, enable)
-    if rest == ["monthly"]:
-        return l2.monthly(now, enable)
-    if rest == ["inventory"]:
-        days = int(query.get("days", ["7"])[0])
-        if days not in (7, 30):
-            raise ValueError("days must be 7 or 30")
-        return l2.inventory(now, days, enable)
+    if rest == ["decisions"]:
+        return l2.decisions(now, enable)
     if rest == ["thresholds"]:
         return [{"id": k, **v, **l2.STATE.thresholds.get(k, {})} for k, v in l2.THRESHOLDS.items()]
     if len(rest) == 3 and rest[0] == "thresholds" and rest[2] == "replay" and rest[1] in l2.THRESHOLDS:
         return l2.replay(now, rest[1], float(query.get("value", ["50"])[0]), st)
     return None
+
+
+GROUP_ATTRS = ("host_model", "esxi_build", "firmware", "class_of_service", "environment", "guest_os", "tools_version", "vcpu_band")
+
+
+def l2_findings_agent(now, fid, enable):
+    """Agent E2 explains a finding (monitor.md, Findings). Recorded with both identity fields."""
+    import yaml
+    from . import agent_e2
+    f = next((x for x in l2_monitor.findings(now, enable) if x["id"] == fid), None)
+    if not f:
+        return 404, {"error": "no such finding"}
+    st = generator.load_spec()["settings"]
+    vocab = yaml.safe_load((l2.SPEC / "catalog/vocabulary/l2.yaml").read_text())
+    template = f"Draft by Agent E2, to review: {f['object_name']}: {f['summary']}"
+    out = agent_e2.draft_facts({"finding": {k: f[k] for k in ("summary", "pillar", "window", "object", "evidence")}}, "rca_draft", st,
+                               vocab["avoided"], template)
+    with noc.STATE.lock:
+        r = noc.record("agent_explain", fid, "l2-engineer-1", "explain_finding", "-", out["source"], now, actor_agent="agent-e2")
+        noc.STATE.save()
+    return 200, {**out, "record": r}
 
 
 def capacity_get(rest, now, enable, query):
@@ -132,8 +168,7 @@ def capacity_get(rest, now, enable, query):
 
 PAGES = {"/docs": "/docs/index.html", "/capacity": "/capacity/index.html", "/capacity/clusters": "/capacity/clusters.html", "/capacity/demand": "/capacity/demand.html",
          "/capacity/what-if": "/capacity/what-if.html", "/capacity/plan": "/capacity/plan.html", "/capacity/waste": "/capacity/waste.html",
-         "/l2": "/l2/index.html", "/l2/weekly": "/l2/weekly.html", "/l2/monthly": "/l2/monthly.html", "/l2/inventory": "/l2/inventory.html", "/l2/escalations": "/l2/escalations.html", "/l2/configuration": "/l2/configuration.html",
-         "/l2/context": "/l2/context.html", "/l2/authoring": "/l2/authoring.html","/exec": "/exec/index.html", "/noc": "/noc/index.html", "/noc/wall": "/noc/wall.html",
+         "/exec": "/exec/index.html", "/noc": "/noc/index.html", "/noc/wall": "/noc/wall.html",
          "/noc/alerts": "/noc/alerts.html", "/noc/shift": "/noc/shift.html"}
 
 
@@ -165,8 +200,8 @@ class Handler(BaseHTTPRequestHandler):
         path = u.path.rstrip("/") or "/exec"
         if path.startswith("/noc/alert/"):
             path = "/noc/alert.html"
-        if path.startswith("/l2/investigate/"):
-            path = "/l2/investigate.html"
+        if path == "/l2" or (path.startswith("/l2/") and not path.endswith((".js", ".css"))):
+            path = "/l2/index.html"  # one shell for every L2 page: the frame reads the address (frame.md)
         if path.startswith("/docs/") and path.count("/") == 3:
             path = "/docs/object.html"
         if path.startswith("/capacity/group/"):
@@ -197,6 +232,7 @@ class Handler(BaseHTTPRequestHandler):
         if parts[2:] == ["_reset"]:
             noc.STATE.reset()
             l2.STATE.reset()
+            l2_cases.STATE.reset()
             capacity.STATE.reset()
             return self.send(200, b'{"reset":true}', "application/json")
         now = generator.parse_now(q.get("now", [None])[0])
@@ -205,6 +241,12 @@ class Handler(BaseHTTPRequestHandler):
             if parts[2:] != ["demand"]:
                 return self.send(404, b'{"error":"not found"}', "application/json")
             code, data = capacity.add_demand(now, body, enable)
+        elif parts[1] == "l2" and parts[2:3] == ["cases"]:
+            code, data = l2_cases.act(now, parts[3:], body, enable)
+        elif parts[1] == "l2" and parts[2:3] == ["findings"] and parts[4:] == ["agent"]:
+            code, data = l2_findings_agent(now, parts[3], enable)
+        elif parts[1] == "l2" and parts[2:3] == ["decisions"]:
+            code, data = l2.act(now, ["monthly", *parts[2:]], body, enable)
         elif parts[1] == "l2":
             code, data = l2.act(now, parts[2:], body, enable)
         else:

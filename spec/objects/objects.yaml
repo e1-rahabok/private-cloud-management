@@ -127,7 +127,7 @@ objects:
   # ---------------------------------------------------------------- Added for the NOC workspace (D-053 step 2)
 
   maintenance_window:
-    description: An agreed change window per location, from the business calendar (L2 design, 3.6). Unsecured time inside it does not count (D-073).
+    description: An agreed change window per location, from the business calendar (L2 design, 7.2). Unsecured time inside it does not count (D-073).
     fields:
       location: { type: ref, to: location }
       starts_at: { type: datetime }
@@ -229,33 +229,76 @@ objects:
 
   # ---------------------------------------------------------------- Added for the L2 workspace (D-053 step 3)
 
-  check_run:
-    description: One run of the daily (or weekly) check by PCM (D-039, D-042).
+  inventory_node:
+    description: One node of the L2 inventory tree (l2.tree). The tree is the menu (D-086, D-087).
     fields:
-      kind: { type: enum, values: [daily, weekly] }
-      region: { type: ref, to: region }
-      started_at: { type: datetime }
-      finished_at: { type: datetime }
-      verdicts: { type: object, note: "present_health, risk, efficiency: three separate verdicts, never one score (L2 design, 3.2)" }
-      findings: { type: list, of: check_finding }
-      slipped_alerts: { type: list, of: alert, note: "Alerts in the period no check predicted (D-039)" }
+      id: { type: string, note: "Unique across views; the same object keeps one id in every view" }
+      kind: { type: enum, values: [estate, region, location, vcf_instance, workload_domain, cluster, resource_pool, host, vm, guest_os, datastore, virtual_disk, distributed_switch, port_group, vnic, class_of_service, appliance] }
+      name: { type: string }
+      parent: { type: string, optional: true, note: "Per view; an object can sit in several views" }
+      attributes: { type: object, note: "Slicing attributes (l2.slice_attributes): host model, ESXi build, firmware, class, environment, Guest OS, Tools version" }
 
-  check_finding:
-    description: One thing the check found that needs a human, worst first.
+  finding:
+    description: One thing monitoring found under a node (l2.findings), worst first.
     fields:
       id: { type: string }
-      verdict: { type: enum, values: [present_health, risk, efficiency] }
-      pillar: { type: enum, values: [availability, performance, security, capacity, configuration] }
-      object: { type: string }
-      object_type: { type: string }
-      parent_chain: { type: list, of: string, note: "cluster, then host, then VM (L2 design, 3.3)" }
+      pillar: { type: enum, values: [availability, performance, capacity, security, configuration, inventory] }
+      window: { type: enum, values: ["24h", "7d"], note: "The run that found it: daily or weekly (D-039, D-042)" }
+      kind: { type: string, optional: true, note: "slow_drift, hidden_in_average, configuration_drift for the 7-day window" }
+      object: { type: ref, to: inventory_node }
+      path: { type: list, of: string, note: "Ancestors in the Compute view, estate first" }
       severity: { type: enum, values: [red, amber] }
+      outcome: { type: enum, values: [problem, improve], note: "A problem opens a case; an opportunity or risk goes to Improve (D-083)" }
       summary: { type: string }
-      explained_by: { type: ref, to: calendar_entry, optional: true, note: "Business context that explains it (L2 design, 3.6)" }
+      explained_by: { type: ref, to: calendar_entry, optional: true, note: "Business context that explains it (L2 design, 7.2)" }
       proposal: { type: ref, to: proposal, optional: true }
+      case: { type: ref, to: case, optional: true, note: "The case it opened, if any" }
+
+  case:
+    description: One troubleshooting effort (l2.case, D-084). Kept in the PCM database.
+    fields:
+      id: { type: string }
+      trigger: { type: enum, values: [complaint, escalation, finding] }
+      object: { type: ref, to: inventory_node }
+      symptom: { type: enum, values: [slow, down] }
+      title: { type: string }
+      window_from: { type: datetime }
+      window_to: { type: datetime }
+      opened_at: { type: datetime }
+      opened_by: { type: string }
+      complaint: { type: object, optional: true, note: "requester, via, since, fine_until, already_checked (l2.complaint)" }
+      escalation: { type: object, optional: true, note: "The L1 evidence: SOP steps, villains, victims, L1 actions" }
+      finding: { type: ref, to: finding, optional: true }
+      links: { type: list, of: chain_link }
+      state: { type: enum, values: [open, closed] }
+      closure: { type: ref, to: case_closure, optional: true }
+
+  chain_link:
+    description: One link of a case's chain of causes (l2.chain). Agent E2 proposes; L2 confirms or rules out (D-089).
+    fields:
+      id: { type: string }
+      effect: { type: string, note: "The node it explains: the symptom or another link's cause" }
+      cause: { type: string, note: "What explains it" }
+      object: { type: ref, to: inventory_node }
+      layer: { type: enum, values: [guest_os, vm, host, cluster, storage, network, change, event] }
+      step: { type: enum, values: [contention, consumption, configuration, known_bug, log, saturation] }
+      flow: { type: string, note: "The Agent E2 flow that proposed it, for example vm-slow" }
+      kind: { type: enum, values: [main, contributing] }
+      state: { type: enum, values: [proposed, confirmed, ruled_out] }
+      evidence: { type: list, of: string }
+      decided_by: { type: string, optional: true }
+
+  case_closure:
+    description: What a case needs to close (l2.case_close).
+    fields:
+      root_cause: { type: string }
+      corrective_action: { type: string }
+      detection: { type: enum, values: [new_check_rule, new_alert, new_sop, sop_updated, none_with_reason] }
+      detection_note: { type: string }
+      by: { type: string }
 
   proposal:
-    description: A fix PCM proposes. L2 approves or rejects it (D-029, L2 design 3.7).
+    description: A fix PCM proposes. L2 approves or rejects it (D-029, L2 design 6.3).
     fields:
       id: { type: string }
       action_type: { type: string, example: move_vms_between_clusters }
@@ -284,7 +327,7 @@ objects:
       rollbacks: { type: integer }
 
   calendar_entry:
-    description: Business context L2 records, read by the checks and Agent E2 (L2 design, 3.6).
+    description: Business context L2 records, read by the checks and Agent E2 (L2 design, 7.2).
     fields:
       id: { type: string }
       location: { type: ref, to: location, optional: true, note: "None means all locations" }
@@ -295,7 +338,7 @@ objects:
       added_by: { type: string }
 
   standard:
-    description: A documented configuration standard. Drift means nothing without one (L2 design, 3.10).
+    description: A documented configuration standard. Drift means nothing without one (L2 design, 6.2).
     fields:
       id: { type: string }
       setting: { type: string }
@@ -303,21 +346,13 @@ objects:
       version: { type: integer }
 
   threshold_rule:
-    description: A threshold L2 owns, in the catalog. Replayed over 30 days before it is published (L2 design, 3.9).
+    description: A threshold L2 owns, in the catalog. Replayed over 30 days before it is published (L2 design, 7.1).
     fields:
       id: { type: string }
       metric: { type: string }
       operator: { type: enum, values: [below, above] }
       value: { type: number }
       version: { type: integer }
-
-  escalation_closure:
-    description: What an escalation needs to close at L2 (L2 design, 3.8).
-    fields:
-      root_cause: { type: string }
-      corrective_action: { type: string }
-      detection: { type: enum, values: [new_check_rule, new_alert, new_sop, sop_updated, none_with_reason] }
-      detection_note: { type: string }
 
   # ---------------------------------------------------------------- Added for the Availability SLA (D-077)
 

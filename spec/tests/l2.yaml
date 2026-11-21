@@ -1,13 +1,14 @@
 # Acceptance tests for the L2 workspace (D-070, section 4). Each test fixes its own clock (D-067).
-version: 1
+# Version 2: the workspace has three activities, Monitor, Troubleshoot and Improve (D-083 to D-090).
+version: 2
 now: "2026-10-19T10:05:00+08:00"
 seed: 7
 
 catalog:
   - id: LCAT-1
-    entry: l2.daily_check
-    given: { findings: [{ verdict: present_health, severity: red }, { verdict: risk, severity: amber }] }
-    expect: { present_health: red, risk: amber, efficiency: green }
+    entry: l2.pillar_status
+    given: { findings: [{ pillar: performance, severity: red }, { pillar: configuration, severity: amber }] }
+    expect: { performance: red, configuration: amber, availability: green, security: green }
   - id: LCAT-2
     entry: l2.action_policy
     given:
@@ -23,7 +24,7 @@ catalog:
     given: { threshold: th-cluster-perf-red, current: 50, new: 60 }
     expect: { days: 30, new_at_least_current: true }
   - id: LCAT-4
-    entry: l2.weekly_check
+    entry: l2.findings
     given: { drift: [10, 11, 12, 12.5, 14, 15, 16], noise: [10, 12, 9, 11, 10, 12, 11], hidden: { peak: 97, red: 90, vm_status: green } }
     expect: { drift: true, noise: false, hidden: true }
   - id: LCAT-5
@@ -34,74 +35,117 @@ catalog:
     entry: l2.change_explanation
     given: "a change that matches both the PCM action record and a request"
     expect: { explanation: pcm_action }
+  - id: LCAT-7
+    entry: l2.node_score
+    given: { samples: [96, 95, 94, 93, 92, 91, 90, 89, 88, 87, 86, 85, 84, 83, 82, 81, 80, 79, 78, 40] }
+    expect: { score: 78, reason: "met or beaten 95% of the time: one bad sample in twenty does not set the score; the average would hide it, the worst would be noise" }
+  - id: LCAT-8
+    entry: l2.iceberg
+    given: { scores: [74, 76, 77, 79, 80, 81, 95] }
+    expect: { near_line: 3 }
+  - id: LCAT-9
+    entry: l2.tree
+    expect:
+      compute_levels: [estate, region, location, vcf_instance, workload_domain, cluster, host, vm, guest_os]
+      views: [compute, storage, network, class, management]
+      guest_os_child_of_vm: true
 
 story:
   - id: LST-1
-    story: L-1
-    expect: { escalation_visible_after_noc_escalates: true, close_without_detection: 400, close_complete: 200 }
+    name: The estate is the whole estate
+    expect:
+      hosts: 1200
+      root_children_compute: [apj, amer, emea]
+      every_story_object_in_the_tree: true
+      cluster_ids_match_noc: true
   - id: LST-2
-    story: L-2
-    expect: { realm_verdict: guest_os, vm_status: green, guest_os_status: red }
+    name: Same numbers as the NOC
+    stories: [N-1, T-2]
+    expect: { FR-S-02_score_1h_equals_noc_now: true, TK-S-03_noc_status: amber }
   - id: LST-3
-    story: L-3
-    expect: { correct_it_count: 2, fix_setting_creates_proposal: true, fix_standard_increments_version: true }
+    name: Monitor at the estate root, 24 hours
+    stories: [N-1, N-4, L-3, C-1, C-6, L-7, M-2]
+    expect:
+      performance_status: red
+      security_status: red
+      first_finding_object: FR-S-02
+      outcomes: { f-fr-s-02: problem, f-va-esx-142: improve, f-sg-silver-waste: improve, f-m2-other-wait: problem }
   - id: LST-4
+    name: The 7-day window adds what a day cannot show, and never repeats a daily finding
+    stories: [L-5, L-8, L-9, L-10, M-1]
+    expect:
+      kinds: { SG-DS-11: slow_drift, sg-db-044: hidden_in_average, va-db-033: hidden_in_average, LD-B-01: configuration_drift, ld: slow_drift }
+      none_repeats_a_daily_finding: true
+  - id: LST-5
+    name: Group by host model finds the shared cause
+    story: M-1
+    expect: { group_by_host_model_wider_than_numa_node: { "Gen-2019, 2 x 20 cores": 9, "Gen-2024, 2 x 32 cores": 0 } }
+  - id: LST-6
+    story: L-6
+    expect: { explained_finding_last: true, explained_by_kind: quarter_end_close }
+  - id: LST-7
+    name: A complaint opens a case; the chain grows link by link
+    story: T-1
+    expect:
+      complaint_without_vm: 400
+      complaint_with_application_name_only: 400
+      case_trigger: complaint
+      proposals_in_order: [t1-guest, t1-disk, t1-cpu, t1-ready, t1-vcpu, t1-snap, t1-backup, t1-numa, t1-net]
+      after_all: "nothing more to propose"
+      rule_out_without_reason: 400
+      close_without_confirmed_main: 400
+      close_missing_detection: 400
+      close_complete: 200
+      timeline_has_events_before_window: true
+  - id: LST-8
+    name: An L1 escalation is a case
+    stories: [N-1, L-1, T-2]
+    expect:
+      t2_case_trigger: escalation
+      fr_case_visible_after_noc_escalates: true
+      fr_close_closes_noc_incident: true
+      reject_without_reason: 400
+  - id: LST-9
+    name: A finding opens a case
+    stories: [M-1, M-2]
+    expect: { m1_case_trigger: finding, m1_proposals: [m1-remote, m1-storage, m1-layout, m1-move, m1-refresh], finding_links_to_case: true }
+  - id: LST-10
+    name: The Guest OS hand-over
+    story: L-2
+    expect: { case_trigger: complaint, realm_verdict: guest_os, vm_status: green, guest_os_status: red }
+  - id: LST-11
+    name: A repeated problem closes its loop only with a detection
+    stories: [N-1, L-1]
+    expect: { class_mismatch_closed_before: false, class_mismatch_closed_after_close: true }
+  - id: LST-12
     story: L-4
     expect:
       replay_would_run: 18
       replay_stopped: { max_vms_per_cluster_per_hour: 3, same_class_of_service_only: 1, not_in_close_week: 1 }
       publish_without_replay: 400
       publish_without_reason: 400
-      tier_after: automatic
-      version_after: 2
       proposal_state_after: ran_automatically
       accountable_after: "policy move_vms_between_clusters v2, owner l2-engineer-1"
-      approval_recorded_after: false
-  - id: LST-5
-    story: [N-1, N-4, L-3, C-1, C-6, L-7]
-    expect: { present_health: red, risk: amber, efficiency: amber, first_finding_verdict: present_health }
-  - id: LST-6
-    story: L-6
-    expect: { explained_finding_last: true, explained_by_kind: quarter_end_close }
-  - id: LST-7
-    story: L-4
-    expect: { reject_without_reason: 400 }
-  - id: LST-8
-    name: Same numbers as the NOC and the CIO
-    expect: { rule: "The FR-S-02 score on /api/l2/daily equals the wall's FR-S-02 tile; the SSH finding count equals the CIO page's." }
-  - id: LST-9
-    name: The weekly check shows what the daily check cannot
-    stories: [L-5, L-8, L-9, L-10]
-    expect:
-      kinds: { SG-DS-11: slow_drift, sg-db-044: hidden_in_average, va-db-033: hidden_in_average, LD-B-01: configuration_drift }
-      none_repeats_a_daily_finding: true
-      slipped_va_db_033_caught_by: hidden_in_average
-  - id: LST-10
-    name: A weekly finding needs an owner and an action
-    expect: { without_action: 400, with_both: 200, kept_after_restart: true }
-  - id: LST-11
-    name: The monthly review opens with last month's decisions, and goals match the CIO page
-    stories: [L-12, E-5]
-    expect:
-      decisions: { d-cos-check: open, d-snapshots: overdue, d-ld-logs: done }
-      decision_without_owner: 400
-      projection_equals_cio_goal: true
-  - id: LST-12
-    name: A repeated escalation closes its loop only with a detection
-    stories: [N-1, L-1]
-    expect: { class_mismatch_closed_before: false, class_mismatch_closed_after_rca: true }
+      reject_without_reason: 400
   - id: LST-13
-    name: Every change is explained, or listed
+    name: Improve holds configuration by urgency, scoped to the object
+    story: L-3
+    expect: { correct_it_under_VA-G-05: 2, correct_it_under_sg: 0, fix_setting_creates_proposal: true, fix_standard_increments_version: true }
+  - id: LST-14
+    name: The decision register
+    stories: [L-12]
+    expect: { decisions: { d-cos-check: open, d-snapshots: overdue, d-ld-logs: done }, decision_without_owner: 400 }
+  - id: LST-15
+    name: Every change is explained, or listed, under the object
     stories: [L-11, N-3]
     expect:
-      unexplained_first: chg-ld-db-021
-      tokyo_deletions_unexplained: true
-      noc_stop_provisioning_explained_by: pcm_action
+      unexplained_first_under_estate: chg-ld-db-021
+      under_tk: [chg-tk-deleted]
       expected_without_reason: 400
       expected_with_reason_explained_by: l2_expected
-  - id: LST-14
-    name: The monthly capacity outlook is the Capacity workspace's own
-    expect: { groups_in_round_equal_capacity_week: true }
+  - id: LST-16
+    name: Log validation
+    expect: { "resuming traffic on DV port": noise }
 
 page:
   - id: LPG-1
@@ -109,31 +153,26 @@ page:
   - id: LPG-2
     rule: No word from catalog/vocabulary/l2.yaml "avoided" appears on any /l2 page.
   - id: LPG-3
-    rule: The daily page shows three separate verdict cards and no single combined score.
+    rule: The top bar shows Monitor, Troubleshoot and Improve, and apart from them Rules and Calendar; no Weekly, Monthly, Escalations, Configuration or Inventory item.
   - id: LPG-4
-    rule: The escalation from the NOC shows on /l2/escalations after the NOC escalates it, with the villain's CPU Ready value.
+    rule: /l2 opens Monitor on the estate, Summary tab, 24 hours, with one row per pillar and no single combined score.
   - id: LPG-5
-    rule: The investigate page for sg-app-117 says the cause is inside the Guest OS.
+    rule: Selecting FR-S-02 in the tree keeps the activity and the window; switching to Troubleshoot keeps FR-S-02 selected.
   - id: LPG-6
-    rule: Publish on the authoring page is disabled until a replay has run.
+    rule: Log complaint for sg-gl-db-01 opens a case page; "Propose the next link" adds links in the T-1 order; Rule out asks for a reason.
   - id: LPG-7
-    rule: No request leaves the PCM host; text contrast is at least 4.5:1.
-
+    rule: The case page for L-2 says "The cause is inside the Guest OS. Hand this evidence to the Windows or Linux team."
   - id: LPG-8
-    rule: No decision ID (D-nnn) appears in the visible text of any page of this workspace, in any state.
-
-  - id: LPG-9
-    rule: Without the Agent E2 service running, "Ask Agent E2 why" on /l2/investigate/sg-app-117 says "The Agent E2 service is not available" and shows no answer.
+    rule: Without the Agent E2 service running, "Ask Agent E2 why" on a case says "The Agent E2 service is not available" and shows no answer.
     decisions: [D-078]
-
-  - id: LPG-10
-    rule: The daily page has no "Make automatic" button; "Propose a policy change" shows Publish disabled until Replay has run.
+  - id: LPG-9
+    rule: Rules has no "Make automatic" button; "Propose a policy change" shows Publish disabled until Replay has run; threshold Publish is disabled until a replay.
     decisions: [D-079]
-
+  - id: LPG-10
+    rule: Group by host model on London's performance tab, 7 days, shows the Gen-2019 group with VMs below green.
   - id: LPG-11
-    rule: On /l2/weekly, Assign without an action shows an error; with an owner and an action the finding shows "Assigned".
+    rule: Improve at the estate root shows the decision register; d-snapshots shows "Overdue".
   - id: LPG-12
-    rule: /l2/monthly opens with last month's decisions; d-snapshots shows "Overdue".
+    rule: No request leaves the PCM host; text contrast is at least 4.5:1.
   - id: LPG-13
-    rule: /l2/inventory lists ld-db-021 first among unexplained changes, and no DRS move one by one.
-
+    rule: No decision ID (D-nnn) appears in the visible text of any page of this workspace, in any state.

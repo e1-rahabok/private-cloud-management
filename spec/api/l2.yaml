@@ -1,57 +1,81 @@
 openapi: 3.1.0
 info:
   title: PCM API, L2 part
-  version: "1"
+  version: "2"
   description: >
-    L2 endpoints (design/l2-workspace.md). Reads take the synthetic-only parameters now and enable.
-    Writes go through the action engine (PCM core, 3.7) and the action history (D-063), with both
-    identity fields (D-050).
+    L2 endpoints (design/l2-workspace.md). Reads take the synthetic-only parameters now and enable, and where named
+    view, window and activity. Writes go through the action engine (PCM core, 3.7) and the action history (D-063),
+    with both identity fields (D-050).
 paths:
-  /api/l2/daily:
-    get: { summary: "Latest daily check run: three verdicts, findings worst first, proposals, slipped alerts (l2.daily_check)." }
+  # ---------------------------------------------------------------- frame
+  /api/l2/tree:
+    get: { summary: "Query view, node (default estate), activity, pillar, window. The node, its path, and its children with status and open-case counts, sorted by activity (l2.tree). Below the cluster, children are returned as a list." }
+  /api/l2/search:
+    get: { summary: "Query q. Objects in any view whose name contains q, with kind and path. At most 20." }
+  # ---------------------------------------------------------------- Monitor
+  /api/l2/monitor/{view}/{object}/summary:
+    get: { summary: "Query window. One row per pillar (l2.pillar_status), findings under the object, slipped alerts; at the estate root with window 1y, the twelve-month measures and repeated problems (l2.measures, l2.repeated_problems)." }
+  /api/l2/monitor/{view}/{object}/{pillar}:
+    get: { summary: "Query window, group_by. The node summary, the iceberg, children worst first or grouped (l2.node_summary, l2.node_score, l2.iceberg, l2.slice_attributes), the pillar's content, and its findings." }
+  /api/l2/findings/{finding}/agent:
+    post: { summary: "Agent E2 explains the finding (task explain_finding). Recorded (D-076)." }
+  /api/l2/inventory/{change}/expected:
+    post: { summary: "Body: reason, required. The change then counts as explained by L2 (l2.change_explanation)." }
+  # ---------------------------------------------------------------- Troubleshoot
+  /api/l2/cases:
+    get: { summary: "Query object (default estate), view. Cases under the object: open first, newest first (l2.case)." }
+    post: { summary: "Open a case. Body: trigger complaint with vm, requester, symptom, since, and optional via, fine_until, already_checked (l2.complaint); or trigger finding with finding. 400 with the missing field named." }
+  /api/l2/cases/{case}:
+    get: { summary: "The case: header, trigger evidence, chain (l2.chain), layers (l2.layers), realms where the object is a VM (l2.realms), timeline (l2.timeline), who else (l2.who_else), closure." }
+  /api/l2/cases/{case}/propose:
+    post: { summary: "Agent E2 proposes the next link from its flows (D-089). Returns the link, or 'nothing more to propose'. Recorded with both identity fields." }
+  /api/l2/cases/{case}/links/{link}/confirm:
+    post: { summary: "L2 confirms a proposed link." }
+  /api/l2/cases/{case}/links/{link}/rule-out:
+    post: { summary: "L2 rules a proposed link out. Body: reason, required (400 otherwise)." }
+  /api/l2/cases/{case}/accept:
+    post: { summary: "Escalation only: L2 accepts the handover." }
+  /api/l2/cases/{case}/reject:
+    post: { summary: "Escalation only: L2 rejects the handover. Body: reason, required. Recorded as a gap in the SOP." }
+  /api/l2/cases/{case}/ask:
+    post: { summary: "Ask Agent E2 why (D-078). Body: question. PCM adds the case facts and the role. Returns content, files_read, source (service or unavailable)." }
+  /api/l2/cases/{case}/draft:
+    post: { summary: "Agent E2 drafts the root cause analysis from the confirmed links (task rca_draft). L2 vocabulary. Recorded (D-076)." }
+  /api/l2/cases/{case}/close:
+    post: { summary: "Body: root_cause, corrective_action, detection, detection_note. 400 if any is missing or no main link is confirmed (l2.case_close). For an escalation, the NOC incident closes with the same cause." }
+  /api/l2/log-validation:
+    get: { summary: "Query message. Count of the message on healthy objects over the last 5 working days, and whether it is noise (l2.log_validation)." }
+  # ---------------------------------------------------------------- Improve
+  /api/l2/improve/{view}/{object}/{pillar}:
+    get: { summary: "Query window. Opportunities under the object, largest first (l2.opportunities); on Summary one row per pillar; at the estate root the decision register." }
   /api/l2/proposals/{id}/approve:
     post: { summary: "Approve a proposal. Counts toward its action type's record." }
   /api/l2/proposals/{id}/reject:
     post: { summary: "Reject. Requires a reason (400 without one): a rejection is data about the rule." }
+  /api/l2/configuration:
+    get: { summary: "Query object. Configuration opportunities in SP5 time order, each with fix the setting or fix the standard (l2.config_order)." }
+  /api/l2/configuration/{id}/decide:
+    post: { summary: "choice = fix_the_setting (creates a proposal, approval tier) or fix_the_standard (records a new standard version)." }
+  /api/l2/decisions:
+    get: { summary: "The decision register (l2.team_decision)." }
+    post: { summary: "Record a decision: what, owner, due (YYYY-MM-DD), all required (400 otherwise)." }
+  /api/l2/decisions/{id}/done:
+    post: { summary: "Mark a decision done; records who and when." }
+  # ---------------------------------------------------------------- Rules and Calendar
+  /api/l2/rules/drafts:
+    get: { summary: "Detections asked for by closed cases (l2.case_close)." }
   /api/l2/policies:
     get: { summary: "Action policies: tier, guardrails, version, owner, plus the record per action type as evidence (l2.action_policy, l2.action_record)." }
   /api/l2/policies/{type}/replay:
     post: { summary: "Body: proposed tier and guardrails. Replays them against recent history (l2.policy_replay). Changes nothing." }
   /api/l2/policies/{type}/publish:
     post: { summary: "Publish the proposed tier and guardrails as a new version, with a reason. Only after a replay. Then re-evaluates waiting proposals of that type: those that now pass run automatically, with no approval record (D-079)." }
-  /api/l2/escalations:
-    get: { summary: "Incidents escalated by the NOC to L2, with their evidence (noc.escalation_evidence)." }
-  /api/l2/escalations/{id}/close:
-    post: { summary: "Close with root_cause, corrective_action, detection and detection_note. 400 if any is missing (l2.escalation_close)." }
-  /api/l2/escalations/{id}/agent:
-    post: { summary: "Agent E2 drafts the root cause analysis (task rca_draft). L2 vocabulary. Recorded (D-076)." }
-  /api/l2/investigate/{object}:
-    get: { summary: "Fixed-order checks for a VM or cluster, VM and Guest OS side by side, logs beside metrics (l2.investigation_order, l2.realms)." }
-  /api/l2/investigate/{object}/ask:
-    post: { summary: "Ask Agent E2 why (D-078). Body: question. PCM adds the investigation facts and the role, calls the Agent E2 service, records the call with both identity fields. Returns content, files_read, source (service or unavailable)." }
-  /api/l2/configuration:
-    get: { summary: "Configuration findings in SP5 time order, each with fix the setting or fix the standard (l2.config_order)." }
-  /api/l2/configuration/{id}/decide:
-    post: { summary: "choice = fix_the_setting (creates a proposal, approval tier) or fix_the_standard (records a new standard version)." }
-  /api/l2/calendar:
-    get: { summary: "Business calendar entries." }
-    post: { summary: "Add an entry. The next check reads it." }
+  /api/l2/thresholds:
+    get: { summary: "Thresholds L2 owns." }
   /api/l2/thresholds/{id}/replay:
     get: { summary: "Query value=<new value>. Alerts the current and the new value would have raised over l2.replay_days days." }
   /api/l2/thresholds/{id}/publish:
     post: { summary: "Publish a new value. Version increments; recorded in the action history." }
-  /api/l2/weekly:
-    get: { summary: "Latest weekly check run: the four measures against last week, pattern findings with owner and action, slipped alerts with what would have caught them (l2.weekly_check)." }
-  /api/l2/weekly/{finding}/assign:
-    post: { summary: "Body: owner and action, both required (400 otherwise). Kept in the PCM database." }
-  /api/l2/monthly:
-    get: { summary: "The monthly review pack: last month's decisions, goals, 12-month baselines, repeated escalations, configuration risk, the capacity outlook." }
-  /api/l2/monthly/decisions:
-    post: { summary: "Record a decision: what, owner, due (YYYY-MM-DD), all required (400 otherwise)." }
-  /api/l2/monthly/decisions/{id}/done:
-    post: { summary: "Mark a decision done; records who and when." }
-  /api/l2/inventory:
-    get: { summary: "Query days=7 or 30. Counts per location; changes per type and day by explanation; unexplained changes one by one (l2.change_explanation)." }
-  /api/l2/inventory/{change}/expected:
-    post: { summary: "Body: reason, required. The change then counts as explained by L2." }
-
+  /api/l2/calendar:
+    get: { summary: "Business calendar entries." }
+    post: { summary: "Add an entry. The next check reads it." }
