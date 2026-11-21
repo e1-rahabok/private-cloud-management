@@ -43,7 +43,7 @@ api: /api/l2/monitor/{view}/{object}/{pillar}
 - **Children, worst first:** one row per child with its score over the window (l2.node_score), its score over the last hour, its status chip (the worse of the two), and its red and orange alerts. A click selects the child in the tree.
   - Host rows add: host model, ESXi build, running VMs.
   - VM rows add: vCPU, memory, class, environment, Guest OS.
-- **Group by** (l2.slice_attributes): a picker above the children. Grouped, each row is one attribute value: how many objects, how many below green, the worst score. Default: no grouping.
+- **Group by** (l2.slice_attributes): a picker above the children. Not on a VM, Guest OS, virtual disk or vNIC: it groups objects, and these are one object (D-092). Grouped, each row is one attribute value: how many objects, how many below green, the worst score. Default: no grouping.
   - Group by reads every VM under the object, not only direct children. Each group shows its VMs, hosts, how many sit below green and just above the line, the worst score, and how many VMs are wider than their host's NUMA node.
 - **Pillar content:**
   - **Availability** (l2.availability_events): VMs down this month, counted or not; hosts not connected; HA restarts.
@@ -51,7 +51,7 @@ api: /api/l2/monitor/{view}/{object}/{pillar}
   - **Capacity** (l2.short_term_capacity): per cluster, CPU and memory utilization, average and 95th percentile across its hosts, and the imbalance. A cluster whose VMs wait says "Full now".
   - **Security** (l2.security_hygiene): hosts with SSH or ESXi Shell on outside a window, lockdown off, root logins, certificates near expiry.
   - **Configuration** (l2.configuration_variance): drift against the standard, and the variance across peers (ESXi builds, VMware Tools versions) with counts.
-  - **Inventory** (l2.inventory_counts, l2.change_explanation): children by type with the change over the window; distribution across children; unexplained changes listed one by one, production and Gold first, with "This was expected" (reason required); explained changes counted by type.
+  - **Inventory** (provider objects only; l2.inventory_counts, l2.change_explanation): children by type with the change over the window; distribution across children; unexplained changes listed one by one, production and Gold first, with "This was expected" (reason required); explained changes counted by type.
 - **States:** normal; empty; stale ("No data" for a location whose VCF Operations is not answering, never green); loading; error.
 
 ## Performance tab above the cluster
@@ -93,6 +93,33 @@ On every node above the cluster: estate, region, location, VCF instance, workloa
   - Cluster, location, class, Performance at the time, Risk at the time, VMs below green at the time, different VMs hit over the window.
   - A click on a cluster selects it in the tree.
 - **States:** normal; empty ("No {class} cluster under this object."); stale (a location without data is left out and named); loading; error.
+
+## Performance tab on a VM
+
+```yaml
+question: "Where is this VM slow, at which layer, and when?"
+role: l2
+cadence: [daily, weekly]
+reads: [l2.realms, l2.node_score]
+api: /api/l2/monitor/{view}/{object}/performance
+decisions: [D-092]
+```
+
+On a VM, the tab shows detail. The Guest OS runs on top of the Virtual Motherboard, so the page is two layers, one over the other, never side by side.
+
+- **No Group by, no "Just above the line", no "Children outside green", no trend card.** They describe a group; this is one VM.
+- **Tabs:** Summary, Availability, Performance, Capacity, Security, Configuration. No Inventory (D-092).
+- **Layer 1, Guest OS** (status chip in its heading): Run Queue, Context Switches, Paging, Guest OS Performance.
+- **Layer 2, Virtual Motherboard** (status chip in its heading): CPU Ready, CPU Co-Stop, Memory Wait, Disk Latency, VM Performance.
+- **One chart per metric,** over the window picked at the top. Points as in D-091 (5 minutes for 1 hour and 24 hours, 1 hour for 7 days, 4 hours for 30 days, 1 day for 1 year); a point holds the worst value inside it. The two Performance scores use the 0 to 100% scale and the band colors.
+- **Three named figures beside each chart,** each with its unit after the number:
+  - **Now:** the latest point.
+  - **Worst:** the worst point of the window, with its time.
+  - **95th percentile:** the value that 95% of the points were better than.
+  - **Never an average.** It hides the peak the VM's owner felt.
+- **Names and units:** Title Case; abbreviations in capitals (CPU, VM, OS, vCPU); the unit follows the number and is never part of the name: "CPU Ready 2.5%", "Disk Latency 5.6 ms", "Context Switches 7,346/s".
+- **Under the layers:** "Log a complaint about this VM"; Children, worst first (the Guest OS); Findings.
+- **States:** normal; stale; loading; error. A metric with no data in the window shows "No data" in place of its chart, never a flat line.
 
 ## Findings
 

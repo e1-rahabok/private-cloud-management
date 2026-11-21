@@ -142,8 +142,10 @@ function objHead(o, windowFixed) {
   return `<div class="objhead"><div><div class="crumbs">${crumbs || '&nbsp;'}</div><div class="kind">${esc(KIND[o.kind] || o.kind)}</div><h1>${esc(o.name)}</h1></div>${win}</div>`;
 }
 const runLine = r => `<p class="runline">${r.kind === 'baseline' ? esc(r.review) : `${r.kind === 'daily' ? 'Daily' : 'Weekly'} check, ${esc(r.region)}: ran ${fmtTime(r.started_at)} to ${fmtTime(r.finished_at)}. ${esc(r.review)}`}</p>`;
-function tabs(statuses) {
-  return `<nav class="tabs" aria-label="Pillars">${['summary', ...PILLARS].map(p => `<a href="${url({ pillar: p })}"${p === R.pillar ? ' aria-current="true"' : ''}>${statuses && statuses[p] ? `<span class="dot ${statuses[p]}"></span>` : ''}${PNAME[p]}</a>`).join('')}</nav>`;
+const CONSUMER_KINDS = ['vm', 'guest_os', 'virtual_disk', 'vnic'];
+function tabs(statuses, kind) {
+  const list = PILLARS.filter(p => !(p === 'inventory' && CONSUMER_KINDS.includes(kind)));
+  return `<nav class="tabs" aria-label="Pillars">${['summary', ...list].map(p => `<a href="${url({ pillar: p })}"${p === R.pillar ? ' aria-current="true"' : ''}>${statuses && statuses[p] ? `<span class="dot ${statuses[p]}"></span>` : ''}${PNAME[p]}</a>`).join('')}</nav>`;
 }
 const spark = (pts, key = 'v') => {
   if (!pts || pts.length < 2) return '';
@@ -199,7 +201,7 @@ async function monitor(msg = '') {
       year = `<h2>Twelve months: the L2 measures</h2><div class="cards">${Object.entries(BL).map(([k, l]) => `<div class="card"><h3>${l}</h3>${bars(b[k])}<div class="muted">${b.months[0]} to ${b.months[11]}: ${b[k][0]} to ${b[k][11]}</div></div>`).join('')}</div>
         <h2>Repeated problems</h2><table class="data"><thead><tr><th>Problem</th><th class="num">Last 12 months</th><th>Loop</th></tr></thead><tbody>${d.repeated_problems.map(r => `<tr data-rep="${r.type}"><td>${esc(r.title)}</td><td class="num">${r.last_12m}</td><td>${r.loop_closed ? `<span class="chip green">Loop closed</span> ${esc(r.closed_by)}` : '<span class="chip amber">Still open</span> No check rule or SOP yet'}</td></tr>`).join('')}</tbody></table>`;
     }
-    main.innerHTML = objHead(d.object) + `${runLine(d.run)}` + tabs(st) + `<div class="msg" role="status">${esc(msg)}</div>
+    main.innerHTML = objHead(d.object) + `${runLine(d.run)}` + tabs(st, d.object.kind) + `<div class="msg" role="status">${esc(msg)}</div>
       ${d.stale ? '<p class="why">No data from this location\'s VCF Operations. Shown grey, never green.</p>' : ''}
       <table class="data pillars"><thead><tr><th>Status</th><th>Pillar</th><th>Now</th><th class="num">Findings</th></tr></thead><tbody>${rows}</tbody></table>
       <h2>Findings, worst first</h2>${d.findings.length ? d.findings.map(findingRow).join('') : '<p>Nothing needs you under this object.</p>'}
@@ -210,11 +212,13 @@ async function monitor(msg = '') {
   }
   const d = await getJSON(`monitor/${R.view}/${enc(R.object)}/${R.pillar}`, qjoin(`window=${R.window}`, R.group ? `group_by=${R.group}` : '',
     R.pillar === 'performance' && R.cls ? `class=${enc(R.cls)}` : '', R.pillar === 'performance' && R.at ? `at=${enc(R.at)}` : ''));
-  const head = objHead(d.object) + `${runLine(d.run)}` + tabs({ [R.pillar]: d.status }) + `<div class="msg" role="status">${esc(msg)}</div>`;
+  const head = objHead(d.object) + `${runLine(d.run)}` + tabs({ [R.pillar]: d.status }, d.object.kind) + `<div class="msg" role="status">${esc(msg)}</div>`;
   const c = d.content;
   let body = '';
   if (R.pillar === 'performance' && d.perf) {
     body += perfTab(d.perf, d);
+  } else if (R.pillar === 'performance' && d.layers) {
+    body += layersView(d) + `<p><a class="link" href="${complaintURL(R.object)}">Log a complaint about this VM</a></p>` + childrenTable(d);
   } else if (R.pillar === 'performance') {
     const ice = c.iceberg;
     const unit = d.trend.length && d.trend[0].unit ? d.trend[0].unit : 'score';
@@ -223,11 +227,6 @@ async function monitor(msg = '') {
       <div class="card ${d.outside_green ? 'amber' : 'green'}"><h3>Children outside green</h3><div class="big2">${d.outside_green} <span class="muted" style="font-size:16px">of ${d.children_total}</span></div></div>
       ${ice ? `<div class="card" data-iceberg><h3>Just above the line</h3><div class="big2">${n0(ice.near_line)}</div><div class="muted">VMs between ${ice.near_line_from} and ${ice.near_line_to}, ${esc(ice.direction)} over 7 days; ${n0(ice.below_green)} below green, of ${n0(ice.vms)}</div>${bars(ice.trend_7_days)}</div>` : ''}</div>`;
     body += groupBy(d);
-    if (d.realms) {
-      const realm = (name, r) => `<div class="card ${r.status}"><h3>${name} ${chip(r.status)}</h3>${Object.entries(r).filter(([k]) => k !== 'status').map(([k, v]) => `<div class="row"><span>${esc(k.replaceAll('_', ' '))}</span><span>${v}</span></div>`).join('')}</div>`;
-      body += `<h2>VM and Guest OS, side by side</h2><div class="cols2">${realm('VM', d.realms.vm)}${realm('Guest OS', d.realms.guest_os)}</div>
-        <p><a class="link" href="${complaintURL(R.object)}">Log a complaint about this VM</a></p>`;
-    }
     body += childrenTable(d);
   } else if (R.pillar === 'availability') {
     body += `<p>${esc(c.headline)}</p>${c.events.length ? `<table class="data"><thead><tr><th>When</th><th>Object</th><th>What</th><th>Counted</th></tr></thead><tbody>${c.events.map(e => `<tr><td>${fmtTime(e.at)}</td><td>${objLink(e.object)}</td><td>${esc(e.text)}</td><td>${e.counted ? '<span class="chip amber">Counted</span>' : '<span class="chip green">Not counted</span>'}</td></tr>`).join('')}</tbody></table>` : ''}
@@ -258,7 +257,7 @@ async function monitor(msg = '') {
   main.innerHTML = head + (d.stale ? '<p class="why">No data from this location\'s VCF Operations. Shown grey, never green.</p>' : '') + body;
   const g = document.getElementById('grp');
   if (g) g.addEventListener('change', () => { location.href = url({ group: g.value }); });
-  if (d.perf) wireCharts(d.perf);
+  if (d.perf || d.layers) wireCharts();
   main.querySelectorAll('form.expect').forEach(fm => fm.addEventListener('submit', async e => {
     e.preventDefault();
     const r = await postJSON(`inventory/${fm.dataset.c}/expected`, Object.fromEntries(new FormData(fm)));
@@ -280,15 +279,16 @@ const CHARTS = {};
 // One chart, one axis. series: [{ key, label, dash, color (fixed) or band (function of value) }].
 function lineChart(id, pts, series, o) {
   CHARTS[id] = { pts, series, o };
-  const W = 1000, H = 240, L = 48, Rt = 140, T = 12, B = 30, iw = W - L - Rt, ih = H - T - B, n = pts.length;
+  const W = o.width ?? 1000, H = o.height ?? 240, L = o.left ?? 48, Rt = 140, T = 12, B = 30, iw = W - L - Rt, ih = H - T - B, n = pts.length;
+  const fmt = o.fmt || ((v) => o.max === 100 ? v + '%' : n0(v));
   const max = o.max ?? Math.max(4, ...pts.flatMap(p => series.map(s => p[s.key] ?? 0))) * 1.1;
   const x = i => L + (n === 1 ? iw / 2 : i / (n - 1) * iw), y = v => T + ih - v / max * ih;
-  const ticks = o.max === 100 ? [0, 25, 50, 75, 100] : [0, Math.round(max / 2), Math.round(max)];
+  const ticks = o.ticks ?? (o.max === 100 ? [0, 25, 50, 75, 100] : [0, Math.round(max / 2), Math.round(max)]);
   const span = new Date(pts[n - 1].t) - new Date(pts[0].t);
   const xt = [0, 1, 2, 3, 4, 5, 6].map(k => Math.round(k * (n - 1) / 6));
   let svg = `<svg class="lc" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}" data-chart="${id}">`;
   if (o.bands) svg += o.bands.map(([lo, hi, b]) => `<text x="${W - 8}" y="${y((lo + hi) / 2) + 4}" text-anchor="end" class="bandlbl">${BAND_NAME[b]}</text>`).join('');
-  svg += ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rt}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${o.max === 100 ? v + '%' : n0(v)}</text>`).join('');
+  svg += ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rt}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v, true)}</text>`).join('');
   svg += xt.map(i => `<text class="axis" x="${x(i)}" y="${H - 8}" text-anchor="middle">${esc(fmtTick(pts[i].t, o.minutes, span))}</text>`).join('');
   for (const s of series) {
     let segs = '';
@@ -301,16 +301,18 @@ function lineChart(id, pts, series, o) {
     svg += `<g class="series" data-series="${s.key}">${segs}</g>`;
   }
   // Direct labels at the right end, pushed apart when the lines end close together.
+  for (const r of o.refs || []) svg += `<line class="ref" x1="${L}" x2="${W - Rt}" y1="${y(r.value).toFixed(1)}" y2="${y(r.value).toFixed(1)}"/>`;
   const ends = series.map(s => ({ s, v: pts[n - 1][s.key] })).filter(e => e.v != null).map(e => ({ ...e, y: y(e.v) + 4 })).sort((a, b) => a.y - b.y);
   for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 15) ends[i].y = ends[i - 1].y + 15;
-  svg += ends.map(e => `<text class="direct" x="${W - Rt + 8}" y="${e.y}">${esc(e.s.short)}</text>`).join('');
+  if (!o.nodirect) svg += ends.map(e => `<text class="direct" x="${W - Rt + 8}" y="${e.y}">${esc(e.s.short)}</text>`).join('');
   if (o.selected != null) svg += `<line class="sel" x1="${x(o.selected)}" x2="${x(o.selected)}" y1="${T}" y2="${T + ih}"/>`;
   svg += `<line class="cross" x1="0" x2="0" y1="${T}" y2="${T + ih}" visibility="hidden"/><rect class="hit" x="${L}" y="${T}" width="${iw}" height="${ih}"/></svg>`;
   const legend = `<div class="legend">${series.map(s => `<span><svg width="28" height="10" aria-hidden="true"><line x1="0" x2="28" y1="5" y2="5" stroke="${s.color || 'var(--text)'}" stroke-width="2.5"${s.dash ? ' stroke-dasharray="7 5"' : ''}/></svg>${esc(s.label)}</span>`).join('')}
-    ${o.bands ? `<span class="muted">Line color is the band of the value.</span>` : ''}<span class="muted">Click a time to see it below.</span></div>`;
+    ${(o.refs || []).map(r => `<span><svg width="28" height="10" aria-hidden="true"><line x1="0" x2="28" y1="5" y2="5" stroke="var(--text-muted)" stroke-width="2" stroke-dasharray="3 4"/></svg>${esc(r.label)}</span>`).join('')}
+    ${o.bands ? `<span class="muted">Line color is the band of the value.</span>` : ''}${o.noclick ? '' : '<span class="muted">Click a time to see it below.</span>'}</div>`;
   return `<div class="chart" data-chartbox="${id}">${legend}<div class="plot">${svg}<div class="tip" hidden></div></div></div>`;
 }
-function wireCharts(p) {
+function wireCharts() {
   for (const box of main.querySelectorAll('[data-chartbox]')) {
     const { pts, series, o } = CHARTS[box.dataset.chartbox];
     const svg = box.querySelector('svg.lc'), hit = svg.querySelector('rect.hit'), cross = svg.querySelector('line.cross'), tip = box.querySelector('.tip');
@@ -319,13 +321,13 @@ function wireCharts(p) {
       const i = idx(ev), r = hit.getBoundingClientRect(), sr = svg.getBoundingClientRect();
       const xv = +hit.getAttribute('x') + i / Math.max(1, pts.length - 1) * +hit.getAttribute('width');
       cross.setAttribute('x1', xv); cross.setAttribute('x2', xv); cross.setAttribute('visibility', 'visible');
-      tip.innerHTML = `<strong>${esc(fmtPoint(pts[i].t, o.minutes))}</strong>${series.map(s => `<div>${esc(s.label)}: <strong>${pts[i][s.key] ?? '–'}${o.max === 100 ? '%' : ''}</strong>${s.who && pts[i][s.who] ? ` ${esc(pts[i][s.who])}` : ''}${s.band && pts[i][s.key] != null ? ` (${BAND_NAME[s.band(pts[i][s.key])]})` : ''}</div>`).join('')}`;
+      tip.innerHTML = `<strong>${esc(fmtPoint(pts[i].t, o.minutes))}</strong>${series.map(s => `<div>${esc(s.label)}: <strong>${pts[i][s.key] == null ? '–' : (o.fmt || (v => o.max === 100 ? v + '%' : v))(pts[i][s.key])}</strong>${s.who && pts[i][s.who] ? ` ${esc(pts[i][s.who])}` : ''}${s.band && pts[i][s.key] != null ? ` (${BAND_NAME[s.band(pts[i][s.key])]})` : ''}</div>`).join('')}`;
       tip.hidden = false;
       const left = ev.clientX - sr.left;
       tip.style.left = `${Math.min(left + 14, sr.width - tip.offsetWidth - 4)}px`; tip.style.top = `${ev.clientY - sr.top + 12}px`;
     });
     hit.addEventListener('mouseleave', () => { cross.setAttribute('visibility', 'hidden'); tip.hidden = true; });
-    hit.addEventListener('click', ev => { location.href = url({ at: pts[idx(ev)].t }); });
+    if (!o.noclick) hit.addEventListener('click', ev => { location.href = url({ at: pts[idx(ev)].t }); });
   }
   main.querySelectorAll('[data-cls]').forEach(a => a.addEventListener('click', ev => { ev.preventDefault(); location.href = url({ cls: a.dataset.cls }); }));
 }
@@ -336,6 +338,27 @@ function groupBy(d, note = '') {
         ${d.group_by.rows.map(r => `<tr data-group="${esc(r.value)}"><td>${esc(r.value)}</td>${'hosts' in r ? `<td class="num">${n0(r.hosts)}</td>` : ''}<td class="num">${n0(r.vms)}</td><td class="num">${n0(r.below_green)}</td><td class="num">${n0(r.near_line)}</td><td class="num">${n0(r.wider_than_numa_node)}</td><td class="num">${r.worst}</td><td>${chip(r.status)}</td></tr>`).join('')}</tbody></table>`;
     }
   return h;
+}
+// ---------------------------------------------------------------- a VM's two layers (monitor.md, Performance tab on a VM; l2.realms)
+// The unit follows the number: the data carries it with its own space (" ms", "%", "/s"). The name never holds it.
+const niceMax = v => { if (!(v > 0)) return 1; const p = 10 ** Math.floor(Math.log10(v)), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
+const withUnit = (v, m, tick) => v == null ? '–' : `${Number(v).toLocaleString('en-US', tick ? { maximumFractionDigits: 2 } : { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals })}${m.unit}`;
+const LAYER_NOTE = { guest_os: 'Runs on top of the Virtual Motherboard.', virtual_motherboard: 'The VM\'s virtual hardware, under the Guest OS.' };
+function metricBlock(m, layer) {
+  const score = !!m.scale, lowest = m.better === 'higher';
+  const top = score ? 100 : niceMax(Math.max(...m.points.map(p => p.v)) * 1.1);
+  const fmt = (v, tick) => withUnit(v, m, tick);
+  const series = [score ? { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }
+    : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
+  const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
+    fmt, width: 760, height: 160, left: m.unit.length > 3 ? 104 : 72, minutes: m.minutes, noclick: true, nodirect: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined,
+    refs: [{ value: m.percentile_95, label: '95th percentile', short: '95th pct' }] });
+  return `<div class="metric" data-metric="${m.key}"><div class="mfig"><h4>${esc(m.label)}</h4><div class="muted">${lowest ? 'Higher is better' : 'Lower is better'}</div>
+    <dl><dt>Now</dt><dd>${fmt(m.now)}</dd><dt>Worst</dt><dd>${fmt(m.worst.v)} <span class="muted">at ${esc(fmtPoint(m.worst.t, m.minutes))}</span></dd><dt>95th percentile</dt><dd>${fmt(m.percentile_95)}</dd></dl></div>${chart}</div>`;
+}
+function layersView(d) {
+  return `<p class="muted">Over ${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point per ${fmtDur(d.layers[0].metrics[0].minutes)}. Each point holds the worst value inside it. The 95th percentile is the value that 95% of the points were better than.</p>`
+    + d.layers.map(l => `<section class="persp layer" data-layer="${l.key}"><h2>${esc(l.title)} ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span></h2>${l.metrics.map(m => metricBlock(m, l.key)).join('')}</section>`).join('');
 }
 function perfTab(p, d) {
   const cls = CLASS_NAME[p.class], m = p.point_minutes, sel = p.selected, C = p.consumer, P = p.provider;

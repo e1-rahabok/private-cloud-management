@@ -402,6 +402,27 @@ class PerformanceTab(Base):
         d = server.l2_get(["monitor", "compute", "estate", "performance"], NOW, (), q(at=t))["perf"]
         self.assertEqual((d["selected"]["index"], d["selected"]["default"], d["consumer"]["worst_vms_mode"]), (100, False, "at"))
 
+    def test_LST_21_a_vm_has_two_layers_with_statistics_and_units(self):
+        e = T["LST-21"]["expect"]
+        d = M.pillar_view(NOW, "compute", T["LST-21"]["given"]["object"], "performance", T["LST-21"]["given"]["window"], "host_model")
+        self.assertEqual([l["key"] for l in d["layers"]], e["layer_order"])
+        self.assertNotIn("group_by", d)
+        self.assertEqual([m["key"] for m in d["layers"][0]["metrics"]], e["guest_os_metrics"])
+        self.assertEqual([m["key"] for m in d["layers"][1]["metrics"]], e["virtual_motherboard_metrics"])
+        realm = {**d["realms"]["guest_os"], **d["realms"]["vm"]}
+        for l in d["layers"]:
+            for m in l["metrics"]:
+                vals = [p["v"] for p in m["points"]]
+                self.assertEqual(len(vals), e["points"])
+                self.assertEqual(m["now"], realm[m["key"]])
+                self.assertEqual(m["worst"]["v"], min(vals) if m["better"] == "higher" else max(vals))
+                self.assertTrue({"now", "worst", "percentile_95"} <= set(m) and "average" not in m)
+                self.assertTrue(m["label"][0].isupper() and not any(u in m["label"] for u in ("percent", " ms", "per s")), m["label"])
+                self.assertTrue(m["unit"].strip(), m["key"])
+        self.assertIsNone(M.pillar_view(NOW, "compute", "sg-app-117", "inventory", "24h"))
+        self.assertIsNotNone(M.pillar_view(NOW, "compute", "fr", "inventory", "24h"))
+        self.assertNotIn("inventory", [r["pillar"] for r in M.summary(NOW, "compute", "sg-app-117", "24h")["pillars"]])
+
     def test_performance_tab_only_above_the_cluster(self):
         self.assertIn("perf", M.pillar_view(NOW, "compute", "fr", "performance", "24h"))
         self.assertNotIn("perf", M.pillar_view(NOW, "compute", "FR-G-04", "performance", "24h"))

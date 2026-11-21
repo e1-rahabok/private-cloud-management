@@ -13,6 +13,12 @@ from functools import lru_cache
 from . import generator, l2, l2_estate as X, l2_performance as P, noc
 
 PILLARS = ("availability", "performance", "capacity", "security", "configuration", "inventory")
+# Inventory counts objects and their changes: a provider tab (l2.pillars, D-092).
+CONSUMER_KINDS = ("vm", "guest_os", "virtual_disk", "vnic")
+
+
+def pillars_for(n: dict) -> tuple:
+    return tuple(p for p in PILLARS if not (p == "inventory" and n["kind"] in CONSUMER_KINDS))
 RANK = {"red": 0, "amber": 1, "no_data": 2, "green": 3}
 WORST = lambda xs: min(xs, key=lambda s: RANK.get(s, 3)) if xs else "green"
 
@@ -108,6 +114,61 @@ def vm_values(vm: dict, score: float, act: dict) -> dict:
     lack = max(0.0, 100 - score)
     return {"cpu_ready_percent": round(0.3 + lack * 0.12, 1), "co_stop_percent": round(lack * 0.02, 1),
             "memory_wait_percent": 0.0, "disk_latency_ms": round(2 + lack * 0.2, 1), "vm_performance": score}
+
+
+# ---------------------------------------------------------------- a VM's two layers (l2.realms, D-092)
+
+# (key, label, unit, better, decimals, scale). The label never holds the unit; the unit follows the number.
+LAYER_METRICS = (
+    ("guest_os", "Guest OS", (
+        ("run_queue_per_vcpu", "Run Queue", " per vCPU", "lower", 2, None),
+        ("context_switches_per_s", "Context Switches", "/s", "lower", 0, None),
+        ("paging_per_s", "Paging", " pages/s", "lower", 0, None),
+        ("guest_os_performance", "Guest OS Performance", "%", "higher", 1, (0, 100)))),
+    ("virtual_motherboard", "Virtual Motherboard", (
+        ("cpu_ready_percent", "CPU Ready", "%", "lower", 1, None),
+        ("co_stop_percent", "CPU Co-Stop", "%", "lower", 1, None),
+        ("memory_wait_percent", "Memory Wait", "%", "lower", 1, None),
+        ("disk_latency_ms", "Disk Latency", " ms", "lower", 1, None),
+        ("vm_performance", "VM Performance", "%", "higher", 1, (0, 100)))),
+)
+
+
+def _series(vm_id: str, key: str, now_value: float, better: str, decimals: int, scale, n: int) -> list:
+    """One metric's points over the window, ending at the value the page already knows. Deterministic noise;
+    the worst value inside a point is the point (D-091)."""
+    out = []
+    for i in range(n):
+        h, spike = X._h(vm_id, key, i), X._h(vm_id, key, "spike", i)
+        if better == "higher":
+            v = now_value + (h - 0.5) * 6 - (8 + 12 * spike if spike > 0.97 else 0)
+            v = min(scale[1], max(scale[0], v))
+        else:
+            v = now_value * (0.55 + 0.9 * h) * (1.8 + spike if spike > 0.97 else 1)
+        out.append(v)
+    out[-1] = now_value
+    return [int(round(v)) if decimals == 0 else round(v, decimals) for v in out]
+
+
+def vm_layers(n: dict, now: datetime, window: str, act: dict, own: float) -> list:
+    """The Guest OS on top, the Virtual Motherboard under it. Per metric: points, now, worst with its time,
+    and the 95th percentile. Never an average."""
+    values = {"guest_os": guest_os_values(n, act), "virtual_motherboard": vm_values(n, round(own, 1), act)}
+    start, L, count = P._slots(now, window)
+    times = [datetime.fromtimestamp(start + (i + 1) * L, tz=now.tzinfo).isoformat() for i in range(count)]
+    layers = []
+    for lk, title, metrics in LAYER_METRICS:
+        out = []
+        for key, label, unit, better, dec, scale in metrics:
+            vals = _series(n["id"], key, values[lk][key], better, dec, scale, count)
+            w = max(range(count), key=lambda i: vals[i]) if better == "lower" else min(range(count), key=lambda i: vals[i])
+            p95 = P.nearest_rank(vals, 95 if better == "lower" else 5)
+            out.append({"key": key, "label": label, "unit": unit, "better": better, "decimals": dec, "scale": scale,
+                        "minutes": L // 60, "points": [{"t": t, "v": v} for t, v in zip(times, vals)],
+                        "now": vals[-1], "worst": {"v": vals[w], "t": times[w]}, "percentile_95": p95})
+        status = X.status_of(values[lk]["guest_os_performance"] if lk == "guest_os" else own)
+        layers.append({"key": lk, "title": title, "status": status, "metrics": out})
+    return layers
 
 
 # ---------------------------------------------------------------- where an object sits
@@ -371,7 +432,7 @@ def summary(now: datetime, view: str, nid: str, window: str, enable=()) -> dict 
     st["performance"] = WORST([st["performance"], X.status_of(perf)]) if perf is not None else st["performance"]
     stale = stale_for(E, nid, now, enable)
     rows = []
-    for p in PILLARS:
+    for p in pillars_for(n):
         rows.append({"pillar": p, "status": "no_data" if stale and p in ("availability", "performance") else st[p],
                      "findings": sum(1 for f in fs if f["pillar"] == p), "headline": headline(E, view, nid, p, now, window, enable)})
     out = {"object": node_out(E, view, nid), "window": window, "run": run_line(now, window), "pillars": rows,
@@ -552,7 +613,7 @@ def pillar_view(now: datetime, view: str, nid: str, pillar: str, window: str, gr
                 cls: str | None = None, at: str | None = None) -> dict | None:
     E = X.estate(tuple(enable))
     n = X.node(E, nid)
-    if n is None or pillar not in PILLARS:
+    if n is None or pillar not in pillars_for(n):
         return None
     v = X.view_of(E, nid, view)
     alerts = _alerts_by_object(now, enable)
@@ -577,7 +638,9 @@ def pillar_view(now: datetime, view: str, nid: str, pillar: str, window: str, gr
         act = X.active_stories(enable)
         out["realms"] = {"vm": {"status": X.status_of(own), **vm_values(n, round(own, 1), act)},
                          "guest_os": {"status": X.status_of(guest_os_values(n, act)["guest_os_performance"]), **guest_os_values(n, act)}}
-    if group:
+        if pillar == "performance":
+            out["layers"] = vm_layers(n, now, window, act, own)
+    if group and n["kind"] not in CONSUMER_KINDS:
         out["group_by"] = {"attribute": group, "rows": group_by(E, v, nid, group, now, window, enable)}
     if pillar == "performance" and P.applies(n):
         out["perf"] = P.view(now, v, nid, window, cls or P.DEFAULT_CLASS, at, enable)

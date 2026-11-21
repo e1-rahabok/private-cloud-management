@@ -123,6 +123,19 @@ try {
   const head = await page.getAttribute('h3[data-at]', 'data-at');
   check('LPG-14', sections.join() === 'vm,cluster' && gold === 'Gold' && !!atParam && head === atParam && (await page.innerText('h3[data-at]')).includes('the time you picked'), `${sections}; ${gold}; at=${atParam}`);
 
+  // LPG-15 a VM's Performance tab: two layers, statistics named, units after numbers
+  await go('/l2/monitor/compute/fr-app-1272/performance?group=host_model');
+  const tabsText = (await page.$$eval('nav.tabs a', xs => xs.map(x => x.textContent.trim()))).join();
+  const layers = await page.$$eval('section.layer', xs => xs.map(x => x.dataset.layer));
+  const names = await page.$$eval('.metric h4', xs => xs.map(x => x.textContent));
+  const figs = await page.$$eval('.metric dd', xs => xs.map(x => x.textContent.trim()));
+  const labels = await page.$$eval('.metric dt', xs => [...new Set(xs.map(x => x.textContent.trim()))]);
+  const mainText = await page.innerText('main');
+  check('LPG-15', tabsText === 'Summary,Availability,Performance,Capacity,Security,Configuration' && layers.join() === 'guest_os,virtual_motherboard' && names.length === 9
+    && labels.join() === 'Now,Worst,95th percentile' && figs.every(f => /\d(%|\/s| ms| per vCPU| pages\/s)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
+    && !(await page.$('#grp')) && !/side by side|Just above the line|Children outside green/i.test(mainText) && !/average/i.test(mainText),
+    `${tabsText}; ${layers}; ${names.length} charts; ${figs.slice(0, 3)}`);
+
   // LPG-12 contrast and no foreign request
   const contrast = async () => page.evaluate(() => {
     const parse = c => (c.match(/[\d.]+/g) || []).map(Number);

@@ -43,9 +43,12 @@ entries:
   l2.pillars:
     description: >
       The tabs in Monitor and Improve. Summary first, then one tab per L2 pillar. Never one combined score.
+      Inventory counts objects and their changes, so it is a provider tab: a VM, Guest OS, virtual disk or vNIC
+      has Summary, Availability, Performance, Capacity, Security and Configuration only (D-092).
       Troubleshoot has no pillar tabs: one case crosses pillars. Compliance is out until after 1.0 (D-022);
       cost, price and value are FinOps (D-027).
     tabs: [summary, availability, performance, capacity, security, configuration, inventory]
+    no_inventory_on: [vm, guest_os, virtual_disk, vnic]
     troubleshoot: { availability: true, performance: true, capacity: false, security: "breach goes to the security team (D-044)" }
     decisions: [D-086]
 
@@ -246,11 +249,31 @@ entries:
 
   l2.realms:
     description: >
-      VM and Guest OS side by side, each with its "on my court" values. If the VM is not waiting and the Guest OS is,
-      the cause is inside the Guest OS: hand the evidence to the Windows or Linux team.
-    vm: [cpu_ready_percent, co_stop_percent, memory_wait_percent, disk_latency_ms, vm_performance]
-    guest_os: [run_queue_per_vcpu, context_switches_per_s, paging_per_s, guest_os_performance]
-    decisions: [D-038]
+      The two layers of a VM, each with its "on my court" values. The Guest OS runs on top of the Virtual Motherboard
+      (the VM's virtual hardware), so the layers are stacked, Guest OS first, never side by side (D-092). If the
+      Virtual Motherboard is not waiting and the Guest OS is, the cause is inside the Guest OS: hand the evidence to
+      the Windows or Linux team. On the VM's Performance tab each metric is a chart over the window with its named
+      figures: now, worst, 95th percentile. Never an average.
+    layers:
+      guest_os:
+        title: Guest OS
+        metrics:
+          run_queue_per_vcpu:     { label: "Run Queue",              unit: " per vCPU", better: lower,  decimals: 2 }
+          context_switches_per_s: { label: "Context Switches",       unit: "/s",        better: lower,  decimals: 0 }
+          paging_per_s:           { label: "Paging",                 unit: " pages/s",  better: lower,  decimals: 0 }
+          guest_os_performance:   { label: "Guest OS Performance",   unit: "%",         better: higher, decimals: 1, scale: [0, 100] }
+      virtual_motherboard:
+        title: Virtual Motherboard
+        metrics:
+          cpu_ready_percent:      { label: "CPU Ready",              unit: "%",         better: lower,  decimals: 1 }
+          co_stop_percent:        { label: "CPU Co-Stop",            unit: "%",         better: lower,  decimals: 1 }
+          memory_wait_percent:    { label: "Memory Wait",            unit: "%",         better: lower,  decimals: 1 }
+          disk_latency_ms:        { label: "Disk Latency",           unit: " ms",       better: lower,  decimals: 1 }
+          vm_performance:         { label: "VM Performance",         unit: "%",         better: higher, decimals: 1, scale: [0, 100] }
+    figures: [now, worst, percentile_95]
+    percentile_95: "the value that 95% of the points were better than (nearest rank); the lowest 5% of points for a metric where higher is better"
+    unit_rule: "The unit follows the number. % and /s attach to it; any other unit follows a space. The label never holds the unit."
+    decisions: [D-038, D-092]
 
   l2.timeline:
     description: >

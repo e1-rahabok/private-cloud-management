@@ -211,6 +211,13 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
 - **What, not why:** the tab says what was hit, when, where and how wide. Causes, including a VM that slows itself (a limit, too many vCPUs), are the case's (D-084).
 - **At the cluster and below,** the tab stays as 4.1: the summary, the children worst first, the detail.
 
+### 4.3.2 The Performance tab on a VM (D-092)
+
+- **Two layers, one over the other.** The Guest OS runs on the Virtual Motherboard (the VM's virtual hardware), so the Guest OS comes first and the Virtual Motherboard under it. Never side by side.
+- **One chart per metric,** over the window. Beside it, three named figures: Now, Worst (with its time) and 95th percentile. Never an average: a VM is felt at its peak.
+- **Group by, "Just above the line", "Children outside green" and Inventory are not on a VM.** They describe a group of objects.
+- **Names and units:** Title Case, capitals for abbreviations, the unit after the number, never inside the name ("CPU Ready 2.5%", "Disk Latency 5.6 ms").
+
 ### 4.4 What each window adds
 
 | Window | Shows | Source |
