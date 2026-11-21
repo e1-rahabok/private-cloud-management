@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import api, capacity, docs, generator, l2, l2_cases, l2_estate, l2_improve, l2_monitor, noc
+from . import api, capacity, docs, generator, l2, l2_agent, l2_cases, l2_estate, l2_improve, l2_monitor, noc
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 
@@ -80,6 +80,8 @@ def l2_get(rest, now, enable, query):
     window = q("window", "24h")
     if window not in l2_estate.WINDOWS:
         raise ValueError("window must be one of " + ", ".join(l2_estate.WINDOWS))
+    if rest == ["agent", "health"]:
+        return l2_agent.health(generator.load_spec()["settings"])
     if rest == ["tree"]:
         return l2_monitor.tree(now, q("view", "compute"), q("node", "estate"), q("activity", "monitor"), q("pillar", "summary"), window, enable)
     if rest == ["search"]:
@@ -123,24 +125,6 @@ def l2_get(rest, now, enable, query):
 
 
 GROUP_ATTRS = ("host_model", "esxi_build", "firmware", "class_of_service", "environment", "guest_os", "tools_version", "vcpu_band")
-
-
-def l2_findings_agent(now, fid, enable):
-    """Agent E2 explains a finding (monitor.md, Findings). Recorded with both identity fields."""
-    import yaml
-    from . import agent_e2
-    f = next((x for x in l2_monitor.findings(now, enable) if x["id"] == fid), None)
-    if not f:
-        return 404, {"error": "no such finding"}
-    st = generator.load_spec()["settings"]
-    vocab = yaml.safe_load((l2.SPEC / "catalog/vocabulary/l2.yaml").read_text())
-    template = f"Draft by Agent E2, to review: {f['object_name']}: {f['summary']}"
-    out = agent_e2.draft_facts({"finding": {k: f[k] for k in ("summary", "pillar", "window", "object", "evidence")}}, "rca_draft", st,
-                               vocab["avoided"], template)
-    with noc.STATE.lock:
-        r = noc.record("agent_explain", fid, "l2-engineer-1", "explain_finding", "-", out["source"], now, actor_agent="agent-e2")
-        noc.STATE.save()
-    return 200, {**out, "record": r}
 
 
 def capacity_get(rest, now, enable, query):
@@ -246,8 +230,8 @@ class Handler(BaseHTTPRequestHandler):
             code, data = capacity.add_demand(now, body, enable)
         elif parts[1] == "l2" and parts[2:3] == ["cases"]:
             code, data = l2_cases.act(now, parts[3:], body, enable)
-        elif parts[1] == "l2" and parts[2:3] == ["findings"] and parts[4:] == ["agent"]:
-            code, data = l2_findings_agent(now, parts[3], enable)
+        elif parts[1] == "l2" and parts[2:] == ["agent", "ask"]:
+            code, data = l2_agent.ask(now, body, enable)
         elif parts[1] == "l2" and parts[2:3] == ["decisions"]:
             code, data = l2.act(now, ["monthly", *parts[2:]], body, enable)
         elif parts[1] == "l2":

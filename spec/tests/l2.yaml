@@ -303,6 +303,21 @@ story:
       percentile_90_equals: "vCommunity|Highest 10 Percent Cluster Utilization"
       closed_and_opened_equal: ["vCommunity|Cluster Delta Close Count", "vCommunity|Cluster Delta Open Count"]
     decisions: [D-094]
+  - id: LST-27
+    name: Agent E2 is asked with facts PCM rebuilds, never with the browser's numbers
+    given:
+      metric: { object: fr-svc-5526, pillar: performance, window: 24h, layer: guest_os, metric: run_queue_per_vcpu, now_sent_by_browser: 99 }
+      finding: { finding: first finding under the estate }
+      case: { case: case-sg-app-117, link: its first link }
+    expect:
+      metric_facts: [object, path, metric, now, worst, percentile_95, points, better, layer_status, other_metrics, calendar]
+      browser_number_ignored: true
+      role: l2
+      recorded: { action: agent_ask, actor_agent: agent-e2, actor_human: l2-engineer-1 }
+      unknown_context: 400
+      unknown_metric: 404
+      service_down: { status: 200, source: unavailable, content: "" }
+    decisions: [D-050, D-078, D-097]
 
 page:
   - id: LPG-1
@@ -310,7 +325,7 @@ page:
   - id: LPG-2
     rule: No word from catalog/vocabulary/l2.yaml "avoided" appears on any /l2 page.
   - id: LPG-3
-    rule: The top bar shows Monitor, Troubleshoot and Improve, and apart from them Rules and Calendar; no Weekly, Monthly, Escalations, Configuration or Inventory item.
+    rule: The top bar shows Monitor, Troubleshoot and Improve, and apart from them the Agent E2 mark, Rules and Calendar; no Weekly, Monthly, Escalations, Configuration or Inventory item.
   - id: LPG-4
     rule: /l2 opens Monitor on the estate, Summary tab, 24 hours, with one row per pillar and no single combined score.
   - id: LPG-5
@@ -320,8 +335,10 @@ page:
   - id: LPG-7
     rule: The case page for L-2 says "The cause is inside the Guest OS. Hand this evidence to the Windows or Linux team."
   - id: LPG-8
-    rule: Without the Agent E2 service running, "Ask Agent E2 why" on a case says "The Agent E2 service is not available" and shows no answer.
-    decisions: [D-078]
+    rule: >
+      Without the Agent E2 service running, the top bar mark is grey and named "Agent E2 is not available"; the mark on a case's
+      header opens the panel, and a question sent there says "The Agent E2 service is not available" and shows no answer.
+    decisions: [D-078, D-097]
   - id: LPG-9
     rule: Rules has no "Make automatic" button; "Propose a policy change" shows Publish disabled until Replay has run; threshold Publish is disabled until a replay.
     decisions: [D-079]
@@ -369,3 +386,18 @@ page:
       address and the clusters table is headed with that time; a click on FR-B-04 selects it in the tree and keeps the
       Capacity tab and the window.
     decisions: [D-091, D-094]
+  - id: LPG-20
+    rule: >
+      Every L2 page shows the Agent E2 mark in the top bar, before Rules. On fr-svc-5526's Performance tab every metric has a mark named
+      "Ask Agent E2 about {metric}"; every finding row has one, and no "Explain this finding" button remains. A click on the Run Queue mark
+      opens the panel on the right: the content is pushed, not covered (the chart's right edge stays left of the panel), the tree folds to a strip,
+      the Run Queue metric is outlined, the context names fr-svc-5526, Performance and the window, and up to three suggested questions show.
+      With the service running, a suggested question returns an answer with its sources as chips, the computed values boxed, an object of the
+      estate named in it as a link, and the footer "recorded in the action history". A move to another tab keeps the panel open with the new context;
+      Esc closes it, the tree comes back, and the focus returns to the mark.
+    decisions: [D-097]
+  - id: LPG-21
+    rule: >
+      A clarifying answer shows its questions under "Agent E2 asks"; the next question sent carries the earlier turns. On a narrow screen
+      (800 px) the panel covers the page as a sheet with Close at the top.
+    decisions: [D-097]

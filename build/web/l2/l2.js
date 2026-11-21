@@ -1,4 +1,5 @@
 // GENERATED from spec/workspaces/l2/ (frame, monitor, troubleshoot, case, improve, rules, calendar). Do not edit by hand (D-070).
+// Agent E2: frame.md, Agent E2 mark and Agent E2 panel (D-097).
 'use strict';
 let QS = new URLSearchParams(location.search);
 const passOf = q => ['now', 'enable'].filter(k => q.get(k)).map(k => `${k}=${encodeURIComponent(q.get(k))}`).join('&');
@@ -89,7 +90,7 @@ async function topBar(openCases) {
   const u = (act, label) => `<a href="${url({ activity: act })}"${R.activity === act ? ' aria-current="page"' : ''}>${label}</a>`;
   document.getElementById('top').innerHTML = `<span class="name">L2 Platform</span>
     <nav class="acts" aria-label="Activities">${a('monitor', 'Monitor')}${a('troubleshoot', 'Troubleshoot', openCases ? `<span class="count" aria-label="${openCases} open cases">${openCases}</span>` : '')}${a('improve', 'Improve')}</nav>
-    <nav class="utils" aria-label="Utilities">${u('rules', 'Rules')}${u('calendar', 'Calendar')}</nav>`;
+    <nav class="utils" aria-label="Utilities">${e2TopMark()}${u('rules', 'Rules')}${u('calendar', 'Calendar')}</nav>`;
 }
 
 // ---------------------------------------------------------------- inventory tree (frame.md, Inventory tree)
@@ -232,7 +233,7 @@ function findingRow(f) {
   return `<div class="finding" data-finding="${f.id}">${chip(f.severity)}<div><div class="chain">${PNAME[f.pillar]} · ${f.window === '7d' ? 'weekly check' : 'daily check'}${f.kind ? ' · ' + esc(f.kind.replaceAll('_', ' ')) : ''} · ${f.path.slice(1).map(esc).join(' › ')}</div>
     <strong>${esc(f.object_name)}</strong>: ${esc(f.summary)}${ev}
     ${f.explained_by ? `<div class="explained">Explained by the calendar: ${esc(f.explained_by.note)}</div>` : ''}${prop}
-    <div class="acts">${go}<button type="button" class="act secondary" data-explain="${f.id}">Explain this finding</button><span class="muted" data-out="${f.id}"></span></div></div></div>`;
+    <div class="acts">${go}</div></div>${e2mark({ kind: 'finding', finding: f.id }, 'this finding', { name: f.object_name })}</div>`;
 }
 function wireFindings(reload) {
   main.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', async () => { await postJSON(`proposals/${b.dataset.approve}/approve`); reload('Approved.'); }));
@@ -243,11 +244,6 @@ function wireFindings(reload) {
   main.querySelectorAll('[data-trouble]').forEach(b => b.addEventListener('click', async () => {
     const r = await postJSON('cases', { trigger: 'finding', finding: b.dataset.trouble });
     if (r.status === 200) go(url({ activity: 'troubleshoot', caseId: r.body.id })); else reload(r.body.error);
-  }));
-  main.querySelectorAll('[data-explain]').forEach(b => b.addEventListener('click', async () => {
-    const out = main.querySelector(`[data-out="${b.dataset.explain}"]`); out.textContent = 'Agent E2 is reading…';
-    const r = await postJSON(`findings/${b.dataset.explain}/agent`, {});
-    out.textContent = r.body.text || r.body.error; document.body.dataset.explained = r.body.source || 'error';
   }));
 }
 
@@ -466,7 +462,8 @@ function metricBlock(m, layer) {
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
     fmt, width: 760, height: 160, left: m.unit.length > 3 ? 104 : 72, minutes: m.minutes, noclick: true, nodirect: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined });
-  return `<div class="metric" data-metric="${m.key}"><div class="mfig"><h4>${esc(m.label)}</h4><div class="muted">${lowest ? 'Higher is better' : 'Lower is better'}</div>
+  const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, { p95: fmt(m.percentile_95), worst: fmtPoint(m.worst.t, m.minutes) }) : '';
+  return `<div class="metric" data-metric="${m.key}"><div class="mfig"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div><div class="muted">${lowest ? 'Higher is better' : 'Lower is better'}</div>
     <dl><dt>Now</dt><dd>${fmt(m.now)}</dd><dt>Worst</dt><dd>${fmt(m.worst.v)} <span class="muted">at ${esc(fmtPoint(m.worst.t, m.minutes))}</span></dd><dt>95th percentile</dt><dd>${fmt(m.percentile_95)}</dd></dl></div>${chart}</div>`;
 }
 function layersView(d) {
@@ -535,7 +532,8 @@ function kpiBlock(k, c, m) {
   const chart = lineChart(`cap-${k.key}`, k.points, [hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: riskBand, worse: Math.max }
     : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }],
     { label: `${k.label} over the window, 0 to 100%`, max: 100, width: 760, height: 170, left: 56, minutes: m, noclick: true, nodirect: true, bands: hiw ? HIGH_BANDS : LOW_BANDS, refs: closureRefs(k) });
-  return `<div class="metric" data-kpi="${k.key}"><div class="mfig"><h4>${esc(k.label)}</h4><div class="muted">${hiw ? 'Higher is worse' : 'Higher is better'}</div>
+  const mark = e2mark({ kind: 'kpi', metric: k.key, pillar: 'capacity' }, k.label, { p95: pct(k.percentile_95), worst: k.worst ? fmtPoint(k.worst.t, m) : '' });
+  return `<div class="metric" data-kpi="${k.key}"><div class="mfig"><div class="mname"><h4>${esc(k.label)}</h4>${mark}</div><div class="muted">${hiw ? 'Higher is worse' : 'Higher is better'}</div>
     <dl><dt>Now</dt><dd>${pct(k.now)}</dd><dt>Worst</dt><dd>${pct(k.worst && k.worst.v)} <span class="muted">at ${k.worst ? esc(fmtPoint(k.worst.t, m)) : '–'}</span></dd>
     <dt>95th percentile</dt><dd>${pct(k.percentile_95)}</dd><dt data-check-label>${esc(c.label)} ${esc(fmtTime(c.window_end))}</dt><dd>${pct(k.check_value)}</dd></dl></div>${chart}</div>`;
 }
@@ -670,7 +668,7 @@ function chainTree(links, effect, open) {
   const kids = links.filter(l => l.effect === effect);
   if (!kids.length) return '';
   return `<ul class="links">${kids.map(l => `<li><div class="clink ${l.state}" data-link="${l.id}">
-    <div class="cause">${esc(l.cause)}</div>
+    <div class="cause"><span>${esc(l.cause)}</span>${e2mark({ kind: 'link', case: R.caseId, link: l.id }, 'this link')}</div>
     <div class="meta">${objLink(l.object)} · ${LAYER[l.layer] || esc(l.layer)} · ${STEP[l.step] || esc(l.step)} · proposed by Agent E2, flow ${esc(l.flow)} · <span class="chip ${l.kind === 'main' ? 'blue' : 'no_data'}">${l.kind === 'main' ? 'Main' : 'Contributing'}</span></div>
     <ul>${l.evidence.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
     <div class="acts">${l.state === 'proposed' && open ? `<button type="button" class="act" data-confirm="${l.id}">Confirm</button><button type="button" class="act secondary" data-ruleout="${l.id}">Rule out</button>`
@@ -683,7 +681,7 @@ async function casePage(msg = '') {
   const d = await getJSON(`cases/${enc(R.caseId)}`).catch(() => null);
   if (!d) { main.innerHTML = '<h1>No such case</h1>'; return; }
   const open = d.state === 'open';
-  const head = `<div class="objhead"><div><div class="crumbs">${d.path.slice(0, -1).map(p => esc(p)).join(' › ')}</div><div class="kind">Case · ${TRIGGER[d.trigger]}</div><h1>${esc(d.title)}</h1>
+  const head = `<div class="objhead"><div><div class="crumbs">${d.path.slice(0, -1).map(p => esc(p)).join(' › ')}</div><div class="kind">Case · ${TRIGGER[d.trigger]}</div><div class="titlerow"><h1>${esc(d.title)}</h1>${e2mark({ kind: 'case', case: d.id }, 'this case', { name: d.title })}</div>
     <div class="muted">${objLink(d.object)} · ${esc(d.symptom)} · opened ${fmtTime(d.opened_at)} by ${esc(d.opened_by)} · ${open ? '<span class="chip red">Open</span>' : '<span class="chip green">Closed</span>'}</div></div>
     <div class="windows fixed">Case window: ${fmtTime(d.window_from)} to now</div></div>`;
   let started = '';
@@ -718,13 +716,12 @@ async function casePage(msg = '') {
     ${d.chain.length ? chainTree(d.chain, 'symptom', open) : '<p class="muted">Nothing proposed yet. Ask Agent E2 to propose the first link.</p>'}
     ${open ? `<div class="toolbar"><button type="button" class="act" id="propose"${d.more_to_propose ? '' : ' disabled'}>Propose the next link</button><span class="muted">${d.more_to_propose ? `Agent E2 follows its flows: ${d.chain.length} of the links it can propose so far.` : 'Agent E2 has nothing more to propose from its flows.'}</span></div>` : ''}
     ${d.realms ? `<h2>VM and Guest OS, side by side</h2><div class="cols2">${realm('VM', d.realms.vm)}${realm('Guest OS', d.realms.guest_os)}</div>` : ''}
-    <h2>Layers</h2><table class="data" data-layers><tbody>${d.layers.map(l => `<tr><td>${LAYER[l.layer]}</td><td><span class="chip ${VERDICT[l.verdict][0]}">${VERDICT[l.verdict][1]}</span></td><td>${esc(l.values)}</td></tr>`).join('')}</tbody></table>
+    <h2>Layers</h2><table class="data" data-layers><tbody>${d.layers.map(l => `<tr data-layer-row="${l.layer}"><td>${LAYER[l.layer]}</td><td><span class="chip ${VERDICT[l.verdict][0]}">${VERDICT[l.verdict][1]}</span></td><td>${esc(l.values)}</td><td class="e2cell">${e2mark({ kind: 'layer', case: d.id, layer: l.layer }, `the ${LAYER[l.layer]} layer`)}</td></tr>`).join('')}</tbody></table>
     ${d.hand_over ? `<div class="conclusion" data-handover>${esc(d.hand_over)}</div>` : ''}
     <h2>Timeline</h2><ul class="timeline">${tl.join('')}</ul>
     <h2>Who else</h2>${we && we.count ? `<p>${n0(we.count)} object${we.count === 1 ? '' : 's'} share it: ${esc(we.test)}.</p><p>${we.objects.map(o => objLink(o)).join(', ')}</p><p><a class="link" href="${url({ activity: 'rules', caseId: undefined })}">Add a check rule</a></p>` : '<p class="muted">No other object shows this symptom.</p>'}
-    <h2>Agent E2</h2><form class="inline" id="ask"><label>Question<input type="text" name="question" size="60" value="Is the VMware platform the cause? What should I check next?"></label><button type="submit" class="act">Ask Agent E2 why</button><button type="button" class="act secondary" id="draft">Draft the root cause analysis</button></form>
-    <div class="draft" id="answer" aria-live="polite"><span class="muted">Agent E2 reads the knowledge base and the facts of this case. It explains and drafts; you decide.</span></div>
-    <h2>Close</h2>${d.closure ? `<p data-closed><strong>Closed</strong> by ${esc(d.closure.by)}: ${esc(d.closure.root_cause)}. Fix: ${esc(d.closure.corrective_action)}. Detection: ${esc(DETECTION[d.closure.detection])}, ${esc(d.closure.detection_note)}</p>`
+    <h2>Close</h2>${open ? `<div class="toolbar"><button type="button" class="act secondary" id="draft">Draft the root cause analysis</button><span class="muted">Agent E2 drafts from the confirmed links. It fills no field; you decide.</span></div>
+    <div class="draft" id="answer" aria-live="polite" hidden></div>` : ''}${d.closure ? `<p data-closed><strong>Closed</strong> by ${esc(d.closure.by)}: ${esc(d.closure.root_cause)}. Fix: ${esc(d.closure.corrective_action)}. Detection: ${esc(DETECTION[d.closure.detection])}, ${esc(d.closure.detection_note)}</p>`
       : `<form class="stack" id="close"><label>Root cause<input type="text" name="root_cause" value="${esc(d.root_cause_prefill)}"></label><label>Corrective action<input type="text" name="corrective_action"></label>
       <label>Detection<select name="detection"><option value="">Choose</option>${d.detections.map(x => `<option value="${x}">${DETECTION[x]}</option>`).join('')}</select></label><label>Detection note<input type="text" name="detection_note"></label>
       <div class="toolbar"><label style="flex:1">A log message to detect it? Count it on healthy objects first<input type="text" id="logmsg" placeholder="Log message"></label><button type="button" class="act secondary" id="validate">Validate</button><span id="valout" class="muted"></span></div>
@@ -742,16 +739,9 @@ async function casePage(msg = '') {
   if (acc) acc.addEventListener('click', async () => { const r = await postJSON(`cases/${enc(d.id)}/accept`, {}); reload(r.status === 200 ? 'Accepted.' : r.body.error); });
   const rej = main.querySelector('[data-rejectesc]');
   if (rej) rej.addEventListener('click', async () => { const reason = prompt('What is missing? A rejected escalation points to a gap in the SOP.'); const r = await postJSON(`cases/${enc(d.id)}/reject`, { reason }); reload(r.status === 200 ? 'Rejected, with the reason recorded.' : r.body.error); });
-  document.getElementById('ask').addEventListener('submit', async ev => {
-    ev.preventDefault();
-    const box = document.getElementById('answer'); box.innerHTML = '<span class="muted">Agent E2 is reading the knowledge base…</span>';
-    const r = await postJSON(`cases/${enc(d.id)}/ask`, { question: ev.target.elements.question.value });
-    box.innerHTML = r.body.source !== 'service' ? '<p class="why">The Agent E2 service is not available.</p>'
-      : `<div>${esc(r.body.content).replace(/\n/g, '<br>')}</div><p class="muted">Knowledge files read: ${r.body.files_read.map(esc).join(', ')}</p><p class="muted">Model: ${esc(r.body.model)} · asked by ${esc(r.body.record.actor_human)} · recorded in the action history</p>`;
-    document.body.dataset.ask = r.body.source;
-  });
-  document.getElementById('draft').addEventListener('click', async () => {
-    const box = document.getElementById('answer'); box.innerHTML = '<span class="muted">Agent E2 is drafting…</span>';
+  const dr = document.getElementById('draft');
+  if (dr) dr.addEventListener('click', async () => {
+    const box = document.getElementById('answer'); box.hidden = false; box.innerHTML = '<span class="muted">Agent E2 is drafting…</span>';
     const r = await postJSON(`cases/${enc(d.id)}/draft`, {});
     box.innerHTML = (r.body.source !== 'model' ? '<p class="why">Agent E2 is not available, or used words not allowed here. Showing the fixed template.</p>' : '') + `<p>${esc(r.body.text)}</p><p class="muted">Model: ${esc(r.body.model)} · asked by ${esc(r.body.record.actor_human)} · recorded in the action history</p>`;
     document.body.dataset.agent = r.body.source;
@@ -888,6 +878,165 @@ async function calendar(msg = '') {
   });
 }
 
+// ---------------------------------------------------------------- Agent E2: the mark and the panel (frame.md; D-097)
+// The mark says who answers. The panel is docked right and pushes the content; the tree folds to a strip while it is open.
+// PCM rebuilds the facts on the server from the context; the browser sends only what was clicked.
+const E2_LAYERS = ['guest_os', 'virtual_motherboard'];
+const E2 = { up: null, model: null, open: false, ctx: null, opener: null, busy: false, timer: null, pending: null };
+const e2mark = (ctx, name, show = {}) => `<button type="button" class="e2mark" data-e2="${esc(JSON.stringify({ ...ctx, show: { about: name, ...show } }))}" aria-label="Ask Agent E2 about ${esc(name)}" title="Ask Agent E2 about ${esc(name)}">E2</button>`;
+function e2TopMark() {
+  const label = E2.up === false ? 'Agent E2 is not available' : E2.up ? 'Agent E2 is available. Ask about this page.' : 'Agent E2';
+  return `<button type="button" class="e2mark top${E2.up === false ? ' off' : ''}" id="e2top" aria-label="${label}" title="${label}" aria-expanded="${E2.open}" aria-controls="e2">E2<span class="dot ${E2.up ? 'green' : 'no_data'}" aria-hidden="true"></span></button>`;
+}
+async function e2Health() {
+  const h = await getJSON('agent/health', '', null).catch(() => ({ available: false }));
+  E2.up = !!h.available; E2.model = h.model || null;
+  const t = document.getElementById('e2top');
+  if (t) t.outerHTML = e2TopMark();
+  document.body.dataset.e2 = E2.up ? 'up' : 'down';
+  return E2.up;
+}
+// The context of the page itself: the case, or the object with its tab and window.
+const pageCtx = () => R.caseId ? { kind: 'case', case: R.caseId, show: { about: 'this case' } }
+  : { kind: 'page', show: { about: 'this page' } };
+const e2Full = c => c.case || c.kind === 'finding' ? c : { view: R.view, object: R.object, window: R.window || '24h', pillar: R.pillar || 'summary', ...c };
+const objName = () => (main.querySelector('.objhead h1') || {}).textContent || R.object;
+const kindName = () => ((main.querySelector('.objhead .kind') || {}).textContent || 'object').replace(/^Case.*/, 'case');
+const winName = w => (WINDOWS.find(x => x[0] === w) || WINDOWS[1])[1];
+function e2Label(c) {
+  const where = `${objName()} · ${PNAME[c.pillar] || 'Summary'} · ${winName(c.window)}`;
+  if (c.kind === 'metric' || c.kind === 'kpi') return `${c.show.about} · ${where}`;
+  if (c.kind === 'finding') return `Finding: ${c.show.name || ''}`;
+  if (c.case) return R.caseId ? `Case: ${objName()}${c.kind === 'link' ? ' · a link' : c.kind === 'layer' ? ` · ${c.show.about.replace(/^the /, '')}` : ''}` : 'Case';
+  if (R.activity === 'troubleshoot' || R.activity === 'rules' || R.activity === 'calendar') return `${objName()} · ${R.activity.charAt(0).toUpperCase() + R.activity.slice(1)}`;
+  return where;
+}
+const convKey = c => c.case ? `case:${c.case}` : c.kind === 'finding' ? `finding:${c.finding}` : `${c.object}|${c.pillar}`;
+const convs = () => { try { return JSON.parse(sessionStorage.getItem('l2.e2') || '{}'); } catch (e) { return {}; } };
+const saveConv = (k, list) => { try { const all = convs(); all[k] = list.slice(-12); sessionStorage.setItem('l2.e2', JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
+function suggestions(c) {
+  const k = kindName().toLowerCase().replace(/^esxi /, 'ESXi ').replace(/^vm$/, 'VM');
+  if (c.kind === 'metric' || c.kind === 'kpi') return [`Is ${c.show.p95} a problem for this ${k}?`, c.show.worst ? `Why the worst at ${c.show.worst}?` : null, 'What should I check next?'].filter(Boolean);
+  if (c.kind === 'finding') return ['Explain this finding.', 'What should I check next?'];
+  if (c.case) return ['Is the VMware platform the cause?', 'What should I check next?'];
+  return [`What needs me on this ${k}?`];
+}
+function linkify(text, links) {
+  let h = esc(text).replace(/`([^`]+)`/g, '<code>$1</code>');
+  for (const l of links || []) h = h.replace(new RegExp(`(^|[^\\w-])(${l.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?![\\w-])`, 'g'), `$1<a class="link" data-obj="${esc(l.id)}" data-view="${esc(l.view)}" href="${objURL(l.id, l.view)}">$2</a>`);
+  return h.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+}
+function e2Answer(a) {
+  if (a.error) return `<div class="e2a err"><p class="why">${esc(a.error)}</p></div>`;
+  if (a.source !== 'service') return '<div class="e2a"><p class="why">The Agent E2 service is not available.</p></div>';
+  const comp = a.computed && a.computed.length ? `<div class="e2computed"><div class="lbl">Computed, not written by the model</div>${a.computed.map(x => `<span class="box">${esc(x)}</span>`).join('')}</div>` : '';
+  const asks = a.type === 'clarify' && a.questions && a.questions.length ? `<div class="e2asks"><div class="lbl">Agent E2 asks</div><ul>${a.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul><p class="muted">Your next question is the reply.</p></div>` : '';
+  const src = a.files_read && a.files_read.length ? `<div class="e2src"><div class="lbl">Sources</div>${a.files_read.map(f => `<span class="srcchip" title="Knowledge file">${esc(f)}</span>`).join('')}</div>` : '';
+  const trouble = a.finding && a.finding.outcome === 'problem' ? `<div class="toolbar"><button type="button" class="act secondary" data-e2trouble="${esc(a.finding.id)}">Troubleshoot this</button></div>` : '';
+  return `<div class="e2a">${a.content ? linkify(a.content, a.links) : ''}${asks}${comp}${src}${trouble}
+    <div class="e2foot">Model: ${esc(a.model || '–')} · knowledge ${esc((a.knowledge_commit || '–').slice(0, 7))} · asked by ${esc(a.record ? a.record.actor_human : '–')} · recorded in the action history</div></div>`;
+}
+function e2Render() {
+  const box = document.getElementById('e2'), c = E2.ctx;
+  if (!box || !c) return;
+  const list = convs()[convKey(c)] || [];
+  const thread = list.map(m => `<div class="e2q"><div class="lbl">${esc(m.label)}</div>${esc(m.q)}</div>${e2Answer(m.a)}`).join('');
+  const sugg = !E2.busy && !E2.pending && !list.length ? `<div class="e2sugg" role="group" aria-label="Suggested questions">${suggestions(c).map(q => `<button type="button" class="sugg" data-sugg="${esc(q)}">${esc(q)}</button>`).join('')}</div>` : '';
+  const kept = !E2.busy && box.querySelector('#e2q') ? box.querySelector('#e2q').value : '';
+  box.innerHTML = `<div class="e2head"><span class="e2mark big" aria-hidden="true">E2</span><div class="e2who"><h2 id="e2title">Agent E2</h2><div class="ctx" data-e2ctx>${esc(e2Label(c))}</div></div>
+      <button type="button" class="e2close" aria-label="Close Agent E2" title="Close (Esc)">×</button></div>
+    ${E2.up === false ? '<p class="why e2down">The Agent E2 service is not available.</p>' : ''}
+    <div class="e2body" aria-live="polite">${thread || `<p class="muted">Ask about ${esc(c.show.about)}. Agent E2 reads the knowledge base and the facts PCM sends; it explains, you decide.</p>`}
+      ${E2.busy && E2.waiting && E2.waiting.key === convKey(c) ? `<div class="e2q"><div class="lbl">${esc(E2.waiting.label)}</div>${esc(E2.waiting.q)}</div><div class="e2wait" role="status">Agent E2 is reading the knowledge base and the facts PCM sent. <span data-secs>0</span> s</div>` : ''}${sugg}</div>
+    <form class="e2form" id="e2form"><label class="sr" for="e2q">Question for Agent E2</label><textarea id="e2q" rows="2" placeholder="${E2.pending ? 'Your reply to Agent E2…' : 'Ask Agent E2…'}">${esc(kept)}</textarea>
+      <button type="submit" class="act"${E2.busy ? ' disabled' : ''}>Ask</button></form>`;
+  const body = box.querySelector('.e2body'); body.scrollTop = body.scrollHeight;
+}
+function e2Mark(el) {
+  main.querySelectorAll('.e2-asked').forEach(x => x.classList.remove('e2-asked'));
+  const card = el && el.closest && el.closest('.metric, .finding, .clink, tr, .objhead');
+  if (card && main.contains(card)) card.classList.add('e2-asked');
+}
+function e2Open(ctx, opener) {
+  E2.ctx = e2Full(ctx); E2.opener = opener || document.getElementById('e2top');
+  const k = convKey(E2.ctx);
+  if (E2.pending && E2.pending.key !== k) E2.pending = null;
+  e2Mark(opener);
+  const box = document.getElementById('e2');
+  E2.open = true; box.hidden = false; document.body.classList.add('e2-open');
+  const t = document.getElementById('e2top'); if (t) t.setAttribute('aria-expanded', 'true');
+  e2Render(); refit();
+  document.getElementById('e2q').focus({ preventScroll: true });
+  // Re-checked on every open; only the note changes, so a question being typed is never lost.
+  e2Health().then(up => { const box = document.getElementById('e2'), note = box.querySelector('.e2down');
+    if (up && note) note.remove();
+    if (!up && !note) box.querySelector('.e2head').insertAdjacentHTML('afterend', '<p class="why e2down">The Agent E2 service is not available.</p>'); });
+}
+function e2Close() {
+  const box = document.getElementById('e2');
+  E2.open = false; box.hidden = true; document.body.classList.remove('e2-open');
+  main.querySelectorAll('.e2-asked').forEach(x => x.classList.remove('e2-asked'));
+  const t = document.getElementById('e2top'); if (t) t.setAttribute('aria-expanded', 'false');
+  refit();
+  const back = E2.opener && document.contains(E2.opener) ? E2.opener : document.getElementById('e2top');
+  if (back) back.focus({ preventScroll: true });
+}
+// After a move the panel stays; its context becomes the new page's.
+function e2Follow() {
+  if (!E2.open) return;
+  E2.ctx = e2Full(pageCtx()); E2.opener = document.getElementById('e2top');
+  e2Render(); refit();
+}
+// Charts measure their box: re-fit them when the panel opens or closes.
+function refit() { requestAnimationFrame(() => main.querySelectorAll('[data-chartbox]').forEach(b => { if (CHARTS[b.dataset.chartbox]) mountChart(b); })); }
+async function e2Ask(q) {
+  q = (q || '').trim();
+  if (!q || E2.busy || !E2.ctx) return;
+  const c = E2.ctx, k = convKey(c), label = e2Label(c);
+  const { show, ...context } = c;
+  const body = { question: q, context };
+  if (E2.pending && E2.pending.key === k) body.turns = [E2.pending.first, E2.pending.questions.join('\n'), q];
+  const list = convs()[k] || [];
+  E2.busy = true; E2.started = Date.now(); E2.waiting = { q, label, key: k };
+  e2Render(); document.getElementById('e2q').focus({ preventScroll: true });
+  const ta0 = document.getElementById('e2q'); if (ta0) ta0.value = '';
+  clearInterval(E2.timer);
+  E2.timer = setInterval(() => { const s = document.querySelector('#e2 [data-secs]'); if (s) s.textContent = Math.round((Date.now() - E2.started) / 1000); }, 1000);
+  let r;
+  try { r = await postJSON('agent/ask', body); } catch (e) { r = { status: 0, body: { error: 'Could not reach PCM. Try again.' } }; }
+  clearInterval(E2.timer); E2.busy = false; E2.waiting = null;
+  if (r.status !== 200) {
+    saveConv(k, list);
+    e2Render();
+    const ta = document.getElementById('e2q'); if (ta) ta.value = q;
+    const b = document.querySelector('#e2 .e2body'); if (b) b.insertAdjacentHTML('beforeend', e2Answer({ error: r.body.error || 'Agent E2 could not answer.' }));
+    document.body.dataset.e2ask = 'error';
+    return;
+  }
+  const a = r.body;
+  E2.pending = a.type === 'clarify' && a.questions && a.questions.length && a.source === 'service' ? { key: k, first: body.turns ? body.turns[0] : q, questions: a.questions } : null;
+  saveConv(k, [...list, { q, label, a }]);
+  const keep = document.activeElement === document.body || (document.activeElement && document.activeElement.closest('#e2'));
+  if (E2.open && convKey(E2.ctx) === k) e2Render();
+  if (keep && E2.open) document.getElementById('e2q').focus({ preventScroll: true });
+  document.body.dataset.e2ask = a.source;
+}
+document.addEventListener('click', async e => {
+  const m = e.target.closest('.e2mark[data-e2], #e2top');
+  if (m) { e.preventDefault(); return e2Open(m.id === 'e2top' ? pageCtx() : JSON.parse(m.dataset.e2), m); }
+  if (e.target.closest('#e2 .e2close')) return e2Close();
+  const s = e.target.closest('#e2 [data-sugg]');
+  if (s) return e2Ask(s.dataset.sugg);
+  const t = e.target.closest('#e2 [data-e2trouble]');
+  if (t) { const r = await postJSON('cases', { trigger: 'finding', finding: t.dataset.e2trouble }); if (r.status === 200) go(url({ activity: 'troubleshoot', caseId: r.body.id })); }
+});
+document.addEventListener('submit', e => { if (e.target.id === 'e2form') { e.preventDefault(); e2Ask(document.getElementById('e2q').value); } });
+document.addEventListener('keydown', e => {
+  if (e.target.id === 'e2q' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e2Ask(e.target.value); return; }
+  const l = document.getElementById('winlist');
+  if (e.key === 'Escape' && E2.open && !(l && !l.hidden)) { e.preventDefault(); e2Close(); }
+});
+
 // ---------------------------------------------------------------- navigation without a page load
 // Every in-app link and every change of the address goes through go(). The page, the top bar and the tree stay; the content is replaced.
 let CTL = null, SEQ = 0, OPEN_CASES = 0, FOCUS = null;
@@ -928,6 +1077,7 @@ async function route({ top = false, first = false } = {}) {
     if (seq !== SEQ) return;
     await treeDone;
     main.classList.remove('loading'); main.removeAttribute('aria-busy');
+    e2Follow();
     if (top) window.scrollTo(0, 0);
     // The header is redrawn, so a keyboard user would lose their place: put the focus back where it was.
     if (FOCUS === 'tab') { const t = main.querySelector('[role="tab"][aria-selected="true"]'); if (t) t.focus({ preventScroll: true }); }
@@ -987,4 +1137,5 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------------------------------------------------------------- start
+e2Health();
 route({ first: true });

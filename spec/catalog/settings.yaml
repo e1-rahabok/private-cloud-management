@@ -256,7 +256,7 @@ settings:
     source: "L2 design, 5.9"
 
   agent_e2.service_url:
-    description: "Agent E2 service (D-078): POST /v1/answer with question, facts and role. Answers 'why' questions from the knowledge base, with sources."
+    description: "Agent E2 service (D-078): POST /v1/answer with question, facts and role; GET /v1/health. Answers 'why' questions from the knowledge base, with sources. The environment variable PCM_AGENT_E2_URL, when set, replaces it (a lab or a test points PCM at another service)."
     default: "http://127.0.0.1:8090"
     owner: l2
     source: "Agent E2 harness/answer_service.py"

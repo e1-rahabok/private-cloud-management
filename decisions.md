@@ -101,6 +101,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-094 | 2026-11-21 | The L2 Capacity tab shows capacity over time and reads vCommunity's capacity model: **Cluster Consumption** (against usable capacity: total, minus HA, minus buffer), **Cluster Performance** (contention), **Cluster Risk**, and the **Periodic Cluster Check**'s Close for Business. **On a cluster:** the check's verdict and the rule that decided it, beside contention now (Cluster Performance over the last hour); one chart per KPI with the closure levels and the check's verdict under them; what consumption is made of; the spread between hosts; the hosts. **Above the cluster:** clusters closed per check; the highest Cluster Consumption and its 90th percentile; every cluster at a selected time; open clusters near closure; one class of service filter. PCM reads the check and never recomputes it or sets it. The tab shows no forecast, run-out date, decision date, Capacity Remaining or Time Remaining: those belong to the Capacity workspace. | A snapshot table cannot say whether 90% is rising, flat or one spike, and capacity is managed on its trend. vCommunity already decides, every period, whether each cluster takes new VMs; a second rule in PCM would give two answers for one cluster. A cluster is a group of hosts, so the page goes down to them. The boundary keeps two horizons apart: L2 answers "can it take more VMs now, and is it heading to closed?"; Capacity answers "when do we buy?". Rationale: D-094. |
 | D-095 | 2026-11-21 | Which statistic, on which axis. **Over time, on one object:** a point holds the worst value of its slot (D-091); the figures are Now, Worst (with its time) and 95th percentile (D-092); the object's status over the window is its 95th percentile (D-088), and the worse of that and its last hour. **Across objects, at one time:** the worst object, and the 10th or 90th percentile at the bad end (D-091). **Never an average** on either axis, and never a sum or average of percentages across clusters. vCommunity's "Worst" check values are a percentile of the check period; PCM names them by what they are ("95th percentile, 24 hours to 08:00"), never "Worst". | The two axes answer different questions. Over time, one bad 5 minutes is too noisy to decide on, but it must stay visible: the chart shows every point and Worst names the peak. Across objects, the worst one is a real cluster with real VMs, and the percentile says how wide. One word for two statistics (vCommunity's Worst is a percentile, PCM's Worst is a peak) makes the same cluster read two ways. Rationale: D-095. |
 | D-096 | 2026-11-21 | vCommunity is part of PCM, not a third-party source. PCM requires it, and it will be renamed the **PCM adapter**. Its metrics are PCM's definitions; its settings and thresholds are PCM settings, set in the adapter and listed in the catalog with their owner. PCM still reads them through VCF Operations (D-064), where the adapter runs. | The capacity model, the KPIs and the Periodic Cluster Check are already built in vCommunity. A second copy in PCM would give two answers for one cluster. Spec rule 6 holds: every threshold is a named setting; it is set in one place, the adapter. Rationale: D-096. |
+| D-097 | 2026-11-21 | Agent E2 is on every L2 page, in one place. An **E2 mark** in the top bar says whether it is available; the same mark sits on each metric, KPI, finding, chain link and layer, where the question comes up. A click opens the **Agent E2 panel**, docked on the right: it pushes the content, never covers it, and the inventory tree folds to a narrow strip while it is open. PCM sends the facts of what was clicked; Agent E2 answers with its sources. The panel stays open across pages. Revises the L2 frame rule "no other item in the top bar". | The screen is full, and a panel on top would hide the chart being asked about. While L2 talks to Agent E2 they are not browsing the tree. An avatar mark, not a sparkle: Agent E2 is a team member who explains with sources (D-047), not magic. See Rationale. |
 
 ## Rationale
 
@@ -695,3 +696,22 @@ Source: Cost n Price n Value (in `sources/`).
 **Not changed**
 - PCM still has no collectors of its own (D-064). The adapter runs in VCF Operations and publishes there; PCM reads through VCF Operations.
 
+### D-097 Agent E2 in the L2 frame
+
+**The mark**
+- "E2" in a small rounded square, like a colleague's initials. It says who answers, not that "AI" is here.
+- In the top bar it shows whether the service answers (PCM asks `GET /v1/health`). Grey: not available. A grey mark on a card still opens the panel, which says so.
+- On a card it sits at the right of the card's title, so the question and its object are one click apart.
+
+**Why a panel, and why it pushes**
+- Agent E2's own demos all keep the conversation in a right column. The L2 page has no free column.
+- On top of the content, the panel would cover the right half of the chart being asked about.
+- The tree is the menu (D-086). While L2 reads an answer they do not navigate; the tree folds to a strip and opens on hover or focus. The content loses about 50 px, not 400.
+
+**Facts, not screenshots**
+- PCM owns the data (D-078). It rebuilds the facts from what was clicked (object, tab, window, metric), never from numbers the browser sends.
+- Agent E2 returns its sources, the values its code computed, and at most one round of clarifying questions.
+
+**Not changed**
+- Agent E2 explains, proposes and drafts. It never confirms a link, sets a severity, approves an action or closes a case (L2 design, 8).
+- Every question is recorded with Agent E2 as the actor and the person who asked (D-050).
