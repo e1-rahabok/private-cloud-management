@@ -16,6 +16,9 @@ aside.tree .item { display: flex; align-items: center; gap: 4px; }
 aside.tree .caret { width: 22px; height: 22px; border: 0; background: none; cursor: pointer; color: var(--text-muted); font-size: 12px; padding: 0; flex: none; }
 aside.tree .caret[hidden] { visibility: hidden; display: inline-block; }
 aside.tree a.node { flex: 1; display: flex; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 14px; min-width: 0; }
+aside.tree .ic { display: inline-flex; flex: none; color: #2F6F9F; }
+aside.tree .ic svg { display: block; }
+aside.tree a.node[aria-current="true"] .ic { color: #fff; }
 aside.tree a.node span.nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 aside.tree a.node:hover { background: var(--page-bg); }
 aside.tree a.node[aria-current="true"] { background: var(--text); color: #fff; }
