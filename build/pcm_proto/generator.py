@@ -25,12 +25,21 @@ CLASSES = ("gold", "silver", "bronze")
 RESOURCES = ("compute", "memory", "storage")
 
 
+SPEC_FILES = ("data/estate.yaml", "data/stories.yaml", "catalog/settings.yaml", "catalog/thresholds.yaml", "catalog/standards.yaml")
+_SPEC_CACHE: dict = {}
+
+
 def load_spec() -> dict:
-    def y(p):
-        return yaml.safe_load((SPEC / p).read_text())
-    settings = {k: v["default"] for k, v in y("catalog/settings.yaml")["settings"].items()}
-    return {"estate": y("data/estate.yaml"), "stories": y("data/stories.yaml"), "settings": settings,
-            "thresholds": y("catalog/thresholds.yaml")["thresholds"], "standards": y("catalog/standards.yaml")["standards"]}
+    """The specification files, parsed once and read again only when a file changes. Callers must not change the result."""
+    key = tuple((SPEC / p).stat().st_mtime_ns for p in SPEC_FILES)
+    if _SPEC_CACHE.get("key") != key:
+        def y(p):
+            return yaml.safe_load((SPEC / p).read_text())
+        settings = {k: v["default"] for k, v in y("catalog/settings.yaml")["settings"].items()}
+        _SPEC_CACHE.update(key=key, value={"estate": y("data/estate.yaml"), "stories": y("data/stories.yaml"), "settings": settings,
+                                           "thresholds": y("catalog/thresholds.yaml")["thresholds"],
+                                           "standards": y("catalog/standards.yaml")["standards"]})
+    return _SPEC_CACHE["value"]
 
 
 def rel(expr: str, now: datetime) -> datetime:

@@ -242,7 +242,30 @@ stories:
   L-1:
     title: The Frankfurt escalation arrives at L2 complete, and closes only with a detection decision
     depends_on: [N-1]
-    flow: "NOC escalates inc-fr-s-02 (NOC page or API), then L2 reads it on /l2/escalations"
+    flow: "NOC escalates inc-fr-s-02 (NOC page or API); the escalation is a case on /l2/troubleshoot"
+    trigger: escalation
+    plant:
+      chain:
+        - { id: l1-wait, effect: symptom, cause: "Silver VMs wait for CPU: Ready 7 to 10%", object: FR-S-02, layer: cluster, step: contention, flow: "cluster-vm-contention", kind: main, expert: confirmed,
+            evidence: ["fr-app-101 CPU Ready 9.8%, fr-app-114 8.1%, fr-db-022 7.4%", "Cluster Performance 22, was 94 twenty minutes ago"] }
+        - { id: l1-villain, effect: l1-wait, cause: "fr-bat-017 uses 95% of its 16 vCPUs since its batch started", object: fr-bat-017, layer: vm, step: consumption, flow: "cluster-vm-contention", kind: main, expert: confirmed,
+            evidence: ["CPU usage 95% of 16 vCPUs", "Batch job batch-eod-fr started 21 minutes ago"] }
+        - { id: l1-hosts, effect: l1-wait, cause: "The cluster is short of hosts", object: FR-S-02, layer: cluster, step: consumption, flow: "cluster-vm-contention", kind: main, expert: ruled_out,
+            evidence: ["The cluster ran at 94 an hour ago with the same hosts", "One VM explains the change"] }
+        - { id: l1-class, effect: l1-villain, cause: "fr-bat-017 is a Bronze VM placed in a Silver cluster", object: fr-bat-017, layer: cluster, step: configuration, flow: "vm-insufficient-resources-in-drs-cluster", kind: main, expert: confirmed,
+            evidence: ["Class of service Bronze; FR-S-02 is Silver", "Placed by a self-service request without a class check"] }
+      layers:
+        guest_os: { verdict: not_read, values: "Not needed: the wait is outside the Guest OS on several VMs at once" }
+        vm: { verdict: waiting, values: "Victims: CPU Ready 7 to 10%" }
+        host: { verdict: clear, values: "No host fault; DRS moving VMs three times the usual rate" }
+        cluster: { verdict: waiting, values: "Cluster Performance 22" }
+        storage: { verdict: clear, values: "Disk latency normal" }
+        network: { verdict: clear, values: "No drops" }
+      events:
+        - { at: "now - 21 minutes", object: fr-bat-017, kind: event, text: "Powered on job batch-eod-fr (vCenter task)" }
+        - { at: "now - 20 minutes", object: FR-S-02, kind: metric, text: "Cluster Performance falls from 94" }
+        - { at: "now - 15 minutes", object: FR-S-02, kind: event, text: "DRS: 14 migrations in 15 minutes" }
+      who_else: { test: "a Bronze VM placed in a Silver or Gold cluster", objects: [fr-bat-017], count: 1 }
     expect:
       escalation: { id: inc-fr-s-02, evidence_has: [sop_steps, villains, victims, l1_actions], villain_counters_shown: true }
       close_without_detection: 400
@@ -252,10 +275,26 @@ stories:
 
   L-2:
     title: An application owner says SG-APP-117 is slow; the cause is inside the Guest OS
+    trigger: complaint
+    complaint: { requester: "Payments application owner", since: "now - 20 hours", fine_until: "now - 2 days", opened: "now - 19 hours", already_checked: ["Restarted the application service"] }
     objects: { vm: sg-app-117, cluster: SG-S-07, host: sg-esx-088 }
     plant:
       vm: { cpu_ready_percent: 0.6, co_stop_percent: 0.1, memory_wait_percent: 0.0, disk_latency_ms: 3, vm_performance: 96 }
       guest_os: { run_queue_per_vcpu: 6.5, context_switches_per_s: 41000, paging_per_s: 12, guest_os_performance: 38 }
+      chain:
+        - { id: l2-guest, effect: symptom, cause: "Windows waits: run queue 6.5 per vCPU and 41,000 context switches per second", object: sg-app-117, layer: guest_os, step: contention, flow: "vm-slow, step 1", kind: main, expert: confirmed,
+            evidence: ["Run queue 6.5 per vCPU", "Context switches 41,000 per second", "Paging 12 per second"] }
+        - { id: l2-vm, effect: symptom, cause: "The VM waits for the platform", object: sg-app-117, layer: vm, step: contention, flow: "vm-slow, step 4", kind: main, expert: ruled_out,
+            evidence: ["CPU Ready 0.6%, Co-stop 0.1%", "Memory wait 0", "Disk latency 3 ms"] }
+      layers:
+        guest_os: { verdict: waiting, values: "Run queue 6.5 per vCPU" }
+        vm: { verdict: clear, values: "CPU Ready 0.6%; disk latency 3 ms" }
+        host: { verdict: clear, values: "ESXi Performance 94" }
+        cluster: { verdict: clear, values: "Cluster Performance 92" }
+        storage: { verdict: clear, values: "Disk latency 3 ms" }
+        network: { verdict: clear, values: "No drops" }
+      events:
+        - { at: "now - 20 hours", object: sg-app-117, kind: complaint, text: "Payments screens slow" }
     expect:
       first_failing_step: null
       realm_verdict: guest_os
@@ -282,6 +321,7 @@ stories:
         across_classes: 1
         in_close_week: 1
       proposed_policy: { tier: automatic, guardrails: { max_vms_per_cluster_per_hour: 10, same_class_of_service_only: true, not_in_close_week: true } }
+      window_dip: { cluster: SG-S-04, value: 68, at: "now - 9 hours", note: "the end-of-day batch peak; the NOC's score now is back to normal" }
     expect:
       no_make_automatic_button: true
       replay: { would_run_automatically: 18, stopped: { max_vms_per_cluster_per_hour: 3, same_class_of_service_only: 1, not_in_close_week: 1 } }
@@ -314,6 +354,246 @@ stories:
     plant: { batch_overrun_minutes: 40, datastore_latency_trend: rising }
     expect: { finding: { verdict: present_health, severity: amber, pillar: performance } }
     note: "An insight before the batch window runs into the start of business (SP5 prevention window)."
+
+  # ---------------------------------------------------------------- Troubleshooting stories (D-090)
+  # From Agent E2's benchmark (benchmark/questions/), renamed into the ACME estate. Each chain lists the links
+  # Agent E2's flows propose, in order; "expert" is what an expert concludes, used by the tests. In the demo, L2
+  # confirms or rules out each link: nothing is decided for them.
+
+  T-1:
+    title: The general ledger is slow since the weekend change window
+    source: "Agent E2 L4-037 (ERP slow after the change window)"
+    trigger: complaint
+    logged_by_demo: true
+    objects:
+      vm: sg-gl-db-01
+      host: sg-esx-031
+      other_host: sg-esx-035
+      cluster: SG-G-02
+      datastore: SG-DS-21
+      app_vms: [sg-gl-app-01, sg-gl-app-02, sg-gl-app-03, sg-gl-app-04, sg-gl-app-05, sg-gl-app-06]
+    plant:
+      vm: { vcpu: 24, memory_gb: 384, guest_os: windows, class: gold, environment: production, role: db, vm_performance: 46 }
+      host_generation: previous
+      guest_os: { run_queue_per_vcpu: 0.08, context_switches_per_s: 9000, paging_per_s: 0, guest_os_performance: 91 }
+      vm_counters: { cpu_ready_percent: 1.5, co_stop_percent: 6.0, other_wait_percent: 12.0, run_percent: 50.0, memory_wait_percent: 0.0, disk_latency_ms: 30, disk_latency_5min_ms: 9 }
+      host_counters: { core_utilization_percent: 55, thread_utilization_percent: 35, numa_home_nodes: "0,1", numa_local_percent: 70 }
+      datastore_counters: { read_iops_ratio_to_vdisk: 1.8, device_latency_ms: 6 }
+      app_vm_drops: { vm: sg-gl-app-03, receive_dropped_percent: 0.5 }
+      complaint:
+        requester: "General ledger application owner"
+        via: "Head of finance systems"
+        since: "now - 65 minutes"
+        fine_until: "now - 26 hours"
+        already_checked: ["Windows CPU and memory look normal", "No application change this month", "No Windows patch this month", "Run queue checked: normal"]
+      change_window: { change_ref: CHG0042117, scope: [SG-G-02], starts: "now - 34 hours", hours: 5 }
+      events:
+        - { at: "now - 40 days", object: sg-gl-db-01, kind: change, text: "Resized from 16 to 24 vCPUs", explained_by: request }
+        - { at: "now - 34 hours", object: SG-G-02, kind: change_window, text: "Change window CHG0042117 opens: patch SG-G-02", explained_by: change_window }
+        - { at: "now - 33 hours", object: sg-gl-db-01, kind: event, text: "Snapshot created by svc-backup before patching", explained_by: change_window }
+        - { at: "now - 31 hours", object: sg-esx-035, kind: event, text: "Entered maintenance mode", explained_by: change_window }
+        - { at: "now - 30 hours", object: sg-esx-035, kind: event, text: "Exited maintenance mode", explained_by: change_window }
+        - { at: "now - 29 hours", object: SG-G-02, kind: change_window, text: "Change window CHG0042117 closes. No snapshot removal on sg-gl-db-01 since.", explained_by: change_window }
+        - { at: "now - 95 minutes", object: sg-gl-db-01, kind: metric, text: "Virtual disk read latency above 20 ms at the 20-second peak" }
+        - { at: "now - 65 minutes", object: sg-gl-db-01, kind: complaint, text: "Users report slow screens and reports" }
+        - { at: "now - 20 minutes", object: sg-gl-app-03, kind: metric, text: "Receive packets dropped 0.5%" }
+      chain:
+        - { id: t1-guest, effect: symptom, cause: "Windows is short of CPU or memory", object: sg-gl-db-01, layer: guest_os, step: contention, flow: "vm-slow, step 1", kind: main, expert: ruled_out,
+            evidence: ["Run queue 2 in total across 24 vCPUs", "Paging 0 per second", "The wait is not inside Windows: read the VM"] }
+        - { id: t1-disk, effect: symptom, cause: "Virtual disk read latency 30 ms at the 20-second peak", object: sg-gl-db-01, layer: vm, step: contention, flow: "vm-slow, step 4: storage", kind: main, expert: confirmed,
+            evidence: ["Read latency 30 ms at the peak; the 5-minute average shows 9 ms", "Mostly reads"] }
+        - { id: t1-cpu, effect: symptom, cause: "Co-stop 6% and Other Wait 12%, System time above last week", object: sg-gl-db-01, layer: vm, step: contention, flow: "vm-cpu-contention-high", kind: main, expert: confirmed,
+            evidence: ["Co-stop 6%, Other Wait 12% per vCPU", "Ready 1.5%", "System time higher than last week"] }
+        - { id: t1-ready, effect: t1-cpu, cause: "The host is short of CPU: add a ninth host", object: sg-esx-031, layer: host, step: contention, flow: "vm-cpu-contention-high", kind: main, expert: ruled_out,
+            evidence: ["Ready 1.5%", "Core utilization 55%, thread utilization 35%", "A ninth host would not lower Co-stop"] }
+        - { id: t1-vcpu, effect: symptom, cause: "The VM is short of vCPUs: add 8 vCPUs", object: sg-gl-db-01, layer: vm, step: consumption, flow: "vm-slow, step 5", kind: main, expert: ruled_out,
+            evidence: ["Run 50% per vCPU", "Guest run queue 2 across 24 vCPUs", "More vCPUs would raise Co-stop"] }
+        - { id: t1-snap, effect: t1-disk, cause: "A snapshot chain doubles the reads", object: SG-DS-21, layer: storage, step: consumption, flow: "vm-storage-performance-checks", kind: main, expert: confirmed,
+            evidence: ["Datastore read IOPS of the VM are 1.8 times its virtual disk read IOPS, with the same throughput", "Device latency 6 ms: the array is not the cause"] }
+        - { id: t1-backup, effect: t1-snap, cause: "The backup job took a snapshot before patching and never removed it", object: sg-gl-db-01, layer: event, step: log, flow: "vm-slow, step 8", kind: main, expert: confirmed,
+            evidence: ["Snapshot created 33 hours ago by svc-backup, inside change window CHG0042117", "No consolidation event since", "The snapshot also explains the Co-stop, Other Wait and System time"] }
+        - { id: t1-numa, effect: t1-cpu, cause: "24 vCPUs on a 20-core NUMA node: the VM spans two nodes", object: sg-esx-031, layer: host, step: configuration, flow: "vm-cpu-contention-high", kind: contributing, expert: confirmed,
+            evidence: ["NUMA home nodes 0,1; 70% of memory local", "sg-esx-031 is a previous-generation host: 2 x 20 cores", "Resized from 16 to 24 vCPUs 40 days ago"] }
+        - { id: t1-net, effect: symptom, cause: "Receive drops on sg-gl-app-03 point to the physical network", object: sg-gl-app-03, layer: network, step: contention, flow: "vnic-rx-drops", kind: main, expert: ruled_out,
+            evidence: ["0.5% on one application VM; the other five show 0", "The database VM has no drops", "A separate, low-priority check for that VM"] }
+      layers:
+        guest_os: { verdict: clear, values: "Run queue 2 across 24 vCPUs; paging 0" }
+        vm: { verdict: waiting, values: "Disk read latency 30 ms; Co-stop 6%; Other Wait 12%" }
+        host: { verdict: clear, values: "Ready 1.5%; core utilization 55%" }
+        cluster: { verdict: clear, values: "Cluster Performance 88" }
+        storage: { verdict: waiting, values: "Reads 1.8 times the virtual disk reads: a snapshot chain. Device latency 6 ms" }
+        network: { verdict: clear, values: "No drops on the database VM" }
+      who_else: { test: "a snapshot older than its backup job, on a production VM", objects: [sg-app-301, sg-db-118, sg-app-224, va-db-061, fr-app-209, ld-db-021], count: 14 }
+    expect:
+      proposals_in_order: [t1-guest, t1-disk, t1-cpu, t1-ready, t1-vcpu, t1-snap, t1-backup, t1-numa, t1-net]
+      root_cause_link: t1-backup
+      contributing: [t1-numa]
+      ruled_out: [t1-guest, t1-ready, t1-vcpu, t1-net]
+      close_without_confirmed_main: 400
+      close_complete: 200
+    decisions: [D-084, D-085, D-089, D-090]
+
+  T-2:
+    title: Every web application is slow in Tokyo
+    source: "Agent E2 L4-074 (Web applications slow on Monday)"
+    trigger: escalation
+    objects:
+      cluster: TK-S-03
+      pool_web: rp-web
+      pool_batch: rp-batch
+      web_vms: 30
+      batch_vms: 8
+      web_example: tk-web-017
+    plant:
+      cluster_performance:
+        before: { value: 91, until: "now - 95 minutes" }
+        now: 58
+        shape: linear fall
+      alerts:
+        - { object: TK-S-03, object_type: cluster, severity: orange, title: "Cluster not serving its VMs well", raised: "now - 70 minutes" }
+      escalated: { by: operator-tk-1, at: "now - 40 minutes", route: platform }
+      l1_evidence:
+        sop_steps:
+          - { text: "Confirm the cluster score is below 75 now.", result: "Cluster score now 58 out of 100" }
+          - { text: "Find the VMs using the most (villains) and the VMs waiting the most (victims).", result: "No villain: no VM uses more than 6% of the cluster. 30 victims, all web VMs." }
+          - { text: "Check the business calendar for planned work.", result: "Change CHG-4471 ran in the weekend window: cap the batch jobs" }
+        l1_actions: [{ action: stop_provisioning, target: TK-S-03, by: operator-tk-1, after: "closed to new VMs" }]
+        victims:
+          - { vm: tk-web-017, cpu_ready_percent: 18.2, co_stop_percent: 0.4, vm_performance: 44 }
+          - { vm: tk-web-004, cpu_ready_percent: 14.6, co_stop_percent: 0.3, vm_performance: 52 }
+          - { vm: tk-web-022, cpu_ready_percent: 9.1, co_stop_percent: 0.2, vm_performance: 63 }
+        users: "The service desk logged 41 calls since 08:30 local time: every web application is slow. The batch team reports no problem."
+      pools:
+        rp-web: { vms: 30, usage_ghz: [199.6, 199.8, 200.0, 199.9, 199.7, 200.0, 199.8, 199.9, 200.0, 199.6, 199.8, 199.9], limit_ghz: 200 }
+        rp-batch: { vms: 8, usage_ghz: [143.0, 151.2, 158.9, 163.5, 147.7, 155.0, 160.1, 149.3, 152.8, 157.6, 144.9, 161.2], limit_ghz: null }
+      host_cpu_percent_range: [30, 48]
+      change: { ref: CHG-4471, text: "Cap the batch jobs: CPU limit of 200 GHz on the batch resource pool. Implemented by script.", at: "now - 30 hours", applied_to: rp-web, by: svc-change-tk, via: "vCenter API (script)" }
+      events:
+        - { at: "now - 30 hours", object: rp-web, kind: change, text: "CPU limit set to 200 GHz", explained_by: change_window }
+        - { at: "now - 95 minutes", object: TK-S-03, kind: metric, text: "Web VMs' CPU Ready above 9% on every host" }
+        - { at: "now - 95 minutes", object: rp-web, kind: metric, text: "CPU usage flat at 200 GHz in every 5-minute sample" }
+        - { at: "now - 70 minutes", object: TK-S-03, kind: alert, text: "Cluster not serving its VMs well" }
+        - { at: "now - 40 minutes", object: TK-S-03, kind: escalation, text: "Escalated by operator-tk-1 to Platform" }
+      chain:
+        - { id: t2-ready, effect: symptom, cause: "Web VMs wait for CPU: Ready 9 to 18% on every host", object: TK-S-03, layer: cluster, step: contention, flow: "cluster-vm-contention", kind: main, expert: confirmed,
+            evidence: ["30 web VMs with Ready 9 to 18%", "8 batch VMs on the same hosts below 1%", "The wait follows the pool, not the host"] }
+        - { id: t2-hosts, effect: t2-ready, cause: "The cluster is short of CPU: add two hosts", object: TK-S-03, layer: cluster, step: consumption, flow: "cluster-vm-contention", kind: main, expert: ruled_out,
+            evidence: ["Every host runs at 30 to 48% CPU", "Memory contention near 0 on every VM"] }
+        - { id: t2-pool, effect: t2-ready, cause: "rp-web runs flat at 200 GHz in every 5-minute sample: a ceiling", object: rp-web, layer: cluster, step: configuration, flow: "vm-insufficient-resources-in-drs-cluster", kind: main, expert: confirmed,
+            evidence: ["rp-web usage 199.6 to 200.0 GHz, every sample", "rp-batch varies between 143 and 164 GHz: nothing holds it", "A pool limit applies across the cluster"] }
+        - { id: t2-batch, effect: t2-ready, cause: "The batch jobs take CPU from the web VMs", object: rp-batch, layer: cluster, step: consumption, flow: "vm-insufficient-resources-in-drs-cluster", kind: main, expert: ruled_out,
+            evidence: ["A limit on rp-batch would hold rp-batch, not starve its sibling", "rp-batch is not at any limit"] }
+        - { id: t2-change, effect: t2-pool, cause: "Change CHG-4471 put the 200 GHz limit on rp-web instead of rp-batch", object: rp-web, layer: change, step: log, flow: "vm-slow, step 8", kind: main, expert: confirmed,
+            evidence: ["Limit set on rp-web 30 hours ago by svc-change-tk through the vCenter API", "The change record names the batch pool", "The change is explained by its window, and still wrong"] }
+      layers:
+        guest_os: { verdict: not_read, values: "Not needed: the wait is outside the Guest OS on 30 VMs at once" }
+        vm: { verdict: waiting, values: "Ready 9 to 18% on web VMs; below 1% on batch VMs" }
+        host: { verdict: clear, values: "Hosts at 30 to 48% CPU" }
+        cluster: { verdict: waiting, values: "rp-web flat at its 200 GHz limit" }
+        storage: { verdict: clear, values: "Virtual disk latency normal" }
+        network: { verdict: clear, values: "No drops" }
+      who_else: { test: "a resource pool flat at its CPU limit", objects: [rp-web], count: 1 }
+    expect:
+      case_trigger: escalation
+      proposals_in_order: [t2-ready, t2-hosts, t2-pool, t2-batch, t2-change]
+      root_cause_link: t2-change
+      noc_incident: { id: inc-tk-s-03, severity: orange, state: escalated }
+    decisions: [D-040, D-084, D-090]
+
+  M-1:
+    title: Remote memory rises on large VMs placed on older hosts in London
+    source: "Agent E2 L4-049 (vNUMA after a move to an older host)"
+    trigger: finding
+    objects:
+      location: ld
+      clusters: [LD-G-01, LD-S-02]
+      vm: ld-sql-014
+      first_host: ld-esx-005
+      host: ld-esx-077
+      cluster: LD-G-01
+      affected_vms: [ld-sql-014, ld-sql-022, ld-db-031, ld-sql-040, ld-db-052, ld-sql-063, ld-db-071, ld-sql-088, ld-db-093]
+    plant:
+      mixed_generation_clusters: [LD-G-01, LD-S-02]
+      vm: { vcpu: 24, memory_gb: 300, hardware_version: 21, guest_os: windows, class: gold, environment: production, role: sql, vm_performance: 71 }
+      affected_vm_performance: [71, 73, 74, 72, 76, 77, 74, 78, 75]
+      remote_memory_percent_7_nights: [12, 14, 17, 21, 24, 29, 35]
+      finding: { window: "7d", pillar: performance, severity: amber, kind: slow_drift,
+                 summary: "Remote memory up 6 of 6 nights on 9 large VMs, 12% to 35%. Grouped by host model: all 9 run on Gen-2019 hosts in clusters mid-refresh." }
+      events:
+        - { at: "now - 36 days", object: LD-G-01, kind: change, text: "Hardware refresh starts: Gen-2024 hosts join LD-G-01 and LD-S-02", explained_by: change_window }
+        - { at: "now - 21 days", object: ld-sql-014, kind: event, text: "Powered on on ld-esx-005 (Gen-2024): virtual NUMA layout built for one 32-core node" }
+        - { at: "now - 12 days", object: ld-sql-014, kind: event, text: "DRS moved it to ld-esx-077 (Gen-2019, 20 cores per node)", explained_by: drs }
+        - { at: "now - 6 days", object: ld-sql-014, kind: metric, text: "Remote memory above 12%; query times start to vary day to day" }
+      chain:
+        - { id: m1-remote, effect: symptom, cause: "35% of the VM's memory is remote", object: ld-sql-014, layer: vm, step: contention, flow: "vm-memory-latency-high", kind: main, expert: confirmed,
+            evidence: ["esxtop N%L 65%: 35% remote", "CPU Ready below 1%", "The Guest OS sees one NUMA node"] }
+        - { id: m1-storage, effect: symptom, cause: "Storage is the next suspect", object: ld-sql-014, layer: storage, step: contention, flow: "vm-slow, step 4: storage", kind: main, expert: ruled_out,
+            evidence: ["Disk latency 3 ms", "The guest sees one node, but the host splits the VM: NUMA explains the variation"] }
+        - { id: m1-layout, effect: m1-remote, cause: "The virtual NUMA layout was built at power-on, on a 32-core node: one node of 24 vCPUs", object: ld-sql-014, layer: vm, step: configuration, flow: "vm-memory-latency-high", kind: main, expert: confirmed,
+            evidence: ["Powered on 21 days ago on ld-esx-005 (Gen-2024)", "vMotion does not rebuild the layout of a running VM"] }
+        - { id: m1-move, effect: m1-layout, cause: "DRS moved the VM to a Gen-2019 host with 20 cores per node", object: ld-esx-077, layer: host, step: log, flow: "vm-slow, step 8", kind: main, expert: confirmed,
+            evidence: ["DRS migration 12 days ago", "24 vCPUs do not fit a 20-core node"] }
+        - { id: m1-refresh, effect: m1-move, cause: "LD-G-01 mixes two host generations while the refresh runs", object: LD-G-01, layer: cluster, step: configuration, flow: "cluster-vm-contention", kind: main, expert: confirmed,
+            evidence: ["Refresh started 36 days ago", "8 other large VMs show the same pattern (Who else)"] }
+      layers:
+        guest_os: { verdict: clear, values: "Windows sees one NUMA node; no run queue" }
+        vm: { verdict: waiting, values: "35% of memory remote" }
+        host: { verdict: waiting, values: "Gen-2019: 20 cores per NUMA node" }
+        cluster: { verdict: waiting, values: "Two host generations in one cluster" }
+        storage: { verdict: clear, values: "Disk latency 3 ms" }
+        network: { verdict: clear, values: "No drops" }
+      who_else: { test: "a VM wider than the NUMA node of its current host, in a cluster that mixes host generations", objects: [ld-sql-022, ld-db-031, ld-sql-040, ld-db-052, ld-sql-063, ld-db-071, ld-sql-088, ld-db-093], count: 8 }
+      opportunity: { pillar: performance, text: "Keep VMs wider than 20 vCPUs on Gen-2024 hosts until the refresh ends: a DRS VM/Host rule in LD-G-01 and LD-S-02", size: "9 VMs" }
+    expect:
+      finding_window: "7d"
+      group_by_host_model: { "Gen-2019, 2 x 20 cores": 9, "Gen-2024, 2 x 32 cores": 0 }
+      proposals_in_order: [m1-remote, m1-storage, m1-layout, m1-move, m1-refresh]
+      root_cause_link: m1-refresh
+    decisions: [D-087, D-088, D-090]
+
+  M-2:
+    title: Other Wait on two VMs after the weekend backup
+    source: "Agent E2 L4-045 (Other Wait after the weekend backup)"
+    trigger: finding
+    objects:
+      location: va
+      busy_vm: va-fs-002
+      idle_vm: va-jmp-001
+      busy_cluster: VA-S-04
+      idle_cluster: VA-B-01
+    plant:
+      busy_vm: { vcpu: 8, role: fs, class: silver, environment: production, other_wait_percent: 14, net_run_percent: 45, idle_percent: 38, disk_latency_ms: 4, vm_performance: 70 }
+      idle_vm: { vcpu: 2, role: jmp, class: bronze, environment: production, other_wait_percent: 15, net_run_percent: 1, idle_percent: 84, vm_performance: 85, esxi_build: "8.0 U3" }
+      finding: { window: "24h", pillar: performance, severity: amber,
+                 summary: "Other Wait above 10% on 2 VMs in Virginia: va-fs-002 (file server, users report slow copies) and va-jmp-001 (jump host nobody used)." }
+      events:
+        - { at: "now - 45 hours", object: va-fs-002, kind: event, text: "Snapshot created by svc-backup; still present", explained_by: change_window }
+        - { at: "now - 12 hours", object: va-fs-002, kind: metric, text: "Other Wait above 10%" }
+        - { at: "now - 12 hours", object: va-jmp-001, kind: metric, text: "Other Wait above 10% while idle" }
+      chain:
+        - { id: m2-busy, effect: symptom, cause: "va-fs-002 really waits: busy, and its vCPUs are blocked 14% of the time", object: va-fs-002, layer: vm, step: contention, flow: "vm-other-wait-high", kind: main, expert: confirmed,
+            evidence: ["Net Run 45%, Idle 38%, Other Wait 14%", "Users report slow file copies"] }
+        - { id: m2-storage, effect: m2-busy, cause: "Storage is slow for both VMs", object: va-fs-002, layer: storage, step: contention, flow: "vm-storage-performance-checks", kind: main, expert: ruled_out,
+            evidence: ["Disk latency 4 ms", "The storage team reports the array healthy", "Other Wait is not IO wait"] }
+        - { id: m2-snap, effect: m2-busy, cause: "The snapshot the backup left on Sunday", object: va-fs-002, layer: event, step: log, flow: "vm-other-wait-high", kind: main, expert: confirmed,
+            evidence: ["Snapshot created 45 hours ago by svc-backup, still present", "A snapshot is a known cause of Other Wait"] }
+        - { id: m2-idle, effect: symptom, cause: "va-jmp-001 does not wait: Idle and Other Wait add up to about 100%", object: va-jmp-001, layer: vm, step: consumption, flow: "vm-other-wait-high", kind: main, expert: confirmed,
+            evidence: ["Net Run 1%, Idle 84%, Other Wait 15%"] }
+        - { id: m2-build, effect: m2-idle, cause: "A known accounting issue of ESXi 8.0 U3 counts idle time as Other Wait", object: va-jmp-001, layer: host, step: known_bug, flow: "vm-other-wait-high", kind: main, expert: confirmed,
+            evidence: ["va-jmp-001 runs on VA-B-01, two versions behind (8.0 U3)", "The VMs on current builds do not show it"] }
+      layers:
+        guest_os: { verdict: not_read, values: "Not needed: the counters separate the two VMs" }
+        vm: { verdict: waiting, values: "va-fs-002 waits; va-jmp-001 does not" }
+        host: { verdict: clear, values: "No CPU shortage; VA-B-01 two versions behind" }
+        cluster: { verdict: clear, values: "Cluster Performance green" }
+        storage: { verdict: clear, values: "Disk latency 4 ms; array healthy" }
+        network: { verdict: clear, values: "No drops" }
+      who_else: { test: "a production VM with a snapshot older than its backup job", objects: [va-fs-002, va-db-061], count: 2 }
+    expect:
+      finding_window: "24h"
+      proposals_in_order: [m2-busy, m2-storage, m2-snap, m2-idle, m2-build]
+      root_cause_link: m2-snap
+    decisions: [D-090]
 
   # ---------------------------------------------------------------- Weekly, monthly and inventory stories
 

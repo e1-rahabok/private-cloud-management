@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yaml
 
-from build.pcm_proto import capacity, generator, l2, noc, store
+from build.pcm_proto import capacity, generator, l2, l2_cases, noc, store
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = yaml.safe_load((ROOT / "spec/tests/database.yaml").read_text())
@@ -29,19 +29,20 @@ class OnFile(unittest.TestCase):
         self.dir = tempfile.TemporaryDirectory()
         store.close()
         os.environ["PCM_DB"] = str(Path(self.dir.name) / "pcm.sqlite")
-        for s in (noc.STATE, l2.STATE, capacity.STATE):
+        for s in (noc.STATE, l2.STATE, l2_cases.STATE, capacity.STATE):
             s.reset()
 
     def tearDown(self):
         store.close()
         os.environ["PCM_DB"] = ":memory:"
-        noc.STATE.load(); l2.STATE.load()
+        noc.STATE.load(); l2.STATE.load(); l2_cases.STATE.load()
         self.dir.cleanup()
 
     def restart(self):
         store.close()
         noc.STATE.load()
         l2.STATE.load()
+        l2_cases.STATE.load()
 
     def test_DB_1_record_append_only(self):
         noc.record("acknowledge", "inc-x", "operator-1", "", "open", "acknowledged", NOW)
@@ -73,7 +74,7 @@ class OnFile(unittest.TestCase):
         self.assertEqual(noc.STATE.history[0]["actor_agent"], "pcm-policy")
         after = next(g for g in capacity.groups_view(NOW)["groups"] if g["id"] == "VA-Silver")["decision_days"]
         self.assertEqual(before, after)
-        self.assertIn("inc-fr-s-02", [x["id"] for x in l2.escalations(NOW)])
+        self.assertIn("case-inc-fr-s-02", [x["id"] for x in l2_cases.list_cases(NOW)])  # the escalation is a case after a restart
 
     def test_DB_3_register_checks(self):
         e = T["DB-3"]["expect"]

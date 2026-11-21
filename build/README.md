@@ -131,22 +131,22 @@ Third build: the three gaps from the first review are fixed in the specification
 
 ## Results: L2
 
-All nine L2 pages: Today (daily check), Weekly, Monthly, Escalations, Investigate, Configuration, Inventory, Calendar, Thresholds.
+Third L2 build: the workspace is rebuilt around three activities, **Monitor, Troubleshoot, Improve** (D-083 to D-090). One shell page; the frame reads the address: activity in the top bar, object in the inventory tree, pillar in the tabs, time in one picker. The nine pages of the first build (Today, Weekly, Monthly, Escalations, Investigate, Configuration, Inventory, Calendar, Thresholds) are gone; section 12 of `design/l2-workspace.md` says where each went.
 
 | Level | Tests | Result |
 |---|---|---|
-| Catalog | LCAT-1 to LCAT-6 | 6 passed |
-| Story | LST-1 to LST-14, the RCA draft record, ask-why and no-promotion checks | 18 passed |
-| Page | LPG-1 to LPG-13 | 13 passed |
+| Catalog | LCAT-1 to LCAT-9 | 9 passed |
+| Story | LST-1 to LST-16, plus tree, stale, realms, generic complaint, agent and money checks | 24 passed |
+| Page | LPG-1 to LPG-13 | 12 browser checks and the specification check passed |
+| Demo rehearsal | 21 steps, 8 of them L2 | all OK |
 
-- **The escalation loop works across workspaces.** The NOC escalates FR-S-02. L2 sees it with raw counters and drafts the root cause analysis with Agent E2. L2 closes it with a cause, a fix and a detection decision, and the NOC incident closes too.
-- **Live RCA draft, 2026-11-20 (Gemma 4 31B through the gateway):** grounded in the evidence. It separates what is proven from the fix, and reports only what L1 did. The wording is stiff.
-
-**Weekly, monthly and inventory (second L2 build):**
-- **Weekly** shows only what a day cannot: a snapshot growing 7 nights in a row (full in about 14 days), one vCPU at 97% in a VM averaging 14%, one log disk at 38 ms in a VM averaging 4 ms, three hosts behind on patches. The slipped alert on va-db-033 is explained by its log disk.
-- **Monthly** opens with last month's decisions: the snapshot decision is overdue, and it is the cause of this week's drift. Goal projections are the CIO page's numbers. The capacity outlook is the Capacity workspace's own.
-- **Inventory** counts the explained changes and lists only the unexplained: a CPU limit set directly in vCenter on a production Gold VM, and the 40 Tokyo deletions. PCM's own actions are explained by the action record.
-- **Found in review and fixed:** long chips overlapped the text; trend bars started at zero, so a 12% drift looked flat; alert counts showed decimals.
+- **The whole estate is in the tree:** 1,200 hosts, 106 clusters, about 27,900 VMs, built from `spec/data/estate.yaml` (`l2_tree`). Every object a story names sits where the story says. Five views: Compute, Storage, Network, Class of service, Management.
+- **Monitor** reads every VM: each node shows its children worst first (score over the window and over the last hour), the count just above the green line, and Group by. London, 7 days, grouped by host model: 9 VMs wider than their host's NUMA node, all on Gen-2019 hosts (story M-1).
+- **Troubleshoot:** every case has a trigger (complaint, L1 escalation, monitoring finding). The chain grows link by link; Agent E2's flows propose, L2 confirms or rules out. Story T-1 (from Agent E2's `L4-037`): nine links, a snapshot left by the backup as root cause, a NUMA split as contributing cause, and "add 8 vCPUs" and "add a ninth host" ruled out. The timeline reaches back to the weekend change window.
+- **Same numbers as the NOC:** a story that plants a cluster's performance (N-1, T-2) now drives the NOC and L2 from one function. TK-S-03 shows amber on the wall and its incident shows as already escalated.
+- **Found in review and fixed:** the 24-hour 95th percentile hid FR-S-02's fall of 20 minutes ago; rows now show the window and the last hour, and the status is the worse of the two. Case work (proposals, confirmations) flooded the timeline and the L1 evidence; it is now kept on the case. Security, capacity, configuration and inventory findings opened cases; only availability and performance are troubleshot (SP5), the rest go to Improve.
+- **Speed:** the specification files were parsed again on every call, about 0.3 s each. They are now parsed once per change. The estate summary answers in about 1.5 s, other L2 calls in 0.1 to 0.5 s.
+- **Still planted:** the chains for planted stories come from the story file, because Agent E2's flow executor is not called yet. A complaint about any other VM runs a generic SP5 order on that VM's counters.
 
 **Policy as code (D-079):** the trust ladder is gone. Action policies (tier and guardrails, versioned, owned) decide what runs automatically. The approval record is evidence only. "Propose a policy change" replays against history before Publish. The L-4 move runs automatically under v2, with the policy owner and version as its accountable party and no approval record.
 
@@ -223,13 +223,13 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 
 ## Agent E2 service (D-078)
 
-- "Ask Agent E2 why" on `/l2/investigate/{object}` calls the Agent E2 service (`harness/answer_service.py` in the Agent E2 repository, merged 2026-11-20). PCM sends the question, the investigation facts on the page, and the role.
+- "Ask Agent E2 why" on a case page (`/l2/troubleshoot/case/{case}`) calls the Agent E2 service (`harness/answer_service.py` in the Agent E2 repository, merged 2026-11-20). PCM sends the question, the case facts, and the role. (The first L2 build asked from `/l2/investigate/{object}`; the live check below ran there.)
 - **Run it next to PCM:** `python3 harness/answer_service.py --port 8090` from the Agent E2 repository. It takes about 50 s to start. The URL is the setting `agent_e2.service_url`.
 - **Live check, 2026-11-20:**
   - sg-app-117 answered in 32 s: "the issue is inside the Guest OS".
   - The answer cites SP5 files and adds that the run queue of 6.5 per vCPU is in the orange band. It names what to check next.
   - Minor: it cited the cluster performance file for VM-level green bands.
-- **Without the service,** the page says "The Agent E2 service is not available" (test LPG-9).
+- **Without the service,** the page says "The Agent E2 service is not available" (test LPG-8).
 
 ## Known gaps (to fix in the specification, not here)
 
@@ -262,9 +262,13 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 | `web/fonts/` | Manrope, bundled, with its licence |
 | `pcm_proto/noc.py` | NOC data, grouping, SOPs and the action engine (in memory) |
 | `web/noc/` | The NOC wall and desktop pages |
-| `pcm_proto/l2.py` | L2 daily check, proposals, action policies, escalations, configuration, calendar, threshold replay |
+| `pcm_proto/l2.py` | L2 check runs (daily, weekly), proposals, action policies, configuration, calendar, threshold replay, decisions, detailed inventory |
+| `pcm_proto/l2_estate.py` | The L2 inventory tree: every host, VM and datastore in five views, and the scores Monitor reads |
+| `pcm_proto/l2_monitor.py` | L2 Monitor: findings, pillar views, iceberg, group by, the tree and search |
+| `pcm_proto/l2_cases.py` | L2 Troubleshoot: cases, chains, layers, timeline, who else, close |
+| `pcm_proto/l2_improve.py` | L2 Improve: opportunities and risks under an object |
 | `pcm_proto/capacity.py` | Capacity engine: usable capacity, forecast, decision dates, purchase plan, reclamation, what-if |
-| `web/l2/` | The L2 pages |
+| `web/l2/` | The L2 shell page and its script: one frame for every L2 address |
 | `web/capacity/` | The Capacity pages |
 | `pcm_proto/docs.py` | Docs: objects, used on, history, export for private-cloud-explained |
 | `web/docs/` | The Docs pages |

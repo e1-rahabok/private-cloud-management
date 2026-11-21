@@ -20,7 +20,7 @@ SPEC = Path(__file__).resolve().parents[2] / "spec"
 KINDS = ("measure", "sop", "policy", "threshold", "standard", "setting")
 MEASURE_FILES = ("executive", "noc", "l2", "capacity")
 # Where each kind is changed (Docs design, 2.2). None: nothing in PCM changes it; the specification does.
-CHANGED_AT = {"policy": "/l2", "threshold": "/l2/authoring", "standard": "/l2/configuration"}
+CHANGED_AT = {"policy": "/l2/rules", "threshold": "/l2/rules", "standard": "/l2/improve/compute/estate/configuration"}
 HISTORY_ACTIONS = {"policy": ("publish_policy",), "threshold": ("publish_threshold",), "standard": ("change_standard",)}
 
 
@@ -81,8 +81,10 @@ def used_on(kind: str, oid: str, obj: dict) -> list:
         return [{"page": "/noc/alert/{id}", "workspace": "noc", "section": "Steps", "question": "What do I do now?",
                  "role": "l1", "cadence": ["live"]}]
     if kind == "policy":
-        return [{"page": "/l2", "workspace": "l2", "section": "Action policies", "question": "What runs automatically, and why?",
-                 "role": "l2", "cadence": ["daily"]}]
+        return [{"page": "/l2/rules", "workspace": "l2", "section": "Action policies", "question": "What runs automatically, and within which guardrails?",
+                 "role": "l2", "cadence": ["weekly"]},
+                {"page": "/l2/improve/{view}/{object}/{pillar}", "workspace": "l2", "section": "Opportunities", "question": "Which risks and opportunities sit under this object, largest first?",
+                 "role": "l2", "cadence": ["weekly"]}]
     if kind in ("setting", "standard"):
         # Settings and standards are read by the engine; list the specifications that name them.
         hits = []
