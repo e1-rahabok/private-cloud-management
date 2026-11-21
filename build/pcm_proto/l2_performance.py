@@ -271,16 +271,9 @@ def view(now: datetime, view_: str, nid: str, window: str, cls: str = DEFAULT_CL
         for i in m:
             hit_now[i] += 1
         first[vid] = min(m)
-    starts = [0] * n
-    for i in first.values():
-        starts[i] += 1
-    pts, cum = [], 0
-    for i in range(n):
-        cum += starts[i]
-        pts.append({"t": times[i], "below_green": hit_now[i], "different": cum})
     most = max(range(n), key=lambda i: (hit_now[i], i)) if n else 0
     vs = M._vm_scores(*key)
-    consumer = {"vms": len(vms), "points": pts, "different": len(first), "most_at_once": hit_now[most] if n else 0,
+    consumer = {"vms": len(vms), "different": len(first), "most_at_once": hit_now[most] if n else 0,
                 "most_at": times[most] if n else None,
                 "near_line": sum(1 for v in vms if 75 <= vs[v["id"]] < 80), "below_green": sum(1 for v in vms if vs[v["id"]] < 75)}
 

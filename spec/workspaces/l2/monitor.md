@@ -73,10 +73,8 @@ On every node above the cluster: estate, region, location, VCF instance, workloa
 
 ### VM
 
-- **Hit over time** (l2.consumer_hits): one chart, one count axis.
-  - Line 1: VMs below green at that point.
-  - Line 2: different VMs hit since the start of the window.
-  - Under it, in words: "{different} different VMs were hit; never more than {most} at once, at {time}."
+- **Hit in words** (l2.consumer_hits): no chart. A per-VM trend does not scale to a large estate; the Worst VMs table carries the detail.
+  - "{different} different VMs were hit; never more than {most} at once, at {time}."
 - **Worst VMs** (l2.worst_vms): 20 rows, worst first, and the count of all.
   - VM, worst VM Performance, the time of it, cluster, location, class.
   - Hit in the same 5 minutes: how many other VMs in scope were below green at that time.
