@@ -5,7 +5,7 @@ role: capacity
 cadence: [weekly]
 vocabulary: catalog/vocabulary/capacity.yaml
 design: design/capacity-workspace.md
-decisions: [D-054, D-056]
+decisions: [D-054, D-056, D-094]
 ---
 
 # Capacity: cluster groups
@@ -16,7 +16,7 @@ decisions: [D-054, D-056]
 question: "Which cluster groups need a decision, and by when?"
 role: capacity
 cadence: [weekly]
-reads: [capacity.remaining_percent, capacity.time_remaining_days, capacity.quadrant, noc.cluster_performance]
+reads: [capacity.remaining_percent, capacity.time_remaining_days, capacity.quadrant, l2.cluster_check]
 api: /api/capacity/groups
 ```
 
@@ -32,7 +32,8 @@ api: /api/capacity/groups
   - decision date;
   - in the plan, and whether the round is on time;
   - status.
-- **Contention overrides the forecast** (Capacity design, 3.4).
-  - When a cluster in the group is not serving its VMs well now (Cluster Performance orange or red), the row says "Full now: VMs waiting" with the cluster and its score, whatever the forecast says.
+- **The check overrides the forecast** (Capacity design, 3.4; l2.cluster_check).
+  - When a cluster in the group is closed at the latest Periodic Cluster Check, the row says "Closed for new VMs" with the cluster and since when, whatever the forecast says.
+  - Never "Full now" or "VMs waiting". No contention of the last hour on this page (Capacity design, 3.16).
 - **Never a data-centre or location total** (Capacity design, 3.1).
 - **States:** normal, loading, error.

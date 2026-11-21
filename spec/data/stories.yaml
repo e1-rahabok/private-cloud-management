@@ -682,8 +682,8 @@ stories:
         strip_7d_cells: 7
       FR-B-04: { state: open, near_closure: true, finding: { kind: heading_to_closed, window: "7d", severity: amber, outcome: improve } }
       FR-B-03: { state: open, near_closure: true, finding: null }
-      wld-fr-gen: { class_default: bronze, near_closure: [FR-B-03, FR-B-04], closed: 0, mixed_counted_under: all }
-      FR-S-02: { state: open, waiting_now: true, status: red, note: "N-1: the fall to 22 is 20 minutes old; the check ignores it" }
+      wld-fr-gen: { class_default: gold, gold_empty: true, with_class_bronze: true, near_closure: [FR-B-03, FR-B-04], closed: 0, mixed_counted_under: all }
+      FR-S-02: { state: open, contention_now: true, status: red, note: "N-1: the fall to 22 is 20 minutes old; the check ignores it" }
     decisions: [D-094, D-095]
 
   # ---------------------------------------------------------------- Weekly, monthly and inventory stories

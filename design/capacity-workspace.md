@@ -80,13 +80,14 @@ Path: `privatecloud.acme.com/capacity` (D-028).
   - High remaining capacity looks good on a traditional dashboard. Usually it is unused money.
   - SP5 colours it dark grey, not green. PCM does the same, so waste cannot pass as health.
 
-### 3.4 Contention overrides the forecast
+### 3.4 The check overrides the forecast (D-094)
 
-- **What:** each cluster also shows Cluster Performance (%) and Cluster Risk (%). If the cluster's VMs are waiting, it is marked full, whatever the forecast says.
+- **What:** a group with a cluster closed for new VMs at the latest Periodic Cluster Check says "Closed for new VMs", with the cluster, whatever the forecast says.
 - **Why:**
   - Both capacity numbers read utilization against usable capacity. Neither reads contention.
-  - A cluster with 200 days remaining can still be full today because its VMs wait for CPU (SP5: contention is the override).
-  - Capacity reads this signal. It does not own it: performance stays with L2 (L2 design, 4.3).
+  - The check does: it closes a cluster on contention as well as on consumption. A cluster with 200 days remaining can still be closed today (SP5: contention is the override).
+  - Capacity reads the check. It does not own it, and it does not read contention of the last hour: this workspace shows nothing real-time (3.16). Contention now is L2's and the NOC's (L2 design, 4.3.3).
+  - Not "Full now: VMs waiting". VMs are not queued for deployment: placement never waits on a closed cluster; it picks another. "Closed for new VMs" says what placement does.
 
 ### 3.5 PCM keeps years of history, because the forecast needs it
 
@@ -260,10 +261,10 @@ Path: `privatecloud.acme.com/capacity` (D-028).
   - Decision: pages say "cluster group" (location plus class), and the detail page is `/capacity/group/{id}`.
   - Why: we buy hosts for a class in a location, not for one cluster. DRS and placement move load between clusters of the same class, so a single cluster runs out only when its group does.
   - Trade-off: one hot cluster can hide inside a healthy group. Contention covers that case (next point).
-- **Contention overrides the forecast.**
-  - Decision: when a cluster in the group is orange or red on Cluster Performance now, the row says "Full now: VMs waiting", whatever the forecast says.
-  - Why: a forecast built from weekly peaks can say "13 months left" while VMs wait for CPU today. Capacity that does not serve is not capacity.
-  - One definition: the score is the NOC's own. FR-S-02 at 22 shows on the wall and on the Capacity page.
+- **The check overrides the forecast.** Revised by D-094 (3.4).
+  - Decision: when a cluster in the group is closed at the latest Periodic Cluster Check, the row says "Closed for new VMs" with the cluster, whatever the forecast says. The first build said "Full now: VMs waiting" from Cluster Performance now.
+  - Why: a forecast built from weekly peaks can say "13 months left" while a cluster cannot take new VMs today. Capacity that does not serve is not capacity.
+  - One definition: the decision is the check's, the same one L2's Capacity tab shows.
 - **"This week" isolates the cause.**
   - Decision: last week's view is the same engine with register entries added in the last 7 days left out.
   - Why: the question is "why did the date move?". Holding the trend fixed and removing only the new entries names the cause, here the OpenShift migration (130 days earlier). A move with no new entry is reported as "the trend changed".
@@ -298,7 +299,7 @@ Path: `privatecloud.acme.com/capacity` (D-028).
   - SP5 People: Capacity does not run day-to-day capacity. Closing a cluster to new VMs is day-to-day (section 1).
   - A forecast on two pages becomes two forecasts. L2 shows none, and links here for months ahead.
   - The two usable capacities differ on purpose. Planning holds back a maintenance host before it is needed. Running measures the hosts that run; a host in maintenance mode drops out by itself.
-- **Open:** whether "Full now: VMs waiting" (3.19) should also show "Closed for new VMs" from the check. See L2 design, section 13.
+- **The one signal that crosses:** "Closed for new VMs" from the check, shown in both (3.4).
 
 ## 4. Pages
 

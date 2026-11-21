@@ -239,7 +239,8 @@ entries:
 
   l2.cluster_check:
     description: >
-      vCommunity's Periodic Cluster Check, read, never recomputed and never set by PCM. Once per period, per cluster:
+      The PCM adapter's (vCommunity's, D-096) Periodic Cluster Check, read through VCF Operations, never recomputed by the
+      pages. Once per period, per cluster:
       the worst end of each KPI over the period and Close for Business. PCM names the rule that matched, from the three
       published inputs, and labels each input by its percentile (l2.statistics naming). Kept as its own series for 13
       months, one point per period: the 5-minute history it was made from is kept 45 days only.
@@ -250,12 +251,12 @@ entries:
       consumption: "vCommunity|Periodic Cluster Check|Worst Cluster Consumption"
       close_for_business: "vCommunity|Periodic Cluster Check|Close for Business"
     adapter_settings:
-      note: "Read from the vCommunity adapter instance. Not PCM settings: PCM reads the decision they produced."
+      note: "PCM settings set in the PCM adapter (vCommunity, D-096): adapter.cluster_check_period_hours, adapter.cluster_check_time_utc, adapter.cluster_check_worst_percent. Read, never held twice."
       period_hours: { default: 24, values: [1, 2, 4, 6, 8, 12, 24] }
       time_utc: { default: "00:00" }
       worst_percent: { default: 5, range: [0, 50] }
     closure_levels:
-      note: "vCommunity constants, on each KPI's health (the value, or 100 minus it when higher is worse). A value on a level does not reach it."
+      note: "Setting adapter.cluster_closure_levels, set in the PCM adapter (D-096). On each KPI's health (the value, or 100 minus it when higher is worse). A value on a level does not reach it."
       performance: { red: "below 20", orange: "below 40" }
       risk: { red: "above 80", orange: "above 60" }
       consumption: { red: "above 80", orange: "above 60" }
@@ -281,11 +282,12 @@ entries:
         - { performance: 90, risk: 10, consumption: 30, close: 0 }
     decisions: [D-094, D-095]
 
-  l2.waiting_now:
+  l2.contention_now:
     description: >
-      "VMs waiting now": the cluster's Cluster Performance over the last hour is orange or red on the display bands
+      "Contention now": the cluster's Cluster Performance over the last hour is orange or red on the display bands
       (below 50). The NOC's own number. Shown beside the check's verdict, never folded into it: the check decides once
-      per period and ignores its worst samples, so a cluster can be open at the check while its VMs wait now.
+      per period and ignores its worst samples, so a cluster can be open at the check while it has contention now. Never worded "VMs waiting": that reads as VMs
+      queued for deployment, and placement never waits on a closed cluster; it picks another.
     window: "last hour"
     below: "th-cluster-perf-red (50): the NOC's red line, the start of orange"
     decisions: [D-040, D-094]
@@ -331,13 +333,6 @@ entries:
     states: [running, maintenance_mode, disconnected, not_responding, powered_off]
     decisions: [D-094]
 
-  l2.capacity_class_default:
-    description: >
-      The class of service a Capacity tab above the cluster opens on: the first class with a cluster under the node,
-      in the order Gold, Silver, Bronze; All when the node has only mixed clusters. Mixed clusters count under All only.
-    order: [gold, silver, bronze, all]
-    decisions: [D-091, D-094]
-
   l2.closed_count:
     description: >
       Per check period, the number of clusters in scope closed for new VMs, and how many closed and opened since the
@@ -368,7 +363,7 @@ entries:
     description: >
       Every cluster in scope at one selected time: closed first, then near closure, then highest Consumption. Verdict
       at the latest check and since when; Consumption, Performance and Risk at the time; a Consumption sparkline over
-      the window; VMs waiting now. Before a click, the time is the highest point of the Consumption line.
+      the window; contention now. Before a click, the time is the highest point of the Consumption line.
     decisions: [D-094]
 
   l2.capacity_findings:

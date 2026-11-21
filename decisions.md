@@ -98,8 +98,9 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-091 | 2026-11-21 | The Performance tab above the cluster is two sections, consumer first: **VM**, then **Cluster**. VM: how many VMs were hit at each moment and how many different VMs over the window, and the worst VMs with the time and the cluster. Cluster: two charts on the same 0 to 100% scale, actual slowness (worst Cluster Performance and its 10th percentile) and potential slowness (worst Cluster Risk and its 90th percentile), the same metrics as vCommunity's Worst and Worst 10 Percent. A click on a time lists every cluster at that time. A class of service filter scopes both sections; Gold is the default. Monitoring shows what, when, where and how wide; never why. | Cluster Performance is built from its VMs' contention, so the consumer is read first. A large cluster can stay green while many of its VMs take turns. The worst line says whether anything is wrong; the percentile line says whether it is narrow or wide. Gold is the class that must always be green; Bronze is read when there is time. The why is the case's job (D-084). L2 design, 4.3. |
 | D-092 | 2026-11-21 | The Performance tab of a VM shows detail, not a summary: two stacked layers of trend charts, **Guest OS** on top and **Virtual Motherboard** (the VM's virtual hardware) under it, because the Guest OS runs on the Virtual Motherboard. Each metric has its own chart over the window, and its figures say which statistic they are: now, worst, 95th percentile. Never an average. A VM page has no Group by and no Inventory tab, and the cards that count VMs go too: they describe a group. A number always carries its unit, after the number; a metric name is Title Case and never holds its unit; abbreviations are capitals (CPU, VM, OS). | A single figure such as "CPU Ready 2.5" does not say whether it is now, the worst or a percentile, and an average hides the peak that the VM's owner felt. The Guest OS is not beside the Virtual Motherboard: it is on top of it, and a wait in one shows in the other. Group by, the VM counts and Inventory describe more than one object. Rationale: D-092. |
 | D-093 | 2026-11-21 | In the L2 frame the window is a drop-down, the pillars are tabs joined to a panel, and moving between pages does not load the page. The window list is Last hour, 24 hours, 7 days, 30 days, last year; a custom range comes later. Every tab shows its status dot on every page. The run line under the path is removed. | A pill row for time and a pill row for pillars looked alike, and a full page load on every click lost the tree and the scroll. See Rationale. |
-| D-094 | 2026-11-21 | The L2 Capacity tab shows capacity over time and reads vCommunity's capacity model: **Cluster Consumption** (against usable capacity: total, minus HA, minus buffer), **Cluster Performance** (contention), **Cluster Risk**, and the **Periodic Cluster Check**'s Close for Business. **On a cluster:** the check's verdict and the rule that decided it, beside contention now; one chart per KPI with the closure levels and the check's verdict under them; what consumption is made of; the spread between hosts; the hosts. **Above the cluster:** clusters closed per check; the highest Cluster Consumption and its 90th percentile; every cluster at a selected time; open clusters near closure; one class of service filter. PCM reads the check and never recomputes it or sets it. The tab shows no forecast, run-out date, decision date, Capacity Remaining or Time Remaining: those belong to the Capacity workspace. | A snapshot table cannot say whether 90% is rising, flat or one spike, and capacity is managed on its trend. vCommunity already decides, every period, whether each cluster takes new VMs; a second rule in PCM would give two answers for one cluster. A cluster is a group of hosts, so the page goes down to them. The boundary keeps two horizons apart: L2 answers "can it take more VMs now, and is it heading to closed?"; Capacity answers "when do we buy?". Rationale: D-094. |
+| D-094 | 2026-11-21 | The L2 Capacity tab shows capacity over time and reads vCommunity's capacity model: **Cluster Consumption** (against usable capacity: total, minus HA, minus buffer), **Cluster Performance** (contention), **Cluster Risk**, and the **Periodic Cluster Check**'s Close for Business. **On a cluster:** the check's verdict and the rule that decided it, beside contention now (Cluster Performance over the last hour); one chart per KPI with the closure levels and the check's verdict under them; what consumption is made of; the spread between hosts; the hosts. **Above the cluster:** clusters closed per check; the highest Cluster Consumption and its 90th percentile; every cluster at a selected time; open clusters near closure; one class of service filter. PCM reads the check and never recomputes it or sets it. The tab shows no forecast, run-out date, decision date, Capacity Remaining or Time Remaining: those belong to the Capacity workspace. | A snapshot table cannot say whether 90% is rising, flat or one spike, and capacity is managed on its trend. vCommunity already decides, every period, whether each cluster takes new VMs; a second rule in PCM would give two answers for one cluster. A cluster is a group of hosts, so the page goes down to them. The boundary keeps two horizons apart: L2 answers "can it take more VMs now, and is it heading to closed?"; Capacity answers "when do we buy?". Rationale: D-094. |
 | D-095 | 2026-11-21 | Which statistic, on which axis. **Over time, on one object:** a point holds the worst value of its slot (D-091); the figures are Now, Worst (with its time) and 95th percentile (D-092); the object's status over the window is its 95th percentile (D-088), and the worse of that and its last hour. **Across objects, at one time:** the worst object, and the 10th or 90th percentile at the bad end (D-091). **Never an average** on either axis, and never a sum or average of percentages across clusters. vCommunity's "Worst" check values are a percentile of the check period; PCM names them by what they are ("95th percentile, 24 hours to 08:00"), never "Worst". | The two axes answer different questions. Over time, one bad 5 minutes is too noisy to decide on, but it must stay visible: the chart shows every point and Worst names the peak. Across objects, the worst one is a real cluster with real VMs, and the percentile says how wide. One word for two statistics (vCommunity's Worst is a percentile, PCM's Worst is a peak) makes the same cluster read two ways. Rationale: D-095. |
+| D-096 | 2026-11-21 | vCommunity is part of PCM, not a third-party source. PCM requires it, and it will be renamed the **PCM adapter**. Its metrics are PCM's definitions; its settings and thresholds are PCM settings, set in the adapter and listed in the catalog with their owner. PCM still reads them through VCF Operations (D-064), where the adapter runs. | The capacity model, the KPIs and the Periodic Cluster Check are already built in vCommunity. A second copy in PCM would give two answers for one cluster. Spec rule 6 holds: every threshold is a named setting; it is set in one place, the adapter. Rationale: D-096. |
 
 ## Rationale
 
@@ -597,8 +598,9 @@ Source: Cost n Price n Value (in `sources/`).
 
 **The check and "now" are both shown**
 - The check reads the worst end of its period, ignoring the worst 5% of samples (70 minutes a day). It ignores a spike, and it decides once per period.
-- So a cluster can be open at the check and have VMs waiting now. Story N-1: FR-S-02 fell to 22 twenty minutes ago.
-- The tab shows both: the check's verdict, and "VMs waiting now" from Cluster Performance in the last hour.
+- So a cluster can be open at the check and have contention now. Story N-1: FR-S-02 fell to 22 twenty minutes ago.
+- The tab shows both: the check's verdict, and "Contention now" from Cluster Performance in the last hour.
+  - Not "VMs waiting": that reads as VMs queued for deployment. A deployment is never stuck on a closed cluster; placement picks another one.
   - The status is the worse of the two, as on every L2 row (l2.node_score).
 - PCM does not recompute the check from the last hour. Stopping provisioning on a contended cluster is the NOC's SOP (D-040), not a capacity decision.
 
@@ -635,7 +637,7 @@ Source: Cost n Price n Value (in `sources/`).
 
 **Findings**
 - **Closed at the latest check:**
-  - closed because VMs wait (Performance red, or rule 2): a problem, so Troubleshoot;
+  - closed with contention (Performance red, or rule 2): a problem, so Troubleshoot;
   - closed on Consumption alone: a risk, so Improve (rebalance, reclaim), with the Capacity workspace one click away.
 - **Heading to closed** (7-day window): the check's Consumption drifts up, by the drift rule L2 already uses (l2.findings).
 - **Every chip has a finding,** and every finding has a chip. A chip with no rule behind it is removed.
@@ -677,3 +679,19 @@ Source: Cost n Price n Value (in `sources/`).
 
 **Why the last hour too**
 - A 24-hour percentile ignores a problem that started 20 minutes ago. The last hour is the NOC's view; L2 sees it as well.
+
+### D-096 vCommunity is part of PCM
+
+**What it changes**
+- vCommunity was treated as an outside source PCM reads. It is PCM's own collection part: it computes the KPIs, the capacity model and the Periodic Cluster Check inside VCF Operations.
+- Its name will change to the PCM adapter.
+
+**Settings and thresholds**
+- Spec rule 6 asks for every threshold as a named setting with an owner. The adapter's thresholds are those settings.
+- **Set in one place: the adapter.** `catalog/settings.yaml` lists each one with its default, its owner and where it is set. PCM never holds a second value.
+  - A second value in PCM could disagree with what the adapter already decided and published.
+- **Owner:** L2 for the check and its closure levels (D-045); the Capacity team for the buffer (D-054), which VCF Operations' capacity policy applies.
+
+**Not changed**
+- PCM still has no collectors of its own (D-064). The adapter runs in VCF Operations and publishes there; PCM reads through VCF Operations.
+

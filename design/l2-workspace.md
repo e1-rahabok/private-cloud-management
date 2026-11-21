@@ -243,8 +243,8 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
   - Risk alone never closes a cluster.
   - The closure levels sit inside the display bands, so a cluster does not flip on a small change. A Consumption of 78 shows red and stays open.
 - **PCM reads the decision and its three inputs. It never recomputes them and never sets them.** It names the rule that matched, from the published inputs.
-- **The check and now are both shown.** The check ignores the worst 70 minutes of the day, so a cluster can be open at the check while its VMs wait now (story N-1). The tab shows the check's verdict and "VMs waiting now" side by side. The status is the worse of the two.
-  - "VMs waiting now" is the cluster's Performance over the last hour, orange or red: the NOC's own number. Stopping provisioning then is the NOC's SOP (D-040).
+- **The check and now are both shown.** The check ignores the worst 70 minutes of the day, so a cluster can be open at the check while it has contention now (story N-1). The tab shows the check's verdict and "Contention now" side by side. The status is the worse of the two.
+  - "Contention now" is the cluster's Performance over the last hour, orange or red: the NOC's own number. Not "VMs waiting": that reads as VMs queued for deployment, and placement never waits on a closed cluster; it picks another. Stopping provisioning then is the NOC's SOP (D-040).
 - **Two words kept apart:**
   - "Spread between hosts": the busiest host against the least busy.
   - "CPU Imbalance": vCommunity's running threads per running core, an input of Risk. The old tab called the first one "imbalance".
@@ -254,7 +254,7 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
 - **The verdict first, in words:**
   - "Open for new VMs at the check of the 24 hours to 08:00 GMT+8."
   - "Closed for new VMs since the check of 17 Oct (3 checks). Consumption 84% is above 80%."
-  - Beside it, when it applies: "VMs waiting now: Cluster Performance 22% at 10:05."
+  - Beside it, when it applies: "Contention now: Cluster Performance 22% at 10:05."
 - **Three charts, one per KPI, in the rule's order:** Consumption, Performance, Risk. Same time axis, one above the other.
   - Each draws the display bands as background, and the two closure levels as lines.
   - Beside each: Now, Worst (with its time), 95th percentile, and the check's value named as its percentile.
@@ -280,7 +280,7 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
 The same shape as the Performance tab (4.3.1): one class of service filter, a selected time, the worst and a percentile, and the clusters at that time.
 
 - **Class of service:** Gold, Silver, Bronze, All, one filter for the tab. Classes are never mixed in one line: Bronze runs hotter by design (D-091).
-  - The default is the first class present under the node, in the order Gold, Silver, Bronze; All when the node has only mixed clusters. A workload domain of Bronze clusters opens on Bronze, not on an empty Gold.
+  - Gold by default, always, as on the Performance tab: Gold is the priority. A node without Gold says so, and Bronze is one click away.
 - **Clusters closed for new VMs:** one bar per check period, the count of closed clusters in scope.
   - In words: "3 of 18 Bronze clusters closed at the latest check; 1 closed and none opened since the check before."
   - Below 7 check periods in the window, the words only.
@@ -290,7 +290,7 @@ The same shape as the Performance tab (4.3.1): one class of service filter, a se
   - Both are bad: the class is full in that place. That is the Capacity workspace's question; the page links to it.
 - **Near closure:** open clusters whose Consumption at the latest check is above the orange closure level, and how that count moved over the window. The capacity iceberg (4.2).
 - **Clusters at {selected time}:** every cluster in scope, closed first, then near closure, then highest Consumption.
-  - Cluster, location, class; verdict at the check, and since when; Consumption, Performance and Risk at the selected time; Consumption sparkline over the window; VMs waiting now.
+  - Cluster, location, class; verdict at the check, and since when; Consumption, Performance and Risk at the selected time; Consumption sparkline over the window; contention now.
   - A click on a chart picks the time. Before a click, the time is the highest point of the Consumption line.
   - A click on a cluster selects it in the tree.
 - **Performance and Risk spreads are not repeated here.** They are on the Performance tab. Here they appear per cluster, as inputs to its verdict.
@@ -589,12 +589,8 @@ The troubleshooting stories come from Agent E2's benchmark (`benchmark/questions
 
 1. **Who owns PCM's own configuration** (class-of-service definitions, action tiers)?
    - Proposal: L2 proposes changes; the Operations Manager approves them after 1.0. Until then, L2 owns them (D-045).
-2. **Should the Capacity workspace's "Full now" read the check?** (D-094)
-   - Today the Capacity workspace marks a group "Full now: VMs waiting" when one of its clusters is orange or red on Cluster Performance now (Capacity design, 3.19). That is L2's "VMs waiting now", not Close for Business.
-   - Proposal: keep "Full now: VMs waiting" for contention now, and add "Closed for new VMs" from the check. One definition each, both shown, neither recomputed.
-3. **The closure levels are vCommunity's constants, not PCM settings.** (D-094)
-   - PCM reads the decision, so a PCM setting for 80, 60, 20 and 40 could disagree with what vCommunity decided.
-   - Proposal: the catalog names them with their source and version; `/docs` shows them read-only. The check period and Worst Percent are read from the vCommunity adapter instance, so the labels follow them.
-4. **Should the Performance tab take the Capacity tab's class default?** (D-091, D-094)
-   - Gold by default opens an empty page on a workload domain with no Gold cluster.
-   - Proposal: the first class present under the node, in the order Gold, Silver, Bronze, on both tabs.
+
+Settled 2026-11-21 (D-094, D-096):
+- The Capacity workspace says "Closed for new VMs" from the check, not "Full now: VMs waiting". VMs are not queued for deployment; placement picks another cluster.
+- vCommunity is part of PCM, to be renamed the PCM adapter. Its thresholds are PCM settings, set in the adapter.
+- Both class filters start on Gold, always. Gold is the priority.

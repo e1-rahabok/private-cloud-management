@@ -48,9 +48,11 @@ story:
     story: C-6
     expect: { group: SG-Silver, defers_next_round: true, cost_avoidance_equals_plan_total: true, powered_off_frees_memory_gb: 0 }
   - id: KST-7
-    name: Contention overrides the forecast
-    story: N-1
-    expect: { group: FR-Silver, full_now: true, cluster: FR-S-02 }
+    name: The check overrides the forecast (D-094)
+    stories: [M-4, N-1]
+    expect:
+      LD-Bronze: { closed_for_new_vms: [LD-B-01] }
+      FR-Silver: { closed_for_new_vms: [], note: "N-1: FR-S-02 is open at the check; its contention now is L2's and the NOC's" }
   - id: KST-8
     name: One definition with the CIO page
     expect: { rule: "Each location's decision on /api/exec/summary equals the earliest decision of its groups on /api/capacity/groups." }
@@ -63,7 +65,7 @@ page:
   - id: KPG-3
     rule: On /capacity/clusters, TK-Gold is drawn in the waste colour, not green.
   - id: KPG-4
-    rule: 'On /capacity/clusters, the FR-Silver row says "Full now: VMs waiting".'
+    rule: 'On /capacity/clusters, the LD-Bronze row says "Closed for new VMs" with LD-B-01; no row says "Full now" or "VMs waiting".'
   - id: KPG-5
     rule: /capacity shows FR-Silver moved earlier because of dr-ocp-wave-2.
   - id: KPG-6
