@@ -1,4 +1,4 @@
-// Page tests LPG-2 to LPG-13 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
+// Page tests LPG-2 to LPG-16 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
 // GENERATED from spec/tests/l2.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/l2.page.test.mjs
 import { spawn } from 'node:child_process';
@@ -55,8 +55,8 @@ try {
   // LPG-4 /l2 opens Monitor on the estate, Summary, 24 hours, one row per pillar
   const landed = new URL(page.url()).pathname;
   const rows = await page.$$eval('tr[data-pillar]', r => r.map(x => x.dataset.pillar));
-  const win = await page.innerText('.windows a[aria-current="true"]');
-  check('LPG-4', landed === '/l2/monitor/compute/estate/summary' && rows.join() === 'availability,performance,capacity,security,configuration,inventory' && win === '24 hours' && !/health score/i.test(await page.innerText('main')), `${landed}; ${rows.length} pillar rows; ${win}`);
+  const win = (await page.innerText('.winbtn .lbl')).trim();
+  check('LPG-4', landed === '/l2/monitor/compute/estate/summary' && rows.join() === 'availability,performance,capacity,security,configuration,inventory' && win === 'Last 24 hours' && !/health score/i.test(await page.innerText('main')), `${landed}; ${rows.length} pillar rows; ${win}`);
 
   // LPG-5 the tree keeps activity and window; switching activity keeps the object
   await go('/l2/monitor/compute/estate/performance?window=7d');
@@ -135,6 +135,29 @@ try {
     && labels.join() === 'Now,Worst,95th percentile' && figs.every(f => /\d(%|\/s| ms| per vCPU| pages\/s)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
     && !(await page.$('#grp')) && !/side by side|Just above the line|Children outside green/i.test(mainText) && !/average/i.test(mainText),
     `${tabsText}; ${layers}; ${names.length} charts; ${figs.slice(0, 3)}`);
+
+  // LPG-16 moving between pages does not load the page; the window is a drop-down; tabs are tabs with a dot each
+  await go('/l2/monitor/compute/estate/summary');
+  await page.evaluate(() => { window.__same = 'yes'; });
+  const moves = [];
+  await page.click('[role="tab"][data-pillar="performance"]'); await page.waitForSelector('body[data-ready="1"]');
+  moves.push(new URL(page.url()).pathname);
+  const dots = await page.$$eval('[role="tab"]', ts => ts.map(t => !!t.querySelector('.dot')));
+  const selected = await page.$$eval('[role="tab"][aria-selected="true"]', ts => ts.map(t => t.dataset.pillar));
+  const panelBy = await page.$eval('[role="tabpanel"]', p => p.getAttribute('aria-labelledby'));
+  await page.click('#winbtn');
+  const options = await page.$$eval('#winlist a', as => as.map(a => a.textContent.trim()));
+  await page.click('#winlist a[data-w="7d"]'); await page.waitForSelector('body[data-ready="1"]');
+  const label = (await page.innerText('.winbtn .lbl')).trim();
+  moves.push(new URL(page.url()).searchParams.get('window'));
+  await page.click('aside.tree a.node[data-obj="emea"]'); await page.waitForSelector('body[data-ready="1"]');
+  const node = new URL(page.url()).pathname.split('/')[4];
+  await page.goBack(); await page.waitForSelector('body[data-ready="1"]');
+  const back = new URL(page.url()).searchParams.get('window');
+  const same = await page.evaluate(() => window.__same);
+  check('LPG-16', same === 'yes' && moves.join() === '/l2/monitor/compute/estate/performance,7d' && dots.every(Boolean) && selected.join() === 'performance'
+    && panelBy === 'tab-performance' && options.join() === 'Last hour,Last 24 hours,Last 7 days,Last 30 days,Last year' && label === 'Last 7 days' && node === 'emea' && back === '7d',
+    `same document: ${same}; ${moves}; dots ${dots.filter(Boolean).length}/${dots.length}; ${label}; back to ${back}`);
 
   // LPG-12 contrast and no foreign request
   const contrast = async () => page.evaluate(() => {

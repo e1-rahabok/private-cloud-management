@@ -66,10 +66,12 @@ reads: [l2.time_window]
 ```
 
 - **The path** of the selected object, estate first, each part a link.
-- **The window picker:** 1 hour, 24 hours, 7 days, 30 days, 1 year. Default: 24 hours in Monitor, 30 days in Improve.
+- **The window picker is a drop-down** at the right of the path: one light button that names the window ("Last 24 hours") and opens a list: Last hour, Last 24 hours, Last 7 days, Last 30 days, Last year. The chosen one is ticked. Default: 24 hours in Monitor, 30 days in Improve.
   - The window stays when the object or tab changes.
   - Inside a case the picker is replaced by the case window, fixed.
-- **The run line** under the path, in Monitor: which check run the window reads, for which region, and when.
+  - It is a button with a list: the arrow keys move in the list, Enter chooses, Esc closes and returns to the button.
+  - A custom range ("from, to" and "last N units") comes later. It needs the API to take a range (L2 design, 3.4).
+- **No run line.** The page does not say which check run it reads. The tab and the window say what the page is about.
 
 ## Tabs
 
@@ -84,6 +86,17 @@ reads: [l2.pillars]
   - **Inventory is a provider tab.** A VM, Guest OS, virtual disk or vNIC does not have it (l2.pillars, D-092).
 - **Troubleshoot has no tabs.** A case crosses pillars.
 - **No tab for compliance, cost or price.**
+- **The tabs are the titles of the panel under them.** The selected tab and the panel are one shape: the tab has the panel's colour, a dark top edge, and no line between it and the panel. The other tabs are flat and grey. Everything the tab owns (message, notes, tables, charts, findings) is inside the panel; the object's name and the window are outside it.
+- **Every tab shows its status dot,** on every page, not only the selected one. Summary shows the worst of the others. The dot is named for a screen reader.
+- **Roles:** tab list, tab, tab panel. The arrow keys move between tabs; Enter opens one.
+
+## Moving between pages
+
+- **No page load.** A tab, the window, the tree, a table link, Group by, the class filter and a click on a chart change the content under the header; the header, the top bar and the tree stay. The tree keeps what the user opened.
+- **The address still changes** on every move, so Back, Forward, a copied link and a reload all work (L2 design, 10).
+- **While data is on its way** the selected tab and the window answer at once, and the panel dims. Nothing goes blank.
+- **The last click wins.** A slow answer for a page the user has left never replaces the page they are on.
+- **Keyboard focus** returns to the selected tab or to the window button after the move.
 
 ## Addresses
 

@@ -97,6 +97,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-090 | 2026-11-21 | The L2 demo's troubleshooting stories come from Agent E2's benchmark, renamed into the ACME estate: `L4-037` (complaint), `L4-074` (L1 escalation), `L4-049` and `L4-045` (monitoring findings). | Each has several layers, causes that build up over time, and red herrings. Together they show all three triggers. L2 design, 11. |
 | D-091 | 2026-11-21 | The Performance tab above the cluster is two sections, consumer first: **VM**, then **Cluster**. VM: how many VMs were hit at each moment and how many different VMs over the window, and the worst VMs with the time and the cluster. Cluster: two charts on the same 0 to 100% scale, actual slowness (worst Cluster Performance and its 10th percentile) and potential slowness (worst Cluster Risk and its 90th percentile), the same metrics as vCommunity's Worst and Worst 10 Percent. A click on a time lists every cluster at that time. A class of service filter scopes both sections; Gold is the default. Monitoring shows what, when, where and how wide; never why. | Cluster Performance is built from its VMs' contention, so the consumer is read first. A large cluster can stay green while many of its VMs take turns. The worst line says whether anything is wrong; the percentile line says whether it is narrow or wide. Gold is the class that must always be green; Bronze is read when there is time. The why is the case's job (D-084). L2 design, 4.3. |
 | D-092 | 2026-11-21 | The Performance tab of a VM shows detail, not a summary: two stacked layers of trend charts, **Guest OS** on top and **Virtual Motherboard** (the VM's virtual hardware) under it, because the Guest OS runs on the Virtual Motherboard. Each metric has its own chart over the window, and its figures say which statistic they are: now, worst, 95th percentile. Never an average. A VM page has no Group by and no Inventory tab, and the cards that count VMs go too: they describe a group. A number always carries its unit, after the number; a metric name is Title Case and never holds its unit; abbreviations are capitals (CPU, VM, OS). | A single figure such as "CPU Ready 2.5" does not say whether it is now, the worst or a percentile, and an average hides the peak that the VM's owner felt. The Guest OS is not beside the Virtual Motherboard: it is on top of it, and a wait in one shows in the other. Group by, the VM counts and Inventory describe more than one object. Rationale: D-092. |
+| D-093 | 2026-11-21 | In the L2 frame the window is a drop-down, the pillars are tabs joined to a panel, and moving between pages does not load the page. The window list is Last hour, 24 hours, 7 days, 30 days, last year; a custom range comes later. Every tab shows its status dot on every page. The run line under the path is removed. | A pill row for time and a pill row for pillars looked alike, and a full page load on every click lost the tree and the scroll. See Rationale. |
 
 ## Rationale
 
@@ -549,3 +550,21 @@ Source: Cost n Price n Value (in `sources/`).
 **Not changed**
 - The case page keeps its own VM and Guest OS cards (case.md). Its layout is the case's decision.
 
+### D-093 Window drop-down, pillar tabs, no page load
+
+**What was wrong**
+- Two rows of pills sat in one header, and the selected one in each was black. The reader could not tell which one titled the page below.
+- Every pill was a link that loaded the whole page. The tree closed, the scroll went to the top, the fonts and scripts loaded again.
+- Five fixed windows took the width of a row, and left no room for more.
+- The status dot showed on the selected tab only, so a pillar page hid the state of the others.
+- The run line under the path said which check run the page read. It was noise on every page.
+
+**Now**
+- **Window:** one light drop-down button. The list is Last hour, 24 hours, 7 days, 30 days, last year. A custom range comes later: it needs the API to take a range.
+- **Tabs:** the selected tab and the panel are one shape. The tab is the panel's title.
+- **Moving:** in-page. The address changes; the header, top bar and tree stay; the last click wins.
+- **Dots:** on every tab, on every page.
+
+**Not changed**
+- The API still returns the run line's data. The page no longer shows it.
+- The NOC and Capacity workspaces keep their pills. This is L2 only.
