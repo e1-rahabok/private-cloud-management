@@ -9,7 +9,7 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 const ROOT = new URL('../../', import.meta.url).pathname;
 const PORT = 8770;
 const NOW = readFileSync(ROOT + 'spec/tests/docs.yaml', 'utf8').match(/^now:\s*"([^"]+)"/m)[1];
-const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DB: ':memory:' } });
+const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DEMO_SWITCHER: '0', PCM_DB: ':memory:' } });
 for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/docs`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
 const BASE = `http://127.0.0.1:${PORT}`, q = `?now=${encodeURIComponent(NOW)}`;
 const results = [];

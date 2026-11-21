@@ -177,7 +177,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(404, b"not found", "text/plain")
         ctype = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
         body = f.read_bytes()
-        if f.suffix == ".html" and os.environ.get("PCM_DEMO_SWITCHER") == "1":
+        if f.suffix == ".html" and os.environ.get("PCM_DEMO_SWITCHER") != "0":
             # Demo only: a thin role switcher on every page. The generated pages stay untouched.
             body = body.replace(b"</body>", b'<script src="/demo/switcher.js"></script></body>', 1)
         return self.send(200, body, ctype)

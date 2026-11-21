@@ -15,10 +15,10 @@ node demo/rehearse.mjs
 1. Start PCM on a database of its own, so the demo always starts clean.
 
 ```bash
-PCM_DEMO_SWITCHER=1 PCM_DB=var/demo.sqlite python3 -m build.pcm_proto.server --port 8080
+PCM_DB=var/demo.sqlite python3 -m build.pcm_proto.server --port 8080
 ```
 
-   `PCM_DEMO_SWITCHER=1` adds a thin role switcher at the top of every page: a drop-down in demo order, with one or two lines on what the role does. It only jumps between the six URLs below and keeps the clock. It is demo scaffolding; production is one URL per person. Leave it off for the page tests (the wall must have no interactive element).
+   The server adds a thin red role switcher at the top of every page, labelled "Demo control · not part of PCM": a drop-down in demo order, with one or two lines on what the role does. It only jumps between the six URLs below and keeps the clock. It is demo scaffolding; production is one URL per person. It is on by default. Set `PCM_DEMO_SWITCHER=0` to turn it off; the page tests do, because the wall itself must have no interactive element (D-041). The switcher sits above the wall, outside it.
 
 2. Reset the demo state: everything people did in the last run is removed.
 

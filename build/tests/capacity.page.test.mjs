@@ -14,7 +14,7 @@ const avoided = readFileSync(ROOT + 'spec/catalog/vocabulary/capacity.yaml', 'ut
 // A database file of its own, so the test can restart the server and check what survived (DBP-1).
 const DBDIR = mkdtempSync(tmpdir() + '/pcm-');
 const start = async () => {
-  const s = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DB: DBDIR + '/pcm.sqlite' } });
+  const s = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DEMO_SWITCHER: '0', PCM_DB: DBDIR + '/pcm.sqlite' } });
   for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/capacity`); return s; } catch { await new Promise(r => setTimeout(r, 200)); } }
   return s;
 };
