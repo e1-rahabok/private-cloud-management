@@ -464,7 +464,7 @@ function metricBlock(m, layer) {
     fmt, width: 760, height: 160, left: m.unit.length > 3 ? 104 : 72, minutes: m.minutes, noclick: true, nodirect: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined });
   const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, { p95: fmt(m.percentile_95), worst: fmtPoint(m.worst.t, m.minutes) }) : '';
   return `<div class="metric" data-metric="${m.key}"><div class="mfig"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div><div class="muted">${lowest ? 'Higher is better' : 'Lower is better'}</div>
-    <dl><dt>Now</dt><dd>${fmt(m.now)}</dd><dt>Worst</dt><dd>${fmt(m.worst.v)} <span class="muted">at ${esc(fmtPoint(m.worst.t, m.minutes))}</span></dd><dt>95th percentile</dt><dd>${fmt(m.percentile_95)}</dd></dl></div>${chart}</div>`;
+    <dl><dt>Now</dt><dd>${fmt(m.now)}</dd><dt>Worst</dt><dd>${fmt(m.worst.v)}</dd><dt>95th percentile</dt><dd>${fmt(m.percentile_95)}</dd></dl></div>${chart}</div>`;
 }
 function layersView(d) {
   return `<p class="muted">Over ${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point per ${fmtDur(d.layers[0].metrics[0].minutes)}. Each point holds the worst value inside it. The 95th percentile is the value that 95% of the points were better than.</p>`
