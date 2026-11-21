@@ -443,13 +443,6 @@ def _act(now, path, body, enable):
         out = agent_e2.draft_facts(facts, "rca_draft", st, vocab["avoided"], template)
         r = rec("agent_draft", cid, "rca_draft", "-", out["source"], actor_agent="agent-e2", incident=case.get("incident"))
         return 200, {**out, "record": r}
-    if verb == "ask":
-        if not body.get("question"):
-            return 400, {"error": "A question is required."}
-        facts = detail(now, cid, enable)
-        out = agent_e2.ask_service(st["agent_e2.service_url"], body["question"], facts, "l2")
-        r = rec("agent_ask", cid, body["question"], "-", out["source"], actor_agent="agent-e2")
-        return 200, {**out, "record": r}
     return 404, {"error": "unknown action"}
 
 

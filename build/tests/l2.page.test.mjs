@@ -1,7 +1,8 @@
-// Page tests LPG-2 to LPG-19 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
+// Page tests LPG-2 to LPG-21 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
 // GENERATED from spec/tests/l2.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/l2.page.test.mjs
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const { chromium } = createRequire(import.meta.url)('playwright');
@@ -11,8 +12,20 @@ const PORT = 8768;
 const NOW = readFileSync(ROOT + 'spec/tests/l2.yaml', 'utf8').match(/^now:\s*"([^"]+)"/m)[1];
 const avoided = readFileSync(ROOT + 'spec/catalog/vocabulary/l2.yaml', 'utf8').split('avoided:')[1].split('labels:')[0]
   .split('\n').map(l => l.trim()).filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
-// No Agent E2 service on port 8090 during page tests: LPG-8 checks the unavailable state.
-const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DEMO_SWITCHER: '0', PCM_AGENT_E2_MODE: 'mock', PCM_DB: ':memory:' } });
+// PCM points at a stub Agent E2 service (PCM_AGENT_E2_URL). It is not running for LPG-8 (the unavailable state); LPG-20 and LPG-21 start it.
+const E2_PORT = 8769;
+const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DEMO_SWITCHER: '0', PCM_AGENT_E2_MODE: 'mock', PCM_DB: ':memory:', PCM_AGENT_E2_URL: `http://127.0.0.1:${E2_PORT}` } });
+const E2_SEEN = [];
+const E2_ANSWER = 'No. A Guest OS Run Queue of 0.38 per vCPU at the 95th percentile is not a CPU shortage inside fr-svc-5526.\n\nCheck next: VM CPU Ready on the same hour, then the host fr-esx-218.';
+const stub = createServer((req, res) => {
+  let b = ''; req.on('data', c => { b += c; }); req.on('end', () => {
+    const send = d => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(d)); };
+    if (req.url === '/v1/health') return send({ ok: true, model: 'stub-model', files: 286 });
+    const body = JSON.parse(b || '{}'); E2_SEEN.push(body);
+    if (!body.turns && /which counter/i.test(body.question)) return send({ type: 'clarify', content: '', questions: ['Do you mean the Guest OS Run Queue or the VM CPU Ready?'], files_read: [], computed: [], model: 'stub-model', knowledge_commit: 'abc1234' });
+    send({ type: 'answer', content: E2_ANSWER, questions: [], files_read: ['guest-os/cpu/metrics/run-queue', 'vsphere/technology/cpu/metrics/vm/ready'], computed: ['0.38 per vCPU × 4 vCPU = 1.5 threads waiting'], model: 'stub-model', knowledge_commit: 'abc1234' });
+  });
+});
 for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/exec`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
 const BASE = `http://127.0.0.1:${PORT}`;
 const NQ = `now=${encodeURIComponent(NOW)}`;
@@ -86,10 +99,15 @@ try {
   const ho = await page.innerText('[data-handover]');
   check('LPG-7', ho === 'The cause is inside the Guest OS. Hand this evidence to the Windows or Linux team.', ho);
 
-  // LPG-8 Agent E2 service not running
-  await page.click('#ask button[type="submit"]'); await page.waitForSelector('body[data-ask]', { timeout: 30000 });
-  const askText = await page.innerText('#answer');
-  check('LPG-8', askText.includes('The Agent E2 service is not available'), askText.split('\n')[0]);
+  // LPG-8 Agent E2 service not running: a grey mark, and the panel says so
+  await page.waitForSelector('body[data-e2="down"]');
+  const offLabel = await page.getAttribute('#e2top', 'aria-label'), offGrey = await page.$eval('#e2top', b => b.classList.contains('off'));
+  await page.click('.objhead .e2mark'); await page.waitForSelector('#e2 [data-sugg]');
+  await page.click('#e2 [data-sugg]'); await page.waitForSelector('#e2 .e2a', { timeout: 30000 });
+  const askText = await page.innerText('#e2 .e2a');
+  const noAnswer = !(await page.$('#e2 .e2src')) && !(await page.$('#e2 .e2computed'));
+  await page.keyboard.press('Escape');
+  check('LPG-8', offLabel === 'Agent E2 is not available' && offGrey && askText.includes('The Agent E2 service is not available') && noAnswer, `${offLabel}; ${askText.split('\n')[0]}`);
 
   // LPG-9 Rules: no "Make automatic"; Publish only after Replay, for policies and thresholds
   await go('/l2/rules');
@@ -212,6 +230,56 @@ try {
     && panelBy === 'tab-performance' && options.join() === 'Last hour,Last 24 hours,Last 7 days,Last 30 days,Last year' && label === 'Last 7 days' && node === 'emea' && back === '7d',
     `same document: ${same}; ${moves}; dots ${dots.filter(Boolean).length}/${dots.length}; ${label}; back to ${back}`);
 
+  // LPG-20 the Agent E2 mark and panel (D-097)
+  await new Promise(r => stub.listen(E2_PORT, '127.0.0.1', r));
+  await new Promise(r => setTimeout(r, 3200)); // PCM keeps a health answer for 3 seconds
+  await go('/l2/monitor/compute/estate/summary');
+  const e2utils = await page.$$eval('nav.utils > *', xs => xs.map(x => x.id || x.textContent.trim()));
+  const findRows = await page.$$eval('.finding', xs => xs.map(x => !!x.querySelector('.e2mark')));
+  const noExplain = !(await page.innerText('main')).includes('Explain this finding');
+  await go('/l2/monitor/compute/fr-svc-5526/performance');
+  await page.waitForSelector('body[data-e2="up"]');
+  const marks = await page.$$eval('.metric', ms => ms.map(m => [m.querySelector('h4').textContent, m.querySelector('.e2mark') && m.querySelector('.e2mark').getAttribute('aria-label')]));
+  const marksOk = marks.length === 9 && marks.every(([n, l]) => l === `Ask Agent E2 about ${n}`);
+  await page.click('.metric[data-metric="run_queue_per_vcpu"] .e2mark'); await page.waitForSelector('#e2 [data-sugg]');
+  await page.waitForTimeout(300);
+  const panelBox = await page.$eval('#e2', e => e.getBoundingClientRect().toJSON());
+  const chartRight = await page.$eval('.metric[data-metric="run_queue_per_vcpu"] svg.lc', e => e.getBoundingClientRect().right);
+  const folded = await page.$eval('#tree', e => getComputedStyle(e).display === 'none') && await page.isVisible('.treefold');
+  const outlined = await page.$eval('.metric[data-metric="run_queue_per_vcpu"]', e => e.classList.contains('e2-asked'));
+  const ctx = await page.innerText('[data-e2ctx]');
+  const nSugg = (await page.$$('#e2 [data-sugg]')).length;
+  await page.click('#e2 [data-sugg]'); await page.waitForSelector('#e2 .e2src', { timeout: 30000 });
+  const chips = (await page.$$('#e2 .srcchip')).length, boxes = (await page.$$('#e2 .e2computed .box')).length;
+  const objLinks = await page.$$eval('#e2 .e2a a[data-obj]', as => as.map(a => a.dataset.obj));
+  const foot = await page.innerText('#e2 .e2foot');
+  const sentFacts = E2_SEEN[E2_SEEN.length - 1];
+  await page.click('[role="tab"][data-pillar="capacity"]'); await page.waitForSelector('body[data-ready="1"]');
+  const stillOpen = await page.isVisible('#e2'), ctx2 = await page.innerText('[data-e2ctx]');
+  await page.keyboard.press('Escape');
+  const closed = !(await page.isVisible('#e2')) && await page.$eval('#tree', e => getComputedStyle(e).display !== 'none');
+  const focusBack = await page.evaluate(() => document.activeElement && document.activeElement.id);
+  check('LPG-20', e2utils[0] === 'e2top' && e2utils.slice(1).join() === 'Rules,Calendar' && findRows.length > 0 && findRows.every(Boolean) && noExplain && marksOk
+    && chartRight <= panelBox.x && folded && outlined && /fr-svc-5526/.test(ctx) && /Performance/.test(ctx) && /Last 24 hours/.test(ctx) && nSugg >= 1 && nSugg <= 3
+    && chips === 2 && boxes === 1 && objLinks.includes('fr-esx-218') && foot.includes('recorded in the action history') && sentFacts.role === 'l2' && sentFacts.facts.asked_about_metric.name === 'Run Queue'
+    && stillOpen && /Capacity/.test(ctx2) && closed && focusBack === 'e2top',
+    `${e2utils}; ${findRows.length} findings marked; ${marks.length} metric marks; chart right ${Math.round(chartRight)} <= panel ${Math.round(panelBox.x)}; ${ctx}; ${nSugg} suggestions; ${chips} sources; links ${objLinks}; then ${ctx2}; focus ${focusBack}`);
+
+  // LPG-21 a clarifying round carries the earlier turns; a narrow screen shows the panel as a sheet
+  await go('/l2/monitor/compute/fr-svc-5526/performance');
+  await page.click('.metric[data-metric="cpu_ready_percent"] .e2mark'); await page.waitForSelector('#e2q');
+  await page.fill('#e2q', 'Which counter do I read?'); await page.press('#e2q', 'Enter'); await page.waitForSelector('#e2 .e2asks', { timeout: 30000 });
+  const asks = await page.innerText('#e2 .e2asks');
+  const before = E2_SEEN.length, shown = (await page.$$('#e2 .e2a')).length;
+  await page.fill('#e2q', 'The VM one'); await page.press('#e2q', 'Enter'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, shown);
+  const turns = E2_SEEN[before] && E2_SEEN[before].turns;
+  await page.setViewportSize({ width: 800, height: 900 }); await page.waitForTimeout(200);
+  const sheet = await page.$eval('#e2', e => e.getBoundingClientRect().toJSON());
+  const closeTop = await page.$eval('#e2 .e2close', e => e.getBoundingClientRect().top);
+  await page.keyboard.press('Escape'); await page.setViewportSize({ width: 1440, height: 1000 });
+  check('LPG-21', /Agent E2 asks/i.test(asks) && Array.isArray(turns) && turns.length === 3 && turns[0] === 'Which counter do I read?' && turns[2] === 'The VM one'
+    && sheet.x === 0 && sheet.width === 800 && closeTop < 60, `${asks.split('\n')[0]}; turns ${turns && turns.length}; sheet ${sheet.x},${sheet.width}; close at ${Math.round(closeTop)}`);
+
   // LPG-12 contrast and no foreign request
   const contrast = async () => page.evaluate(() => {
     const parse = c => (c.match(/[\d.]+/g) || []).map(Number);
@@ -226,7 +294,7 @@ try {
     return fails;
   });
   const fails = [];
-  for (const p of ['/l2', '/l2/monitor/compute/ld/performance?window=7d&group=host_model', '/l2/monitor/compute/LD-B-01/capacity?window=7d', '/l2/monitor/compute/wld-fr-gen/capacity?window=7d&class=bronze', '/l2/troubleshoot/compute/estate', '/l2/troubleshoot/case/case-inc-tk-s-03', '/l2/improve/compute/estate/summary', '/l2/rules', '/l2/calendar']) {
+  for (const p of ['/l2', '/l2/monitor/compute/fr-svc-5526/performance', '/l2/monitor/compute/ld/performance?window=7d&group=host_model', '/l2/monitor/compute/LD-B-01/capacity?window=7d', '/l2/monitor/compute/wld-fr-gen/capacity?window=7d&class=bronze', '/l2/troubleshoot/compute/estate', '/l2/troubleshoot/case/case-inc-tk-s-03', '/l2/improve/compute/estate/summary', '/l2/rules', '/l2/calendar']) {
     await go(p); fails.push(...(await contrast()).map(f => `${p}: ${f}`));
   }
   const foreign = [...hosts].filter(h => h !== `127.0.0.1:${PORT}`);
@@ -244,6 +312,10 @@ try {
     await shot.goto(BASE + withNow(p)); await shot.waitForSelector('body[data-ready="1"]', { timeout: 60000 });
     await shot.screenshot({ path: ROOT + `build/screenshots/${name}.png`, fullPage: full });
   }
+  await shot.goto(BASE + withNow('/l2/monitor/compute/fr-svc-5526/performance')); await shot.waitForSelector('body[data-ready="1"]');
+  await shot.click('.metric[data-metric="run_queue_per_vcpu"] .e2mark'); await shot.waitForSelector('#e2 [data-sugg]');
+  await shot.click('#e2 [data-sugg]'); await shot.waitForSelector('#e2 .e2src', { timeout: 30000 }); await shot.waitForTimeout(300);
+  await shot.screenshot({ path: ROOT + 'build/screenshots/l2-agent-e2-panel.png' });
   await shot.goto(BASE + withNow('/l2/troubleshoot/compute/estate')); await shot.waitForSelector('body[data-ready="1"]');
   const t1 = await shot.$$eval('tr[data-case]', trs => trs.map(t => [t.dataset.case, t.innerText]).find(([, x]) => /sg-gl-db-01/.test(x)));
   if (t1) {
@@ -251,7 +323,7 @@ try {
     await shot.screenshot({ path: ROOT + 'build/screenshots/l2-case-complaint.png', fullPage: true });
   }
 } finally {
-  await browser.close(); await reset().catch(() => {}); server.kill();
+  await browser.close(); await reset().catch(() => {}); server.kill(); stub.close();
 }
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length} passed, ${failed.length} failed`);

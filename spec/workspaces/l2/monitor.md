@@ -5,7 +5,7 @@ role: l2
 cadence: [daily, weekly, monthly]
 vocabulary: catalog/vocabulary/l2.yaml
 design: design/l2-workspace.md
-decisions: [D-039, D-042, D-083, D-086, D-088, D-091, D-092, D-094, D-095]
+decisions: [D-039, D-042, D-083, D-086, D-088, D-091, D-092, D-094, D-095, D-097]
 ---
 
 # L2 Monitor
@@ -117,6 +117,7 @@ On a VM, the tab shows detail. The Guest OS runs on top of the Virtual Motherboa
   - **Worst:** the worst point of the window, with its time.
   - **95th percentile:** the value that 95% of the points were better than.
   - **Never an average.** It hides the peak the VM's owner felt.
+- **Agent E2 mark** at the right of each metric's name: "Ask Agent E2 about {metric}" (frame.md, Agent E2 mark; D-097). PCM sends the metric's points, Now, Worst with its time, 95th percentile, which way is better, the layer and its status, the other metrics of both layers, and the calendar entries in the window.
 - **Names and units:** Title Case; abbreviations in capitals (CPU, VM, OS, vCPU); the unit follows the number and is never part of the name: "CPU Ready 2.5%", "Disk Latency 5.6 ms", "Context Switches 7,346/s".
 - **Under the layers:** "Log a complaint about this VM"; Children, worst first (the Guest OS); Findings.
 - **States:** normal; stale; loading; error. A metric with no data in the window shows "No data" in place of its chart, never a flat line.
@@ -145,6 +146,7 @@ On a cluster. On a host, VM or Guest OS, the tab shows its cluster's page with t
   - 0 to 100%. Display bands as background. The two closure levels as dashed lines, labelled "Closes above 80%" and "Orange for closure above 60%" (Performance: below 20% and below 40%).
   - Points as on the Performance tab: 5 minutes for 1 hour and 24 hours, 1 hour for 7 days, 4 hours for 30 days, 1 day for 1 year. A point holds the worst value inside it.
   - Beside each chart: **Now**, **Worst** (with its time), **95th percentile**, and the check's value labelled by its percentile and period: "95th percentile, 24 hours to 08:00 GMT+8: 84%". Never "Worst" for a check value. Never an average.
+  - **Agent E2 mark** at the right of each KPI's name: "Ask Agent E2 about {KPI}". PCM sends the KPI's points, Now, Worst, 95th percentile, the check's value and its closure levels, the verdict and its reason (D-097).
 - **Check strip** under the three charts (l2.cluster_check): one cell per check period in the window, closed (labelled) or open, aligned with the time axis; a cell with no check is grey "No data".
   - Fewer than 7 check periods in the window (1 hour, 24 hours): words instead of the strip: the latest check and the one before it.
 - **What consumption is made of** (l2.consumption_parts): one chart per part, each in % of usable capacity, with Now, Worst, 95th percentile: CPU Thread Utilization, Memory Consumed, Memory Ballooned, Memory Zip Swap, and Memory Tiering where the hosts have a tier.
@@ -208,5 +210,5 @@ reads: [l2.findings, l2.slipped_alerts]
 - **Explained by the calendar:** the entry is named, and the finding sorts last.
 - **24-hour window:** the daily check's findings. **7-day window:** what a day cannot show, never a repeat of a daily finding.
 - **Alerts that slipped through:** alerts no finding predicted, each with "What would have caught it" and a link to Rules.
-- **Agent E2:** "Explain this finding" on any row.
+- **Agent E2 mark** on every row: "Ask Agent E2 about this finding". It opens the panel with the finding as context; PCM sends the finding, its evidence and the calendar entry that explains it, if any (D-097).
 - **States:** normal; empty ("Nothing needs you under this object."); loading; error.

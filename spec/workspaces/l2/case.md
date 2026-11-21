@@ -5,7 +5,7 @@ role: l2
 cadence: [live]
 vocabulary: catalog/vocabulary/l2.yaml
 design: design/l2-workspace.md
-decisions: [D-038, D-044, D-076, D-078, D-084, D-085, D-089]
+decisions: [D-038, D-044, D-076, D-078, D-084, D-085, D-089, D-097]
 ---
 
 # L2 case
@@ -27,6 +27,7 @@ api: /api/l2/cases/{case}
   - complaint: who, through whom, since, fine until, and what they already checked;
   - escalation: the SOP steps L1 ran with their results, villains and victims with raw counters, what L1 already did, and Accept / Reject (reason required);
   - finding: the finding's summary and evidence, with a link back to it in Monitor.
+- **Agent E2 mark** at the right of the title: "Ask Agent E2 about this case" (frame.md, Agent E2 mark; D-097).
 - **States:** normal; unknown case ("No such case"); loading; error.
 
 ## Chain of causes
@@ -41,6 +42,7 @@ reads: [l2.chain, l2.realms]
 - **The symptom at the top.** Under it, each link: the cause, the object, the layer, the SP5 step and the Agent E2 flow that proposed it, its evidence, its kind (main or contributing) and its state.
   - Links are indented under the effect they explain, so A ← B ← C ← D reads top to bottom.
   - Several causes can sit under one effect: a main cause and a contributing cause.
+  - **Agent E2 mark** on each link: "Ask Agent E2 about this link". PCM sends the case and the link.
 - **States of a link:**
   - **proposed:** "Confirm" and "Rule out" buttons. Rule out asks for a reason, recorded with the link.
   - **confirmed:** the person who confirmed it.
@@ -59,6 +61,7 @@ reads: [l2.layers]
 ```
 
 - **One row per layer:** Guest OS, VM, host, cluster, storage, network. Each: clear, waiting, or not read, with the values that decide it.
+- **Agent E2 mark** on each row: "Ask Agent E2 about the {layer} layer". PCM sends the case and the layer.
 - **Hand-over** (l2.layers hand_over): when the evidence points outside scope, the case names the team and says what was checked.
 - **States:** normal; loading; error.
 
@@ -89,19 +92,19 @@ reads: [l2.who_else]
 - **A pattern found here** can become a monitoring finding: "Add a check rule" opens Rules.
 - **States:** normal; empty ("No other object shows this symptom."); loading; error.
 
-## Ask Agent E2 why
+## Ask Agent E2
 
 ```yaml
 question: "Why, with sources?"
 role: l2
 cadence: [live]
 reads: [l2.chain]
-api: /api/l2/cases/{case}/ask
+api: /api/l2/agent/ask
 ```
 
-- PCM sends the question, the case facts and the role to the Agent E2 service (D-078). The answer shows with the knowledge files it read.
-- **"Draft the root cause analysis"** (D-076): Agent E2 drafts from the confirmed links. Checked against the L2 vocabulary and recorded.
-- If the service is not running, the page says "The Agent E2 service is not available" and shows no answer.
+- **In the Agent E2 panel** (frame.md), not a section of the page. The marks on the header, the links and the layers open it with the case as context (D-097).
+- PCM sends the question, the case facts (header, trigger evidence, chain with each link's state, layers, hand-over, timeline) and the role to the Agent E2 service (D-078). The answer shows with the knowledge files it read.
+- If the service is not running, the panel says "The Agent E2 service is not available" and shows no answer.
 
 ## Close
 
@@ -114,6 +117,7 @@ api: /api/l2/cases/{case}/close
 ```
 
 - **Four fields, all required** (l2.case_close): root cause, corrective action, detection (new check rule, new alert, new SOP, SOP updated, none with a reason), detection note.
+- **"Draft the root cause analysis"** (D-076), above the fields: Agent E2 drafts from the confirmed links. The draft shows above the fields, marked "Draft by Agent E2, to review"; it fills no field. Checked against the L2 vocabulary and recorded.
   - Root cause is prefilled from the confirmed main links; at least one main link must be confirmed.
   - Missing any field: refused, with the missing field named.
 - **A log-based detection is validated first** (l2.log_validation): the count on healthy objects over 5 working days is shown; above the limit, PCM says it is noise.

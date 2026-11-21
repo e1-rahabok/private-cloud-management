@@ -1,6 +1,6 @@
 """Agent E2 drafts for PCM (D-076).
 
-GENERATED from spec/catalog/settings.yaml (agent_e2.*) and spec/workspaces/noc/incident.md.
+GENERATED from spec/catalog/settings.yaml (agent_e2.*), spec/workspaces/noc/incident.md and spec/workspaces/l2/frame.md.
 Do not edit by hand (D-070).
 
 One OpenAI-compatible client. Demo: Vercel AI Gateway. Customer site: a local model server.
@@ -102,17 +102,21 @@ def draft_facts(facts: dict, task: str, settings: dict, avoided: list, template:
         return {"text": template, "source": "fallback_unavailable", "model": model}
 
 
-def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 180) -> dict:
+def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 180, turns: list | None = None) -> dict:
     """Agent E2 service (D-078): the knowledge base, the reading plan and the model call, behind one endpoint.
-    Returns {content, files_read, computed, model, source}. source: service or unavailable."""
+    turns: a clarifying round, [first question, Agent E2's questions, the reply]; the facts go with the first.
+    Returns {type, content, questions, files_read, computed, model, knowledge_commit, source}. source: service or unavailable."""
     body = {"question": question, "facts": facts, "role": role}
+    if turns:
+        body["turns"] = turns
     try:
         out = _post_raw(url.rstrip("/") + "/v1/answer", body, timeout)
         return {"content": out.get("content") or "", "questions": out.get("questions", []), "type": out.get("type"),
                 "files_read": out.get("files_read", []), "computed": out.get("computed", []),
                 "model": out.get("model"), "knowledge_commit": out.get("knowledge_commit"), "source": "service"}
     except (urllib.error.URLError, TimeoutError, ConnectionError, ValueError, KeyError):
-        return {"content": "", "files_read": [], "computed": [], "model": None, "source": "unavailable"}
+        return {"type": None, "content": "", "questions": [], "files_read": [], "computed": [], "model": None,
+                "knowledge_commit": None, "source": "unavailable"}
 
 
 def _post_raw(url: str, body: dict, timeout: int) -> dict:

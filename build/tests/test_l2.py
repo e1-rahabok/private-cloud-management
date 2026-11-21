@@ -16,7 +16,7 @@ os.environ["PCM_DB"] = ":memory:"  # tests never touch the working database
 
 import yaml
 
-from build.pcm_proto import generator, l2, l2_capacity as CAP, l2_cases as C, l2_estate as X, l2_improve as I, l2_monitor as M, l2_performance as P, noc
+from build.pcm_proto import generator, l2, l2_agent as A, l2_capacity as CAP, l2_cases as C, l2_estate as X, l2_improve as I, l2_monitor as M, l2_performance as P, noc
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = yaml.safe_load((ROOT / "spec/tests/l2.yaml").read_text())
@@ -284,20 +284,58 @@ class Troubleshoot(Base):
         with mock.patch.dict(os.environ, {"PCM_AGENT_E2_MODE": "mock"}):
             code, out = C.act(NOW, ["case-sg-app-117", "draft"], {})
         self.assertEqual((code, out["record"]["actor_agent"]), (200, "agent-e2"))
-        st = dict(SETTINGS, **{"agent_e2.service_url": "http://127.0.0.1:9"})
-        with mock.patch.object(generator, "load_spec", lambda: {**REAL_SPEC, "settings": st}):
-            code, out = C.act(NOW, ["case-sg-app-117", "ask"], {"question": "Why?"})
-        self.assertEqual((code, out["source"]), (200, "unavailable"))
 
-    def test_ask_passes_case_facts_and_role(self):
-        seen = {}
+    def test_LST_27_agent_e2_facts_rebuilt_by_pcm(self):
+        """LST-27 (D-097): the facts come from PCM, never from the browser; the question is recorded with both identity fields."""
+        t, seen = T["LST-27"], {}
+        e = t["expect"]
         def fake(url, body, timeout):
-            seen.update(body)
-            return {"type": "answer", "content": "Inside the Guest OS.", "files_read": ["sp5-framework/performance/vm-slow"], "model": "m"}
+            seen.clear(); seen.update(body)
+            return {"type": "answer", "content": "Not a shortage on fr-svc-5526; check fr-esx-218.", "files_read": ["guest-os/cpu/metrics/run-queue"],
+                    "computed": ["0.38 per vCPU"], "model": "m", "knowledge_commit": "abc"}
+        g = t["given"]["metric"]
+        ctx = {"kind": "metric", "object": g["object"], "pillar": g["pillar"], "window": g["window"], "layer": g["layer"], "metric": g["metric"],
+               "now": g["now_sent_by_browser"]}
         with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
-            code, out = C.act(NOW, ["case-sg-app-117", "ask"], {"question": "Is the platform the cause?"})
-        self.assertEqual((out["source"], seen["role"]), ("service", "l2"))
-        self.assertIn("inside the Guest OS", seen["facts"]["hand_over"])
+            code, out = A.ask(NOW, {"question": "Is it a problem?", "context": ctx})
+        self.assertEqual(code, 200)
+        facts = seen["facts"]
+        m = facts["asked_about_metric"]
+        keys = set(facts) | set(m) | set(facts["object"]) | {"metric" if m.get("name") else None, "layer_status" if facts.get("layer_status") else None,
+                                                             "calendar" if "calendar_in_window" in facts else None}
+        for k in e["metric_facts"]:
+            self.assertIn(k, keys, k)
+        self.assertEqual(m["name"], "Run Queue")
+        self.assertNotEqual(m["now"], g["now_sent_by_browser"])  # the browser's number is ignored
+        self.assertEqual(len(m["points"]), 288)
+        self.assertEqual(seen["role"], e["role"])
+        r = out["record"]
+        self.assertEqual((r["action"], r["actor_agent"], r["actor_human"]), (e["recorded"]["action"], e["recorded"]["actor_agent"], e["recorded"]["actor_human"]))
+        self.assertEqual([x["id"] for x in out["links"]], ["fr-svc-5526", "fr-esx-218"])
+        self.assertEqual(out["label"], "Run Queue · fr-svc-5526 · Performance · Last 24 hours")
+        # a finding and a case link: their own facts
+        f = M.findings(NOW)[0]
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            code, out = A.ask(NOW, {"question": "Explain this finding.", "context": {"kind": "finding", "finding": f["id"]}})
+        self.assertEqual((code, seen["facts"]["finding"]["id"], out["finding"]["id"]), (200, f["id"], f["id"]))
+        chain = C.detail(NOW, "case-sg-app-117")["chain"]
+        link = chain[0] if chain else C.act(NOW, ["case-sg-app-117", "propose"], {})[1]["link"]
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            code, out = A.ask(NOW, {"question": "Is the platform the cause?", "context": {"kind": "link", "case": "case-sg-app-117", "link": link["id"]}})
+        self.assertEqual((code, seen["facts"]["asked_about_link"]["id"]), (200, link["id"]))
+        self.assertIn("inside the Guest OS", seen["facts"]["case"]["hand_over"])
+        # a clarifying round: the turns go to the service
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            A.ask(NOW, {"question": "The VM one", "context": {"kind": "case", "case": "case-sg-app-117"}, "turns": ["Which counter?", "Guest OS or VM?", "The VM one"]})
+        self.assertEqual(seen["turns"], ["Which counter?", "Guest OS or VM?", "The VM one"])
+        # refusals and the service down
+        self.assertEqual(A.ask(NOW, {"question": "x", "context": {"kind": "nope"}})[0], e["unknown_context"])
+        self.assertEqual(A.ask(NOW, {"question": "x", "context": {**ctx, "metric": "no_such_metric"}})[0], e["unknown_metric"])
+        self.assertEqual(A.ask(NOW, {"question": " ", "context": ctx})[0], 400)
+        with mock.patch.dict(os.environ, {"PCM_AGENT_E2_URL": "http://127.0.0.1:9"}):
+            code, out = A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}})
+            self.assertFalse(A.health(SETTINGS)["available"])
+        self.assertEqual((code, out["source"], out["content"]), (e["service_down"]["status"], e["service_down"]["source"], e["service_down"]["content"]))
 
 
 class Improve(Base):

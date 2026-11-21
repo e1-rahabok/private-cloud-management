@@ -525,6 +525,14 @@ Neither is an activity. Each is opened from the top bar, and also from where it 
 - **Accountability (D-050):** each Agent E2 task records Agent E2's ID and the human who ordered it. For automatic runs, the second field is the policy owner and the policy version (D-079).
 - **Why:** a confident wrong answer at L2 level spreads: it becomes an SOP that L1 runs at 03:00. Grounding in the knowledge base plus a human confirmation keeps the knowledge correct.
 
+### 8.1 Where Agent E2 is on the screen (D-097)
+
+- **One mark, everywhere the question comes up.** "E2" in a rounded square, like a colleague's initials. In the top bar it says whether Agent E2 is available; on each metric, KPI, finding, chain link and layer it asks about that thing.
+- **One panel, docked right.** The page is full, so the panel pushes the content and the tree folds to a strip; a panel on top would hide the chart being asked about. Agent E2's own demos use the same right column.
+- **PCM sends the facts of what was clicked.** Agent E2 does not read VCF Operations; PCM does, and rebuilds the facts on the server (D-078).
+- **The answer names its sources and boxes the values its code computed,** so L2 can tell knowledge from wording. Objects named in it link to their pages.
+- **Why the mark is on the card, not only in the top bar:** the question "is 0.38 per vCPU bad?" is born on the Run Queue chart. One click there carries the object, the metric and the window; typing them into a chat box loses them.
+
 ## 9. Specialty lenses are views
 
 - **What:** storage and network specialists use the Storage and Network views of the same workspace (3.2), not separate workspaces.

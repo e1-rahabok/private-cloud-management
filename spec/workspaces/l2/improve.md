@@ -5,7 +5,7 @@ role: l2
 cadence: [weekly, monthly]
 vocabulary: catalog/vocabulary/l2.yaml
 design: design/l2-workspace.md
-decisions: [D-027, D-029, D-043, D-079, D-083]
+decisions: [D-027, D-029, D-043, D-079, D-083, D-097]
 ---
 
 # L2 Improve
@@ -28,6 +28,7 @@ api: /api/l2/improve/{view}/{object}/{pillar}
   - **Configuration:** see below.
   - **Availability:** restore and HA tests due.
   - **Performance:** placements that will contend (for example a VM wider than the NUMA node of some hosts in its cluster).
+- **Agent E2 mark** on every row that comes from a finding, as in Monitor (frame.md, Agent E2 mark).
 - **Proposed fix:** where an opportunity has one, Approve and Reject (reason required). An automatic policy run shows "Ran automatically under policy {type} v{n}, owner {owner}" and no approval.
 - **States:** normal; empty ("Nothing to improve under this object."); loading; error.
 
