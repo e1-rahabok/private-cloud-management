@@ -44,8 +44,9 @@ try {
   const tkChip = await page.innerText('[data-row="TK-Gold"] .chip');
   check('KPG-3', tk === 'var(--waste)' && tkChip === 'Waste', `TK-Gold dot ${tk}, chip "${tkChip}"`);
 
-  const fr = await page.innerText('[data-row="FR-Silver"]');
-  check('KPG-4', fr.includes('Full now: VMs waiting') && fr.includes('FR-S-02'), fr.replace(/\s+/g, ' ').trim());
+  const ldb = await page.innerText('[data-row="LD-Bronze"]');
+  const allRows = await page.innerText('table');
+  check('KPG-4', ldb.includes('Closed for new VMs') && ldb.includes('LD-B-01') && !/Full now|VMs waiting/.test(allRows), ldb.replace(/\s+/g, ' ').trim());
 
   await go('/capacity');
   const moved = await page.innerText('[data-moved="FR-Silver"]');

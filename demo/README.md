@@ -2,7 +2,7 @@
 
 One story across every workspace, about 17 minutes. It shows that PCM is one system with one set of numbers, not five dashboards.
 
-**The story:** a Bronze batch VM lands in a Silver cluster in Frankfurt. The NOC sees it in seconds, follows the SOP, and escalates. L2 monitors the whole estate top down, troubleshoots the escalation as a case, and closes the loop with a new check rule. Capacity sees the same cluster as "full now". Docs shows exactly which number decided it. The CIO page tells the board the same thing in plain words.
+**The story:** a Bronze batch VM lands in a Silver cluster in Frankfurt. The NOC sees it in seconds, follows the SOP, and escalates. L2 monitors the whole estate top down, troubleshoots the escalation as a case, and closes the loop with a new check rule. L2's Capacity tab shows the same cluster open at the daily check, with contention now. Docs shows exactly which number decided it. The CIO page tells the board the same thing in plain words.
 
 **Before every demo, rehearse it.** The rehearsal clicks through every step below in a browser and checks that each screen still says what this script says. It also writes a screenshot per step to `demo/screens/`, which doubles as a handout. It needs Node and Playwright with Chromium, like the page tests.
 
@@ -148,9 +148,9 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 
 **Click:** "Cluster groups".
 
-**Point at:** FR-Silver says **Full now: VMs waiting on FR-S-02 (score 22)**. The same cluster, the same score as the NOC wall.
+**Point at:** LD-Bronze says **Closed for new VMs: LD-B-01**. The same verdict as L2's Capacity tab, read from the daily check.
 
-**Say:** "A forecast that says thirteen months left is wrong if VMs are waiting today. Contention overrides the forecast."
+**Say:** "A forecast that says months left is wrong if the cluster cannot take a new VM today. The check overrides the forecast. Placement already sends new VMs elsewhere."
 
 **Click:** "Waste". Reclaiming idle and oversized VMs in SG-Silver moves it out of the next purchase round: **cost avoidance $3,588,000**. The CIO page shows the same number, rounded: "Could still avoid in the next purchase round: $3.6M" (Value, Cost, See detail).
 
@@ -160,7 +160,7 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 
 **Point at:**
 - The threshold "Cluster Performance below 50" and who owns it.
-- **Used on:** the NOC wall, the NOC incident page, and Capacity's cluster groups. Computed from the page specifications, not written by hand.
+- **Used on:** the NOC wall, the NOC incident page, and L2's Capacity tab ("Contention now"). Not the Capacity workspace: it reads the daily check, never the last hour. Computed from the page specifications, not written by hand.
 
 **Then open** `/docs/policy/move_vms_between_clusters`: version 2, owner and tier, and **History** with the publish you did five minutes ago, from the action record.
 

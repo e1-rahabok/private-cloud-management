@@ -16,7 +16,7 @@ os.environ["PCM_DB"] = ":memory:"  # tests never touch the working database
 
 import yaml
 
-from build.pcm_proto import generator, l2, l2_cases as C, l2_estate as X, l2_improve as I, l2_monitor as M, l2_performance as P, noc
+from build.pcm_proto import generator, l2, l2_capacity as CAP, l2_cases as C, l2_estate as X, l2_improve as I, l2_monitor as M, l2_performance as P, noc
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = yaml.safe_load((ROOT / "spec/tests/l2.yaml").read_text())
@@ -144,8 +144,8 @@ class Monitor(Base):
         e = T["LST-4"]["expect"]
         week = M.findings_under(NOW, "estate", (), None, "7d")
         self.assertEqual({f["object"]: f["kind"] for f in week}, e["kinds"])
-        day = {f["object"] for f in M.findings_under(NOW, "estate", (), None, "24h")}
-        self.assertFalse(day & {f["object"] for f in week})
+        day = {(f["object"], f["pillar"]) for f in M.findings_under(NOW, "estate", (), None, "24h")}
+        self.assertFalse(day & {(f["object"], f["pillar"]) for f in week})
 
     def test_LST_5_group_by_host_model(self):
         rows = M.group_by(E, "compute", "ld", "host_model", NOW, "7d")
@@ -397,7 +397,7 @@ class PerformanceTab(Base):
             with self.assertRaises(ValueError):
                 server.l2_get(["monitor", "compute", "estate", "performance"], NOW, (), query)
         with self.assertRaises(ValueError):
-            server.l2_get(["monitor", "compute", "estate", "capacity"], NOW, (), q(**{"class": "gold"}))
+            server.l2_get(["monitor", "compute", "estate", "security"], NOW, (), q(**{"class": "gold"}))
         t = self.d["provider"]["performance"][100]["t"]
         d = server.l2_get(["monitor", "compute", "estate", "performance"], NOW, (), q(at=t))["perf"]
         self.assertEqual((d["selected"]["index"], d["selected"]["default"], d["consumer"]["worst_vms_mode"]), (100, False, "at"))
@@ -426,6 +426,133 @@ class PerformanceTab(Base):
     def test_performance_tab_only_above_the_cluster(self):
         self.assertIn("perf", M.pillar_view(NOW, "compute", "fr", "performance", "24h"))
         self.assertNotIn("perf", M.pillar_view(NOW, "compute", "FR-G-04", "performance", "24h"))
+
+
+class CapacityTab(Base):
+    """The Capacity tab (D-094, D-095, D-096): LCAT-12 to LCAT-16, LST-22 to LST-26."""
+
+    def test_LCAT_12_the_rule_gives_the_adapters_answers(self):
+        for r in T["LCAT-12"]["given"]["rows"]:
+            d = CAP.decide(r["performance"], r["risk"], r["consumption"])
+            e = r["expect"]
+            if "state" in e:
+                self.assertEqual(d["state"], e["state"], r)
+                continue
+            self.assertEqual(d["close"], e["close"], r)
+            if "rule" in e:
+                self.assertEqual(d["rule"], e["rule"], r)
+
+    def test_LCAT_13_statistics_and_their_names(self):
+        e = T["LCAT-13"]["expect"]
+        xs = list(range(1, 289))
+        self.assertEqual(P.nearest_rank(xs, 95), e["percentile_95_higher_is_worse"])
+        self.assertEqual(-P.nearest_rank([-x for x in xs], 95), e["percentile_95_higher_is_better"])
+        times = [str(i) for i in xs]
+        self.assertEqual(CAP.figures(xs, times, True)["worst"]["v"], e["worst_higher_is_worse"])
+        self.assertEqual(CAP.figures(xs, times, False)["worst"]["v"], e["worst_higher_is_better"])
+        self.assertEqual(CAP.figures(xs, times, False)["percentile_95"], e["percentile_95_higher_is_better"])
+        self.assertNotIn("average", CAP.figures(xs, times, True))
+        self.assertEqual(CAP.check_label(5, 24), e["label_worst_percent_5"])
+        self.assertEqual(CAP.check_label(10, 24), e["label_worst_percent_10"])
+        self.assertNotIn(e["label_never"], CAP.check_label(5, 24))
+
+    def test_LCAT_14_capacity_findings(self):
+        for g in T["LCAT-14"]["given"]:
+            if g["state"] == "closed" and "performance" in g:
+                d = CAP.decide(g["performance"], 10 if g["rule"] == 1 else 65, g["consumption"])
+                self.assertEqual(d["rule"], g["rule"], g)
+                self.assertEqual(CAP.finding_kind(d), g["expect"], g)
+            else:
+                checks = g["consumption_checks"]
+                rows = [{"consumption": v, "state": g["state"]} for v in reversed(checks)]
+                want = g.get("expect_7d", g.get("expect"))
+                self.assertEqual("heading_to_closed" if CAP.heading_to_closed(rows) else None, want, g)
+
+    def test_LCAT_15_gold_first_always(self):
+        self.assertEqual((P.DEFAULT_CLASS, CAP.DEFAULT_CLASS), ("gold", "gold"))
+        d = M.pillar_view(NOW, "compute", "wld-fr-gen", "capacity", "7d")["capacity"]
+        self.assertEqual((d["class"], d["clusters"]), ("gold", 0))
+
+    def test_LCAT_16_highest_and_percentile_never_average(self):
+        g, e = T["LCAT-16"]["given"]["consumption"], T["LCAT-16"]["expect"]
+        self.assertEqual((max(g), P.nearest_rank(g, 90)), (e["highest"], e["percentile_90"]))
+        d = M.pillar_view(NOW, "compute", "estate", "capacity", "24h", cls="all")["capacity"]
+        self.assertTrue(all(set(p) == {"t", "highest", "highest_cluster", "percentile"} for p in d["spread"]["points"]))
+
+    def test_LST_22_ld_b_01_closes_on_memory(self):
+        e, g = T["LST-22"]["expect"], T["LST-22"]["given"]
+        d = M.pillar_view(NOW, "compute", g["object"], "capacity", g["window"])["capacity"]
+        ck = d["check"]
+        self.assertEqual((ck["state"], ck["rule"], ck["reason"], ck["checks_closed"]),
+                         (e["latest_check"]["state"], e["latest_check"]["rule"], e["latest_check"]["reason"], e["latest_check"]["checks_closed"]))
+        self.assertEqual((ck["previous"]["state"], ck["previous"]["consumption"]), (e["check_before"]["state"], e["check_before"]["consumption"]))
+        self.assertEqual(X.band(100 - ck["previous"]["consumption"]), e["check_before"]["consumption_band"])
+        self.assertEqual([k["key"] for k in d["kpis"]], e["kpi_order"])
+        for k in d["kpis"]:
+            self.assertTrue({"now", "worst", "percentile_95", "check_value"} <= set(k) and "average" not in k)
+        self.assertTrue(ck["label"].startswith(e["check_value_label_starts"]))
+        self.assertEqual(len(d["strip"]), e["strip_cells"])
+        self.assertEqual(d["strip"][-1]["state"], "closed")
+        over = [p["key"] for p in d["parts"] if p["percentile_95"] > 80]
+        self.assertEqual(over[0], e["parts_first_over_80"])
+        self.assertEqual(list(k for k in ("total", "ha", "buffer", "usable") if k in d["usable"]["memory"]), e["usable_steps"])
+        u = d["usable"]["memory"]
+        self.assertEqual(u["total"] - u["ha"] - u["buffer"], u["usable"])
+        self.assertEqual(sorted(k for k in d["spread"]["memory_consumed"][0] if not k.endswith("_host") and k != "t"), sorted(x.split("_")[0] for x in e["host_spread_lines"]))
+        at = {h["host"]: h["memory_consumed"]["at_check_percentile_95"] for h in d["hosts"]}
+        hs = e["host_spread_memory"]
+        self.assertEqual(max(at, key=at.get), hs["highest"])
+        self.assertEqual((at[hs["highest"]], min(at.values())), (hs["highest_percent"], hs["lowest_percent"]))
+        self.assertEqual(d["hosts"][0]["host"], e["hosts_first"])
+        f = [x for x in M.findings_under(NOW, g["object"], (), "capacity", "24h") if x["object"] == g["object"]]
+        self.assertEqual([(x["kind"], x["window"], x["severity"], x["outcome"]) for x in f],
+                         [(e["finding"]["kind"], e["finding"]["window"], e["finding"]["severity"], e["finding"]["outcome"])])
+        flat = str(d).lower()
+        for w in e["forbidden_fields"]:
+            self.assertNotIn(f"'{w}'", flat, w)
+
+    def test_LST_23_frankfurt_general_on_bronze(self):
+        e, g = T["LST-23"]["expect"], T["LST-23"]["given"]
+        d = M.pillar_view(NOW, "compute", g["object"], "capacity", g["window"], cls=g["class"])["capacity"]
+        self.assertEqual(d["closed"]["now"], e["closed_latest"])
+        self.assertEqual(d["near_closure"]["clusters"], e["near_closure"])
+        self.assertEqual(d["near_closure"]["direction"], e["near_closure_words"])
+        self.assertEqual(d["clusters_at"][0]["cluster"], e["clusters_at_first"])
+        fs = {f["object"]: f for f in M.findings_under(NOW, g["object"], (), "capacity", "7d")}
+        f = fs["FR-B-04"]
+        self.assertEqual((f["kind"], f["window"], f["severity"], f["outcome"]), tuple(e["FR-B-04_finding"][k] for k in ("kind", "window", "severity", "outcome")))
+        self.assertNotIn("FR-B-03", fs)
+        self.assertNotIn("FR-X-01", [r["cluster"] for r in d["clusters_at"]])
+        a = M.pillar_view(NOW, "compute", g["object"], "capacity", g["window"], cls="all")["capacity"]
+        self.assertIn("FR-X-01", [r["cluster"] for r in a["clusters_at"]])
+        none = M.pillar_view(NOW, "compute", g["object"], "capacity", g["window"])["capacity"]
+        self.assertEqual((none["class"], none["clusters"]), (e["without_class"]["class"], 0))
+
+    def test_LST_24_fr_s_02_open_at_the_check_with_contention_now(self):
+        e, g = T["LST-24"]["expect"], T["LST-24"]["given"]
+        d = M.pillar_view(NOW, "compute", g["object"], "capacity", g["window"])
+        c = d["capacity"]
+        self.assertEqual(c["check"]["state"], e["check_state"])
+        self.assertEqual(c["contention_now"]["value"], e["contention_value"])
+        self.assertEqual(c["kpis"][1]["now"], e["contention_value"])
+        self.assertEqual(d["status"], e["status"])
+
+    def test_LST_25_a_host_shows_its_cluster(self):
+        e, g = T["LST-25"]["expect"], T["LST-25"]["given"]
+        c = M.pillar_view(NOW, "compute", g["object"], "capacity", g["window"])["capacity"]
+        self.assertEqual((c["cluster"], c["marked_host"]), (e["cluster"], e["marked_host"]))
+        self.assertEqual([h["host"] for h in c["hosts"] if h["marked"]], [e["marked_host"]])
+
+    def test_LST_26_the_estate_matches_vsphere_worlds_definitions(self):
+        d = M.pillar_view(NOW, "compute", "estate", "capacity", "24h", cls="all")["capacity"]
+        cs = CAP._cons_series((), NOW.isoformat(), "24h")
+        ids = [r["cluster"] for r in d["clusters_at"]]
+        for i in (0, 100, 287):
+            vals = [cs[c][i] for c in ids]
+            p = d["spread"]["points"][i]
+            self.assertEqual((p["highest"], p["percentile"]), (max(vals), P.nearest_rank(vals, 90)))
+        ck = CAP.checks(NOW)
+        self.assertEqual(d["closed"]["closed_since_previous"], [c for c in ids if ck[c][0]["state"] == "closed" and ck[c][1]["state"] == "open"])
 
 
 class SpecRules(unittest.TestCase):

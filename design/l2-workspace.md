@@ -123,7 +123,7 @@ A page is where four dimensions meet. The navigation shows each dimension in its
 |---|---|---|---|
 | Availability | Yes | Yes | Partial: restore and HA tests |
 | Performance | Yes | Yes | Yes |
-| Capacity (short term only; long term is the Capacity workspace, D-014) | Yes | No (SP5) | Yes: reclaim, rebalance |
+| Capacity (can a cluster take more VMs now, and is it heading to closed; the forecast and purchase are the Capacity workspace's, D-014, D-094) | Yes | No (SP5) | Yes: reclaim, rebalance |
 | Security (present: platform hygiene, D-049) | Yes | A breach goes to the security team (D-044) | No |
 | Configuration | Drift and variance against the standard | Evidence: the cause is often here | Correct, update, simplify, optimize |
 | Inventory | Count, distribution, churn, unexplained changes | Evidence: what changed over the weeks | Stock-take, orphaned objects |
@@ -150,6 +150,11 @@ A page is where four dimensions meet. The navigation shows each dimension in its
 
 - **Performance reads the 20-second peak** of each 5-minute interval, not the 5-minute average. A spike of a few seconds disappears in 300 seconds of average.
 - **Over a window, an object's score is its 95th percentile:** not the average (it hides problems), not the worst (too noisy). This is the rule of the author's sample dashboard (`sources/Cluster Performance v2.html`).
+- **Which statistic, on which axis** (D-095):
+  - **Over time, on one object:** a point holds the worst value of its slot. The figures are Now, Worst (with its time) and 95th percentile. The status is the 95th percentile, and the worse of that and the last hour.
+  - **Across objects, at one time:** the worst object, and the 10th or 90th percentile at the bad end.
+  - **Never an average,** on either axis. Never a sum or average of percentages across clusters.
+  - **A statistic is named by what it is.** vCommunity's "Worst Cluster Consumption" is the 95th percentile of its check period, so PCM labels it "95th percentile, 24 hours to 08:00". "Worst" on a PCM page is always the single worst point.
 - **Why:** in vCenter and VCF Operations, time is set per chart or per widget. Moving between them resets it. One window per page keeps every number on the page about the same period.
 
 ### 3.5 Pages are addressed by the four dimensions
@@ -218,6 +223,86 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
 - **One chart per metric,** over the window. Beside it, three named figures: Now, Worst (with its time) and 95th percentile. Never an average: a VM is felt at its peak.
 - **Group by, "Just above the line", "Children outside green" and Inventory are not on a VM.** They describe a group of objects.
 - **Names and units:** Title Case, capitals for abbreviations, the unit after the number, never inside the name ("CPU Ready 2.5%", "Disk Latency 5.6 ms").
+
+### 4.3.3 The Capacity tab: the model it reads (D-094)
+
+- **The question:** can this cluster take more VMs now, and is it heading to closed? Monitoring shows it over time, never as a snapshot.
+- **Three KPIs, one scale, one rule.** This is vCommunity's capacity model (`VCF-vCommunity-Adapter`, `docs/concepts/capacity-management.md`):
+
+| KPI | Measures | Read how | Direction |
+|---|---|---|---|
+| Cluster Consumption | How much of the usable capacity is used: CPU threads, DRAM consumed, ballooned, swapped and compressed, memory tier | Cluster-wide: the hosts added up | Higher is worse |
+| Cluster Performance | Whether VMs wait now: the contention SLA | From the VMs: the worst and the 90th percentile | Higher is better |
+| Cluster Risk | How close the cluster is to contention | From the worst host | Higher is worse |
+
+- **Usable capacity, as running:** total, minus HA, minus buffer, over the hosts that can run VMs. A host in maintenance mode drops out by itself.
+  - This differs on purpose from the Capacity workspace's usable capacity, which also holds back a maintenance host because it plans ahead (Capacity design, 3.2).
+- **The Periodic Cluster Check** decides once per period (24 hours by default) whether the cluster takes new VMs. It reads the worst end of each KPI over the period, ignoring the worst 5% of samples. It closes the cluster when:
+  1. Consumption is red (above 80), or Performance is red (below 20);
+  2. or Consumption and Performance are both orange (above 60, below 40) and Risk is orange or red (above 60).
+  - Risk alone never closes a cluster.
+  - The closure levels sit inside the display bands, so a cluster does not flip on a small change. A Consumption of 78 shows red and stays open.
+- **PCM reads the decision and its three inputs. It never recomputes them and never sets them.** It names the rule that matched, from the published inputs.
+- **The check and now are both shown.** The check ignores the worst 70 minutes of the day, so a cluster can be open at the check while it has contention now (story N-1). The tab shows the check's verdict and "Contention now" side by side. The status is the worse of the two.
+  - "Contention now" is the cluster's Performance over the last hour, orange or red: the NOC's own number. Not "VMs waiting": that reads as VMs queued for deployment, and placement never waits on a closed cluster; it picks another. Stopping provisioning then is the NOC's SOP (D-040).
+- **Two words kept apart:**
+  - "Spread between hosts": the busiest host against the least busy.
+  - "CPU Imbalance": vCommunity's running threads per running core, an input of Risk. The old tab called the first one "imbalance".
+
+### 4.3.4 The Capacity tab on a cluster
+
+- **The verdict first, in words:**
+  - "Open for new VMs at the check of the 24 hours to 08:00 GMT+8."
+  - "Closed for new VMs since the check of 17 Oct (3 checks). Consumption 84% is above 80%."
+  - Beside it, when it applies: "Contention now: Cluster Performance 22% at 10:05."
+- **Three charts, one per KPI, in the rule's order:** Consumption, Performance, Risk. Same time axis, one above the other.
+  - Each draws the display bands as background, and the two closure levels as lines.
+  - Beside each: Now, Worst (with its time), 95th percentile, and the check's value named as its percentile.
+- **The check strip** under the three charts: one cell per check period, closed or open, aligned with the charts' time axis. A closure lines up with the KPI that caused it.
+  - Below 7 check periods in the window (1 hour, 24 hours), the strip becomes words: the latest check, and the one before it.
+- **What consumption is made of:** one chart per part, each against usable capacity, with the same three figures:
+  - CPU Thread Utilization;
+  - Memory Consumed;
+  - Memory Ballooned;
+  - Memory Zip Swap (swapped and compressed);
+  - Memory Tiering, only where the hosts have a memory tier.
+- **Usable capacity:** total, minus HA, minus buffer, equals usable, for threads and DRAM; and the running hosts. The buffer is the Capacity team's setting (D-054); the page shows it and links to it.
+- **Spread between hosts:** two charts, CPU Thread Utilization and Memory Consumed. Each has two lines, the highest host and the lowest host at each point. No average line (D-095).
+  - A wide gap says DRS is not balancing. Why (a pinned VM, affinity, reservations, a monster VM) is the case's job.
+- **The hosts,** worst first, as the sample dashboard (`sources/Cluster Capacity v5.html`):
+  - CPU Thread Utilization and Memory Consumed, each 95th percentile and Worst, with a sparkline;
+  - running VMs; CPU and memory overcommit; the host's state (running, maintenance mode, disconnected).
+  - A click selects the host in the tree.
+- **Below the cluster** (host, VM, Guest OS): the tab shows its cluster's page, with the host marked. A host has no usable capacity of its own; capacity is the cluster's.
+
+### 4.3.5 The Capacity tab above the cluster
+
+The same shape as the Performance tab (4.3.1): one class of service filter, a selected time, the worst and a percentile, and the clusters at that time.
+
+- **Class of service:** Gold, Silver, Bronze, All, one filter for the tab. Classes are never mixed in one line: Bronze runs hotter by design (D-091).
+  - Gold by default, always, as on the Performance tab: Gold is the priority. A node without Gold says so, and Bronze is one click away.
+- **Clusters closed for new VMs:** one bar per check period, the count of closed clusters in scope.
+  - In words: "3 of 18 Bronze clusters closed at the latest check; 1 closed and none opened since the check before."
+  - Below 7 check periods in the window, the words only.
+- **Consumption across clusters:** one chart, two lines, as D-091. The highest Cluster Consumption (solid) and its 90th percentile (dashed), with the closure levels.
+  - The highest is good: no cluster is near full.
+  - The highest is bad and the 90th percentile is good: a few clusters, or one. Rebalance is the likely answer.
+  - Both are bad: the class is full in that place. That is the Capacity workspace's question; the page links to it.
+- **Near closure:** open clusters whose Consumption at the latest check is above the orange closure level, and how that count moved over the window. The capacity iceberg (4.2).
+- **Clusters at {selected time}:** every cluster in scope, closed first, then near closure, then highest Consumption.
+  - Cluster, location, class; verdict at the check, and since when; Consumption, Performance and Risk at the selected time; Consumption sparkline over the window; contention now.
+  - A click on a chart picks the time. Before a click, the time is the highest point of the Consumption line.
+  - A click on a cluster selects it in the tree.
+- **Performance and Risk spreads are not repeated here.** They are on the Performance tab. Here they appear per cluster, as inputs to its verdict.
+- **Never a total.** No consumption is summed or averaged across clusters (Capacity design, 3.1).
+
+### 4.3.6 What the Capacity tab leaves to the Capacity workspace
+
+- **No forecast, run-out date, decision date, Capacity Remaining or Time Remaining.** One sentence on the tab points to the Capacity workspace for months ahead.
+- **Why:**
+  - A forecast on two pages becomes two forecasts that disagree.
+  - VCF Operations' Capacity Remaining comes from its own engine, which reads at most 90 days (Capacity design, 3.5). PCM's forecast reads 13 months.
+  - L2 owns short-term capacity risk (SP5 People); Capacity owns the purchase. The tab answers "now and the window"; the Capacity workspace answers "months ahead".
 
 ### 4.4 What each window adds
 
@@ -504,3 +589,8 @@ The troubleshooting stories come from Agent E2's benchmark (`benchmark/questions
 
 1. **Who owns PCM's own configuration** (class-of-service definitions, action tiers)?
    - Proposal: L2 proposes changes; the Operations Manager approves them after 1.0. Until then, L2 owns them (D-045).
+
+Settled 2026-11-21 (D-094, D-096):
+- The Capacity workspace says "Closed for new VMs" from the check, not "Full now: VMs waiting". VMs are not queued for deployment; placement picks another cluster.
+- vCommunity is part of PCM, to be renamed the PCM adapter. Its thresholds are PCM settings, set in the adapter.
+- Both class filters start on Gold, always. Gold is the priority.

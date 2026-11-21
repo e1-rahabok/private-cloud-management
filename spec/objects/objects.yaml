@@ -244,7 +244,7 @@ objects:
       id: { type: string }
       pillar: { type: enum, values: [availability, performance, capacity, security, configuration, inventory] }
       window: { type: enum, values: ["24h", "7d"], note: "The run that found it: daily or weekly (D-039, D-042)" }
-      kind: { type: string, optional: true, note: "slow_drift, hidden_in_average, configuration_drift for the 7-day window" }
+      kind: { type: string, optional: true, note: "slow_drift, hidden_in_average, configuration_drift, heading_to_closed for the 7-day window; closed_contention, closed_consumption for the 24-hour window (l2.capacity_findings)" }
       object: { type: ref, to: inventory_node }
       path: { type: list, of: string, note: "Ancestors in the Compute view, estate first" }
       severity: { type: enum, values: [red, amber] }

@@ -166,6 +166,45 @@ settings:
     owner: l2
     source: prototype
 
+  # ---------------------------------------------------------------- PCM adapter (vCommunity, D-096)
+  # Set in the adapter, never here: PCM reads what the adapter decided. Listed so every threshold has a name and an owner.
+
+  adapter.cluster_check_period_hours:
+    description: Length of each Periodic Cluster Check window, and how often it runs (l2.cluster_check).
+    default: 24
+    values: [1, 2, 4, 6, 8, 12, 24]
+    unit: hours
+    owner: l2
+    set_in: "PCM adapter (vCommunity), Advanced Settings: Cluster Check Period"
+    decisions: [D-094, D-096]
+
+  adapter.cluster_check_time_utc:
+    description: When one check window ends. The others end every period from it.
+    default: "00:00"
+    owner: l2
+    set_in: "PCM adapter (vCommunity), Advanced Settings: Cluster Check Time"
+    decisions: [D-094, D-096]
+
+  adapter.cluster_check_worst_percent:
+    description: The share of the window's worst samples the check ignores. 5 makes each check value the 95th percentile of its window; the page labels follow it (l2.statistics).
+    default: 5
+    range: [0, 50]
+    unit: percent
+    owner: l2
+    set_in: "PCM adapter (vCommunity), Advanced Settings: Cluster Check Worst Percent"
+    decisions: [D-095, D-096]
+
+  adapter.cluster_closure_levels:
+    description: The closure levels of the Periodic Cluster Check, on each KPI's health (the value, or 100 minus it when higher is worse). A value on a level does not reach it.
+    default:
+      performance: { red: "below 20", orange: "below 40" }
+      risk: { red: "above 80", orange: "above 60" }
+      consumption: { red: "above 80", orange: "above 60" }
+    unit: score out of 100
+    owner: l2
+    set_in: "PCM adapter (vCommunity), periodic_cluster_check.py: CLOSE_RED_BELOW, CLOSE_ORANGE_BELOW"
+    decisions: [D-094, D-096]
+
   # ---------------------------------------------------------------- Agent E2 (D-076)
 
   agent_e2.endpoint:

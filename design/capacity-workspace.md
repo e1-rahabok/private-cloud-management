@@ -80,13 +80,14 @@ Path: `privatecloud.acme.com/capacity` (D-028).
   - High remaining capacity looks good on a traditional dashboard. Usually it is unused money.
   - SP5 colours it dark grey, not green. PCM does the same, so waste cannot pass as health.
 
-### 3.4 Contention overrides the forecast
+### 3.4 The check overrides the forecast (D-094)
 
-- **What:** each cluster also shows Cluster Performance (%) and Cluster Risk (%). If the cluster's VMs are waiting, it is marked full, whatever the forecast says.
+- **What:** a group with a cluster closed for new VMs at the latest Periodic Cluster Check says "Closed for new VMs", with the cluster, whatever the forecast says.
 - **Why:**
   - Both capacity numbers read utilization against usable capacity. Neither reads contention.
-  - A cluster with 200 days remaining can still be full today because its VMs wait for CPU (SP5: contention is the override).
-  - Capacity reads this signal. It does not own it: performance stays with L2 (L2 design, 4.3).
+  - The check does: it closes a cluster on contention as well as on consumption. A cluster with 200 days remaining can still be closed today (SP5: contention is the override).
+  - Capacity reads the check. It does not own it, and it does not read contention of the last hour: this workspace shows nothing real-time (3.16). Contention now is L2's and the NOC's (L2 design, 4.3.3).
+  - Not "Full now: VMs waiting". VMs are not queued for deployment: placement never waits on a closed cluster; it picks another. "Closed for new VMs" says what placement does.
 
 ### 3.5 PCM keeps years of history, because the forecast needs it
 
@@ -260,10 +261,10 @@ Path: `privatecloud.acme.com/capacity` (D-028).
   - Decision: pages say "cluster group" (location plus class), and the detail page is `/capacity/group/{id}`.
   - Why: we buy hosts for a class in a location, not for one cluster. DRS and placement move load between clusters of the same class, so a single cluster runs out only when its group does.
   - Trade-off: one hot cluster can hide inside a healthy group. Contention covers that case (next point).
-- **Contention overrides the forecast.**
-  - Decision: when a cluster in the group is orange or red on Cluster Performance now, the row says "Full now: VMs waiting", whatever the forecast says.
-  - Why: a forecast built from weekly peaks can say "13 months left" while VMs wait for CPU today. Capacity that does not serve is not capacity.
-  - One definition: the score is the NOC's own. FR-S-02 at 22 shows on the wall and on the Capacity page.
+- **The check overrides the forecast.** Revised by D-094 (3.4).
+  - Decision: when a cluster in the group is closed at the latest Periodic Cluster Check, the row says "Closed for new VMs" with the cluster, whatever the forecast says. The first build said "Full now: VMs waiting" from Cluster Performance now.
+  - Why: a forecast built from weekly peaks can say "13 months left" while a cluster cannot take new VMs today. Capacity that does not serve is not capacity.
+  - One definition: the decision is the check's, the same one L2's Capacity tab shows.
 - **"This week" isolates the cause.**
   - Decision: last week's view is the same engine with register entries added in the last 7 days left out.
   - Why: the question is "why did the date move?". Holding the trend fixed and removing only the new entries names the cause, here the OpenShift migration (130 days earlier). A move with no new entry is reported as "the trend changed".
@@ -281,6 +282,24 @@ Path: `privatecloud.acme.com/capacity` (D-028).
   - Decision: VMs per host by CPU and memory allocation, reservation and utilization. The smallest number binds, and the page shows the DRAM that matches the CPU.
   - Why: buyers usually size DRAM by habit (768 GB, 1 TB). The matching DRAM shows the class need: Silver 839 GB, Gold 520 GB, Bronze 660 GB on a 64-core host. Too little DRAM strands cores, which are licensed per core. Too much strands DRAM.
   - Planning values per class are settings with an owner (Capacity), not code.
+
+### 3.20 The boundary with L2's Capacity tab (D-094)
+
+- **What:** two capacity views, two horizons. Neither shows the other's numbers.
+
+| | L2, Monitor, Capacity tab | This workspace |
+|---|---|---|
+| Question | Can this cluster take more VMs now, and is it heading to closed? | When does the group run out, and what do we buy? |
+| Time | The window, up to now | 13 months back, 13 months ahead |
+| Unit | One cluster, or the clusters under any node | The cluster group |
+| Measure | Cluster Consumption against usable capacity as running (total, HA, buffer) | Weekly peak demand against usable capacity as planned (also a maintenance host) |
+| Output | Open or closed for new VMs (vCommunity's Periodic Cluster Check) | Run-out date, decision date, purchase plan |
+
+- **Why:**
+  - SP5 People: Capacity does not run day-to-day capacity. Closing a cluster to new VMs is day-to-day (section 1).
+  - A forecast on two pages becomes two forecasts. L2 shows none, and links here for months ahead.
+  - The two usable capacities differ on purpose. Planning holds back a maintenance host before it is needed. Running measures the hosts that run; a host in maintenance mode drops out by itself.
+- **The one signal that crosses:** "Closed for new VMs" from the check, shown in both (3.4).
 
 ## 4. Pages
 

@@ -2,7 +2,7 @@
 # (D-027, D-033). Never one health score (L2 design, 3.3). No compliance until after 1.0 (D-022).
 version: 2
 workspace: l2
-allowed: [CPU Ready, Co-stop, Other Wait, latency, run queue, ESXi, vSAN, NSX, DRS, HA, NUMA, cluster, host, datastore, snapshot, resource pool]
+allowed: [CPU Ready, Co-stop, Other Wait, latency, run queue, ESXi, vSAN, NSX, DRS, HA, NUMA, cluster, host, datastore, snapshot, resource pool, Cluster Consumption, Cluster Performance, Cluster Risk, usable capacity, buffer, overcommit, CPU Imbalance]
 avoided:
   - cost
   - price
@@ -15,3 +15,12 @@ labels:
   improve: Improve
   rules: Rules
   calendar: Calendar
+  open_for_new_vms: Open for new VMs
+  closed_for_new_vms: Closed for new VMs
+  no_check: No check
+  contention_now: Contention now
+  near_closure: Near closure
+  host_spread: Spread between hosts
+# Capacity tab only (D-094): no forecast words. Checked by LPG-18, not by the avoided list, because Improve
+# legitimately reads the Capacity workspace's purchase decision.
+capacity_tab_avoided: [VMs waiting, Full now, forecast, run-out, decision date, Capacity Remaining, Time Remaining, imbalance]

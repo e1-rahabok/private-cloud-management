@@ -642,6 +642,45 @@ stories:
         hit_together_at_wide: "at least 100 VMs in the same 5 minutes"
     decisions: [D-091]
 
+  M-4:
+    title: A London Bronze cluster closes on memory; a Frankfurt one heads the same way
+    trigger: monitoring
+    note: >
+      The Capacity tab's teaching week (monitor.md, Capacity tab). LD-B-01 shows red for a day and stays open,
+      because 77 is inside the display red but not above the closure level; the next check closes it. FR-B-04 is
+      still open and drifting up. FR-B-03 is near closure and steady. Values are the Periodic Cluster Check's,
+      one per 24-hour check ending 00:00 UTC; the 5-minute KPI points around them follow the bank's load pattern,
+      and each check value is the 95th percentile of its day's points (l2.statistics).
+    objects:
+      closes: LD-B-01
+      drifting: FR-B-04
+      steady: FR-B-03
+      workload_domain: wld-fr-gen
+    plant:
+      checks_oldest_first: 7
+      LD-B-01:
+        consumption: [63, 65, 68, 70, 73, 77, 82]
+        driver: "Memory Consumed: 95th percentile 92% of usable at the latest check; CPU Thread Utilization 61%"
+        host_spread_memory: { highest: ld-esx-202, highest_percent: 96, lowest_percent: 71 }
+      FR-B-04:
+        consumption: [55, 56, 58, 59, 61, 63, 66]
+      FR-B-03:
+        consumption: [71, 72, 70, 72, 71, 72, 72]
+      other_bronze_and_mixed_clusters: "Consumption at every check below 60"
+      performance_and_risk: "not planted: the check reads the Performance tab's own cluster series (one definition)"
+    expect:
+      LD-B-01:
+        latest_check: { state: closed, rule: 1, reason: "Consumption 82% is above 80%.", checks_closed: 1 }
+        check_before: { state: open, consumption: 77, consumption_band: red }
+        check_label: "95th percentile, 24 hours to"
+        finding: { kind: closed_consumption, window: "24h", severity: amber, outcome: improve }
+        strip_7d_cells: 7
+      FR-B-04: { state: open, near_closure: true, finding: { kind: heading_to_closed, window: "7d", severity: amber, outcome: improve } }
+      FR-B-03: { state: open, near_closure: true, finding: null }
+      wld-fr-gen: { class_default: gold, gold_empty: true, with_class_bronze: true, near_closure: [FR-B-03, FR-B-04], closed: 0, mixed_counted_under: all }
+      FR-S-02: { state: open, contention_now: true, status: red, note: "N-1: the fall to 22 is 20 minutes old; the check ignores it" }
+    decisions: [D-094, D-095]
+
   # ---------------------------------------------------------------- Weekly, monthly and inventory stories
 
   L-8:

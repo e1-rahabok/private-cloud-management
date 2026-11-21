@@ -319,24 +319,28 @@ def _row(g: dict, now: datetime) -> dict:
             "peak_warning": g["peak_warning"] and {**g["peak_warning"], "date": _day(now, g["peak_warning"]["days"])}}
 
 
-def contention(now: datetime, enable=()) -> dict:
-    """Clusters not serving their VMs well now (Cluster Performance orange or red), per cluster group."""
-    from . import noc
+def closed_for_new_vms(now: datetime, enable=()) -> dict:
+    """Clusters closed for new VMs at the latest Periodic Cluster Check, per cluster group (Capacity design 3.4, D-094).
+    Read from the check (l2.cluster_check): one definition with L2's Capacity tab. No contention of the last hour."""
+    from . import l2_capacity, l2_estate as X
+    E = X.estate(tuple(enable))
     out = {}
-    for c in noc.build(now, enable)["clusters"]:
-        if c["class"] in CLASSES and c["status"] in ("orange", "red"):
+    for cid, rows in l2_capacity.checks(now, enable).items():
+        c = E.nodes[cid]
+        if c["class"] in CLASSES and rows[0]["state"] == "closed":
+            s_end, s_n = l2_capacity.since(rows)
             out.setdefault(f"{c['location'].upper()}-{c['class'].capitalize()}", []).append(
-                {"cluster": c["id"], "score": c["score"], "status": c["status"]})
+                {"cluster": cid, "since": s_end, "checks": s_n, "rule": rows[0]["rule"]})
     return out
 
 
 def groups_view(now: datetime, enable=()) -> dict:
     cap = build(now, enable)
-    hot = contention(now, enable)
+    closed = closed_for_new_vms(now, enable)
     rows = []
     for g in cap["groups"]:
         r = _row(g, now)
-        r["full_now"] = hot.get(g["id"])
+        r["closed_for_new_vms"] = closed.get(g["id"], [])
         rows.append(r)
     rows.sort(key=lambda r: (r["decision_days"] if r["decision_days"] is not None else 10 ** 6))
     return {"now": now.isoformat(), "horizon_days": HORIZON_DAYS, "next_round_closes": cap["next_round_closes"].isoformat(),
@@ -355,7 +359,7 @@ def group_detail(now: datetime, gid: str, enable=()) -> dict | None:
                   "run_out_90d_date": _day(now, r["run_out_90d_days"]), "peak_cross_date": _day(now, r["peak_cross_days"])}
     reg = [_reg(r) for r in cap["register"] if r["group"] == gid]
     return {**_row(g, now), "now": now.isoformat(), "clusters": g["clusters"], "lead_time_days": g["lead_time_days"], "resources": res, "register": reg,
-            "full_now": contention(now, enable).get(gid)}
+            "closed_for_new_vms": closed_for_new_vms(now, enable).get(gid, [])}
 
 
 def _reg(r):

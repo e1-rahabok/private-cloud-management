@@ -111,11 +111,15 @@ class Story(Base):
         self.assertEqual(r["cost_avoidable"], plan["total"])
         self.assertEqual(next(a for a in r["areas"] if a["area"] == "Powered-off VMs")["memory_gb"], e["powered_off_frees_memory_gb"])
 
-    def test_KST_7_contention_overrides_forecast(self):
+    def test_KST_7_the_check_overrides_the_forecast(self):
+        """Closed for new VMs is read from the check (l2.cluster_check), one definition with L2 (D-094)."""
         e = T["KST-7"]["expect"]
-        g = grp(capacity.groups_view(NOW), e["group"])
-        self.assertTrue(g["full_now"])
-        self.assertEqual(g["full_now"][0]["cluster"], e["cluster"])
+        groups = capacity.groups_view(NOW)
+        for gid, x in e.items():
+            g = grp(groups, gid)
+            self.assertEqual([c["cluster"] for c in g["closed_for_new_vms"]], x["closed_for_new_vms"], gid)
+            self.assertNotIn("full_now", g)
+        self.assertEqual([c["cluster"] for c in capacity.group_detail(NOW, "LD-Bronze")["closed_for_new_vms"]], e["LD-Bronze"]["closed_for_new_vms"])
 
     def test_KST_8_one_definition_with_cio_page(self):
         ds = generator.generate(NOW)

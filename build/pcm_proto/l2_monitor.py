@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from functools import lru_cache
 
-from . import generator, l2, l2_estate as X, l2_performance as P, noc
+from . import generator, l2, l2_capacity as CAP, l2_estate as X, l2_performance as P, noc
 
 PILLARS = ("availability", "performance", "capacity", "security", "configuration", "inventory")
 # Inventory counts objects and their changes: a provider tab (l2.pillars, D-092).
@@ -253,6 +253,7 @@ def _findings(enable: tuple, now_iso: str, version: int) -> list:
             out.append({"id": f"f-cert-{c['component']}", "pillar": "security", "severity": "amber", "window": "24h", "kind": None,
                         "object": f"vcf-{lid}-01", "object_name": c["component"], "outcome": "improve", "explained_by": None,
                         "proposal": None, "evidence": None, "summary": f"Certificate on {c['component']} expires in {d} days."})
+    out.extend(CAP.findings(now, enable))  # l2.capacity_findings (D-094)
     for c in l2.inventory(now, 7, enable)["unexplained"]:
         obj = {"Tokyo": "tk"}.get(c["object"], c["object"])
         out.append({"id": f"f-{c['id']}", "pillar": "inventory", "severity": "red" if c["count"] > 1 else "amber", "window": "24h",
@@ -261,7 +262,7 @@ def _findings(enable: tuple, now_iso: str, version: int) -> list:
                     "summary": f"Unexplained change: {c['detail']}, by {c['by']} through {c['via']}."})
     for f in out:
         f["path"] = [n["name"] for n in X.path(E, X.view_of(E, f["object"]), f["object"])] if X.node(E, f["object"]) else []
-        f["outcome"] = "problem" if f["pillar"] in TROUBLESHOOT_PILLARS else "improve"
+        f["outcome"] = f.pop("outcome_fixed", None) or ("problem" if f["pillar"] in TROUBLESHOOT_PILLARS else "improve")
         f["under"] = sorted(ancestors(E, f["object"])) if X.node(E, f["object"]) else ["estate"]
     order = {"red": 0, "amber": 1}
     out.sort(key=lambda f: (1 if f.get("explained_by") else 0, order[f["severity"]], f["window"] != "24h"))
@@ -504,12 +505,7 @@ def pillar_content(E, view, nid, pillar, now, window, enable=(), brief=False) ->
             hl += f" No data from {', '.join(E.nodes[s]['name'] for s in stale)}."
         return {"headline": hl, "events": evs, "stale_locations": stale, "hosts_not_connected": 0, "ha_restarts": 0}
     if pillar == "capacity":
-        rows = capacity_rows(E, view, nid, now, enable)
-        full = [r for r in rows if r["full_now"]]
-        hot = [r for r in rows if r["memory_p95"] >= 90 and not r["full_now"]]
-        hl = (f"{len(full)} cluster{'s' if len(full) != 1 else ''} full now ({', '.join(r['cluster'] for r in full)}); " if full else "No cluster full now; ") + \
-             f"{len(hot)} above 90% memory at the 95th percentile."
-        return {"headline": hl, "clusters": rows if not brief else None}
+        return CAP.under_node(E, view, nid, now, enable)
     if pillar == "security":
         hosts = [h for h in _hosts_under(E, view, nid) if h.get("ssh_on")]
         fs = [f for f in findings(now, enable) if f["pillar"] == "security" and (nid == "estate" or nid in f["under"])]
@@ -533,43 +529,6 @@ def pillar_content(E, view, nid, pillar, now, window, enable=(), brief=False) ->
     if pillar == "inventory":
         return inventory_content(E, view, nid, now, window, enable, brief)
     return {}
-
-
-def capacity_rows(E, view, nid, now, enable=()) -> list:
-    """l2.short_term_capacity per cluster under the node."""
-    ds = generator.generate(now, enable=enable)
-    act = X.active_stories(enable)
-    from . import capacity
-    hot = {c["cluster"] for g in capacity.contention(now, enable).values() for c in g}
-    n = X.node(E, nid)
-    if n["kind"] == "cluster":
-        cl = [n]
-    elif n["kind"] in ("host", "vm", "guest_os", "datastore", "virtual_disk", "vnic", "resource_pool", "port_group"):
-        cid = n.get("cluster") or E.nodes.get(n.get("vm", ""), {}).get("cluster")
-        cl = [E.nodes[cid]] if cid else []
-    elif n["kind"] == "location" and n.get("class"):
-        cl = E.kids("class", nid)
-    elif n["kind"] == "class_of_service":
-        cl = [c for loc in E.kids("class", nid) for c in E.kids("class", loc["id"])]
-    elif nid in E.parent["compute"] or nid == "estate":
-        cl = E.descendants("compute", nid, "cluster")
-    else:
-        cl = []
-    rows = []
-    for c in cl:
-        if c["class"] in ("management", "edge"):
-            continue
-        loc = ds["locations"][c["location"]]["in_use"]
-        h = X._h(c["id"], "cap")
-        cpu = round(min(95, loc["compute"] + (h - 0.5) * 16 + {"gold": -10, "silver": 0, "bronze": 5, "mixed": 0}[c["class"]]), 1)
-        mem = round(min(96, loc["memory"] + (X._h(c["id"], "mem") - 0.5) * 10 + {"gold": -8, "silver": 0, "bronze": 3, "mixed": 0}[c["class"]]), 1)
-        if act.get("C-1") and c["location"] == "sg" and c["class"] == "silver":
-            mem = float(act["C-1"]["plant"]["memory_in_use_percent_now"])
-        spread = 4 + 10 * X._h(c["id"], "imb")
-        rows.append({"cluster": c["id"], "class": c["class"], "cpu_average": cpu, "cpu_p95": round(min(100, cpu + spread), 1),
-                     "memory_average": mem, "memory_p95": round(min(100, mem + spread / 2), 1), "imbalance": round(spread, 1),
-                     "full_now": c["id"] in hot})
-    return sorted(rows, key=lambda r: (not r["full_now"], -r["memory_p95"]))
 
 
 def config_items_under(E, nid: str, now: datetime, enable=()) -> list:
@@ -644,7 +603,24 @@ def pillar_view(now: datetime, view: str, nid: str, pillar: str, window: str, gr
         out["group_by"] = {"attribute": group, "rows": group_by(E, v, nid, group, now, window, enable)}
     if pillar == "performance" and P.applies(n):
         out["perf"] = P.view(now, v, nid, window, cls or P.DEFAULT_CLASS, at, enable)
+    if pillar == "capacity":
+        out["capacity"] = capacity_tab(E, v, n, now, window, cls, at, enable)
+        out["status"] = out["capacity"]["status"]
     return out
+
+
+def capacity_tab(E, view: str, n: dict, now: datetime, window: str, cls, at, enable=()) -> dict:
+    """The Capacity tab (D-094): on a cluster, or below it for its cluster with the host marked; above it, the group."""
+    if P.applies(n):
+        g = CAP.group_view(now, view, n["id"], window, cls or CAP.DEFAULT_CLASS, at, enable)
+        fs = [f for f in findings_under(now, n["id"], enable, "capacity", window)]
+        g["status"] = WORST([f["severity"] for f in fs] + (["red"] if any(r["contention_now"] for r in g["clusters_at"]) else []))
+        return {"kind": "group", **g}
+    cid = n["id"] if n["kind"] == "cluster" else n.get("cluster") or E.nodes.get(n.get("vm", ""), {}).get("cluster")
+    if not cid or cid not in E.nodes:
+        return {"kind": "none", "status": "green"}
+    host = n["id"] if n["kind"] == "host" else n.get("host") if n["kind"] == "vm" else E.nodes.get(n.get("vm", ""), {}).get("host")
+    return {"kind": "cluster", **CAP.cluster_view(now, cid, window, enable, host if n["kind"] != "cluster" else None)}
 
 
 def trend(E, n: dict, now: datetime, window: str, enable=()) -> list:

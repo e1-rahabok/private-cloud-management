@@ -92,8 +92,8 @@ def l2_get(rest, now, enable, query):
         if g and g not in GROUP_ATTRS:
             raise ValueError("group_by must be one of " + ", ".join(GROUP_ATTRS))
         cls = q("class")
-        if cls and pillar != "performance":
-            raise ValueError("class applies to the performance tab only")
+        if (cls or q("at")) and pillar not in ("performance", "capacity"):
+            raise ValueError("class and at apply to the performance and capacity tabs only")
         return l2_monitor.pillar_view(now, view, obj, pillar, window, g, enable, cls, q("at"))
     if len(rest) == 4 and rest[0] == "improve":
         return l2_improve.view(now, rest[1], rest[2], rest[3], q("window", "30d"), enable)
