@@ -101,6 +101,7 @@ Each story is one or more objects with a planted condition, and the expected res
 | T-2 | Every web application in Tokyo is slow (from Agent E2 `L4-074`) | L1 escalated it. Web VMs wait on every host while hosts run at 30 to 48%. A change script put the 200 GHz limit on the web pool instead of the batch pool. "Add two hosts" is ruled out. |
 | M-1 | Remote memory rises on large VMs on older hosts in London (from Agent E2 `L4-049`) | Monitor, 7 days, grouped by host model: 9 VMs wider than a Gen-2019 NUMA node. The case: the virtual NUMA layout was built at power-on on a newer host; DRS moved the VM. |
 | M-2 | Other Wait on two VMs after the weekend backup (from Agent E2 `L4-045`) | One symptom, two causes: a real wait from a leftover snapshot, and an accounting issue of an older ESXi build on an idle VM. |
+| M-3 | Gold takes three different hits in one day, and one cluster drifts toward contention | The Performance tab's teaching day: a wide hit (8 Gold clusters at once: both lines drop), a narrow hit (one cluster: only the worst line drops), VMs taking turns in one cluster, and one cluster's Risk rising over 7 days. |
 
 ### Capacity
 

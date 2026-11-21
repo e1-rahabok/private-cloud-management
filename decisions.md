@@ -95,6 +95,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-088 | 2026-11-21 | Monitor works on the whole estate, top down: on every node, a summary, its children worst first, and the detail one level down. An object's score over a window is its 95th percentile. Monitor shows the count just below each red line and its trend, not only what crossed it. | SP5: insight is top down and needs the whole data set; an alert is the tip of the iceberg. Source: the author's sample dashboards in `sources/`. L2 design, 4. |
 | D-089 | 2026-11-21 | Agent E2's flows decide the order of checks in a case: at each node the SP5 order, and a failed step proposes the next object. Agent E2 proposes links with evidence; L2 confirms or rules them out. Agent E2 never closes a case. | The flows are already written and benchmarked in Agent E2. PCM supplies the data; Agent E2 supplies the order (D-078). A human confirmation keeps a wrong link out of the SOPs (D-050). |
 | D-090 | 2026-11-21 | The L2 demo's troubleshooting stories come from Agent E2's benchmark, renamed into the ACME estate: `L4-037` (complaint), `L4-074` (L1 escalation), `L4-049` and `L4-045` (monitoring findings). | Each has several layers, causes that build up over time, and red herrings. Together they show all three triggers. L2 design, 11. |
+| D-091 | 2026-11-21 | The Performance tab above the cluster is two sections, consumer first: **VM**, then **Cluster**. VM: how many VMs were hit at each moment and how many different VMs over the window, and the worst VMs with the time and the cluster. Cluster: two charts on the same 0 to 100% scale, actual slowness (worst Cluster Performance and its 5th percentile) and potential slowness (worst Cluster Risk and its 95th percentile). A click on a time lists every cluster at that time. A class of service filter scopes both sections; Gold is the default. Monitoring shows what, when, where and how wide; never why. | Cluster Performance is built from its VMs' contention, so the consumer is read first. A large cluster can stay green while many of its VMs take turns. The worst line says whether anything is wrong; the percentile line says whether it is narrow or wide. Gold is the class that must always be green; Bronze is read when there is time. The why is the case's job (D-084). L2 design, 4.3. |
 
 ## Rationale
 
@@ -495,4 +496,34 @@ Source: Cost n Price n Value (in `sources/`).
 - One case model for all three triggers, so every open problem is in one place, and the trigger mix measures prevention (L2 design, 2).
 - The chain is a graph with link states (proposed, confirmed, ruled out), one timeline across its objects, and the layers each with its own verdict.
 - Details: L2 design, 5.
+
+### D-091 The Performance tab: consumer, then provider
+
+**What was wrong**
+- The tab showed one rolled-up score for the object ("68"), mixing two windows, with no unit and no direction.
+- Its trend had no scale. "2 of 3 children outside green" counted regions, which says nothing.
+- Region scores averaged their clusters, so a bad cluster read "Good" from above.
+- No moment in time could be picked, so nobody could see which objects were hit together.
+
+**Consumer first**
+- Cluster Performance is made of consumer metrics: the worst VM and the 90th percentile of the VMs' CPU Ready, Co-Stop, memory and disk latency (vCommunity Cluster Performance).
+- In a large cluster many VMs can be hit while the cluster stays green. The VM section shows it first.
+- Different VMs taking turns is a cluster pattern. VMs hit at the same time point to something common. Different times point to one cluster or one VM.
+- The VM owner may not have noticed yet. That is the point: proactive.
+
+**Provider: two lines on one 0 to 100% chart**
+- **Worst:** the lowest Cluster Performance of the clusters in scope at each time. Good means nothing is wrong. With every class in scope it equals vCommunity `Worst Cluster Performance` on vSphere World.
+- **5th percentile:** the edge of the worst 5% of clusters (nearest rank). Bad too means a wide problem. Good means it is narrow: a few clusters, or one.
+- **Potential slowness** reads Cluster Risk, where higher is worse: the highest, and the 95th percentile.
+- vCommunity publishes the 10th and 90th percentiles across all clusters. PCM computes its own per class of service from each cluster's scores, because the filter needs it. Asking vCommunity for per-class and 5% metrics is open.
+
+**Class of service**
+- One filter for the whole tab. Gold by default: every Gold cluster is expected to score high. Silver and Bronze are read when there is time. All is the vSphere World view.
+- A Bronze cluster runs hotter by design. Mixing classes would put Bronze at the bottom every day and hide a Gold problem.
+
+**What, not why**
+- Monitoring shows what was hit, when, where, and how wide. Whether a VM caused its own wait (a limit, too many vCPUs) is a cause, so it belongs to the case, not to this tab.
+
+**Out of scope for 1.0**
+- Kubernetes: a logical entity with its own view.
 

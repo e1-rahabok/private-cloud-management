@@ -16,7 +16,7 @@ paths:
   /api/l2/monitor/{view}/{object}/summary:
     get: { summary: "Query window. One row per pillar (l2.pillar_status), findings under the object, slipped alerts; at the estate root with window 1y, the twelve-month measures and repeated problems (l2.measures, l2.repeated_problems)." }
   /api/l2/monitor/{view}/{object}/{pillar}:
-    get: { summary: "Query window, group_by. The node summary, the iceberg, children worst first or grouped (l2.node_summary, l2.node_score, l2.iceberg, l2.slice_attributes), the pillar's content, and its findings." }
+    get: { summary: "Query window, group_by; for performance also class (gold, silver, bronze, all; default gold) and at (an ISO time inside the window). The node summary, the iceberg, children worst first or grouped (l2.node_summary, l2.node_score, l2.iceberg, l2.slice_attributes), the pillar's content, and its findings. Performance above the cluster adds perf: the VM section (l2.consumer_hits, l2.worst_vms) and the Cluster section (l2.provider_spread, l2.clusters_at). 400 for an unknown class or a time outside the window." }
   /api/l2/findings/{finding}/agent:
     post: { summary: "Agent E2 explains the finding (task explain_finding). Recorded (D-076)." }
   /api/l2/inventory/{change}/expected:

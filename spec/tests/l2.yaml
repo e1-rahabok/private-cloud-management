@@ -49,6 +49,20 @@ catalog:
       compute_levels: [estate, region, location, vcf_instance, workload_domain, cluster, host, vm, guest_os]
       views: [compute, storage, network, class, management]
       guest_os_child_of_vm: true
+  - id: LCAT-10
+    entry: l2.provider_spread
+    given: { performance: [86.35, 98, 50], twenty: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] }
+    expect:
+      worst: 50
+      percentile_5_of_three: 50
+      percentile_5_of_twenty: 1
+      percentile_95_of_twenty: 19
+      bands: { performance_74: yellow, risk_74: orange, risk_20: green, performance_20: red }
+    note: "vCommunity's example: with fewer than 20 clusters the 5th percentile is the worst. Nearest rank, rounded up."
+  - id: LCAT-11
+    entry: l2.provider_spread
+    given: { scores: [100, 100, 100, 100, 100, 100, 100, 100, 100, 18.75] }
+    expect: { kpi: 58.25, reason: "vCommunity's weighted average by color: one red sub-metric among nine green ones still shows" }
 
 story:
   - id: LST-1
@@ -147,6 +161,31 @@ story:
     name: Log validation
     expect: { "resuming traffic on DV port": noise }
 
+  - id: LST-17
+    name: Gold at the estate, 24 hours, actual slowness
+    story: M-3
+    expect:
+      default_class: gold
+      gold_clusters: 26
+      all_clusters: 96
+      at_narrow: { at: "now - 840 minutes", worst_cluster: FR-G-04, worst_band: orange, percentile_band: green }
+      at_wide: { at: "now - 550 minutes", worst_band: orange, percentile_band: orange }
+      default_selected: { cluster_first: FR-G-04, within: ["now - 900 minutes", "now - 790 minutes"] }
+  - id: LST-18
+    name: Gold at the estate, 24 hours, potential slowness
+    story: M-3
+    expect: { highest_now: SG-G-05, highest_band: orange, percentile_band: green }
+  - id: LST-19
+    name: VMs take turns in one Gold cluster; many are hit together in the wide hit
+    story: M-3
+    expect:
+      VA-G-03: { different_vms_at_least: 40, most_at_once_at_most: 3, performance_band_at_default: green }
+      most_at_once_at_least: 100
+      most_at_within: ["now - 575 minutes", "now - 525 minutes"]
+  - id: LST-20
+    name: A time and a class are checked
+    expect: { unknown_class: 400, time_outside_window: 400, class_on_another_tab: 400, at_selects_point: true }
+
 page:
   - id: LPG-1
     rule: Every L2 page and section names question, role and cadence.
@@ -176,3 +215,6 @@ page:
     rule: No request leaves the PCM host; text contrast is at least 4.5:1.
   - id: LPG-13
     rule: No decision ID (D-nnn) appears in the visible text of any page of this workspace, in any state.
+  - id: LPG-14
+    rule: On the estate's Performance tab, VM comes before Cluster; Gold is selected; a click on the Actual slowness chart adds the time to the address and the clusters table is headed with that time.
+    decisions: [D-091]

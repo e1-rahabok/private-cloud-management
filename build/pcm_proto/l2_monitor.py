@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from functools import lru_cache
 
-from . import generator, l2, l2_estate as X, noc
+from . import generator, l2, l2_estate as X, l2_performance as P, noc
 
 PILLARS = ("availability", "performance", "capacity", "security", "configuration", "inventory")
 RANK = {"red": 0, "amber": 1, "no_data": 2, "green": 3}
@@ -548,7 +548,8 @@ def inventory_content(E, view, nid, now, window, enable=(), brief=False) -> dict
             "days": days}
 
 
-def pillar_view(now: datetime, view: str, nid: str, pillar: str, window: str, group: str | None = None, enable=()) -> dict | None:
+def pillar_view(now: datetime, view: str, nid: str, pillar: str, window: str, group: str | None = None, enable=(),
+                cls: str | None = None, at: str | None = None) -> dict | None:
     E = X.estate(tuple(enable))
     n = X.node(E, nid)
     if n is None or pillar not in PILLARS:
@@ -578,6 +579,8 @@ def pillar_view(now: datetime, view: str, nid: str, pillar: str, window: str, gr
                          "guest_os": {"status": X.status_of(guest_os_values(n, act)["guest_os_performance"]), **guest_os_values(n, act)}}
     if group:
         out["group_by"] = {"attribute": group, "rows": group_by(E, v, nid, group, now, window, enable)}
+    if pillar == "performance" and P.applies(n):
+        out["perf"] = P.view(now, v, nid, window, cls or P.DEFAULT_CLASS, at, enable)
     return out
 
 
