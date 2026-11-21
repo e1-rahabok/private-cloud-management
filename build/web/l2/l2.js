@@ -328,7 +328,7 @@ const CHARTS = {};
 const seriesColor = (s, v) => s.band ? `var(--band-${s.band(v)})` : s.color;
 function chartSvg(id, W) {
   const { pts, series, o } = CHARTS[id];
-  const H = o.height ?? 240, L = o.left ?? 48, Rt = o.nodirect ? (o.bands ? 80 : 16) : 140, T = 12, B = 28, iw = W - L - Rt, ih = H - T - B, n = pts.length;
+  const H = o.height ?? 240, L = o.left ?? 48, Rt = (o.nodirect || o.bands) ? 16 : 140, T = 12, B = 28, iw = W - L - Rt, ih = H - T - B, n = pts.length;
   const fmt = o.fmt || ((v) => o.max === 100 ? v + '%' : n0(v));
   const max = o.max ?? Math.max(4, ...pts.flatMap(p => series.map(s => p[s.key] ?? 0))) * 1.1;
   const x = i => L + (n === 1 ? iw / 2 : i / (n - 1) * iw), y = v => T + ih - v / max * ih;
@@ -341,7 +341,8 @@ function chartSvg(id, W) {
   const area = series.filter(s => !s.dash && !s.band);
   if (area.length) svg += `<defs><linearGradient id="fg-${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <mask id="fm-${id}" maskUnits="userSpaceOnUse" x="${L}" y="${T}" width="${iw}" height="${ih}"><rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="url(#fg-${id})"/></mask></defs>`;
-  if (o.bands) svg += o.bands.map(([lo, hi, b]) => `<text x="${W - 4}" y="${f(y((lo + hi) / 2) + 4)}" text-anchor="end" class="bandlbl">${BAND_NAME[b]}</text>`).join('');
+  // The four bands are tinted zones behind the line, so no band names are written on the chart.
+  if (o.bands) svg += `<g class="zones">${o.bands.map(([lo, hi, b]) => `<rect x="${L}" y="${f(y(hi))}" width="${iw}" height="${f(y(lo) - y(hi))}" fill="var(--band-${b})"/>`).join('')}</g>`;
   svg += ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rt}" y1="${f(y(v))}" y2="${f(y(v))}"/><text class="axis" x="${L - 10}" y="${f(y(v) + 4)}" text-anchor="end">${fmt(v, true)}</text>`).join('');
   svg += xt.map((i, k) => `<text class="axis" x="${f(x(i))}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === xt.length - 1 ? 'end' : 'middle'}">${esc(fmtTick(pts[i].t, o.minutes, span))}</text>`).join('');
   const base = y(0);
@@ -380,7 +381,7 @@ function chartSvg(id, W) {
   for (const r of o.refs || []) svg += `<line class="ref" x1="${L}" x2="${W - Rt}" y1="${f(y(r.value))}" y2="${f(y(r.value))}"/>`;
   const ends = series.map(s => ({ s, v: pts[n - 1][s.key] })).filter(e => e.v != null).map(e => ({ ...e, y: y(e.v) + 4 })).sort((a, b) => a.y - b.y);
   for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 15) ends[i].y = ends[i - 1].y + 15;
-  if (!o.nodirect) svg += ends.map(e => `<text class="direct" x="${W - Rt + 8}" y="${f(e.y)}">${esc(e.s.short)}</text>`).join('');
+  if (!o.nodirect && !o.bands) svg += ends.map(e => `<text class="direct" x="${W - Rt + 8}" y="${f(e.y)}">${esc(e.s.short)}</text>`).join('');
   if (o.selected != null) svg += `<line class="sel" x1="${f(x(o.selected))}" x2="${f(x(o.selected))}" y1="${T}" y2="${T + ih}"/>`;
   svg += `<line class="cross" x1="0" x2="0" y1="${T}" y2="${T + ih}" visibility="hidden"/><g class="dots">${series.map(() => '<circle r="4" visibility="hidden"/>').join('')}</g><rect class="hit" x="${L}" y="${T}" width="${iw}" height="${ih}"/></svg>`;
   return svg;
