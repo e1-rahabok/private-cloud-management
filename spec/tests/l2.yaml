@@ -336,6 +336,12 @@ page:
   - id: LPG-14
     rule: On the estate's Performance tab, VM comes before Cluster; Gold is selected; a click on the Actual slowness chart adds the time to the address and the clusters table is headed with that time.
     decisions: [D-091]
+  - id: LPG-16
+    rule: >
+      Moving between pages does not load the page. A click on a tab, on the window, on a tree node and the browser's Back button change the address
+      and the content, and a marker set on the page survives. The window is a drop-down that names the chosen window and lists five. Every tab shows a status dot
+      on a pillar page. The tab list has the tab role and exactly one selected tab; the panel is named by it.
+    decisions: [D-093]
   - id: LPG-15
     rule: >
       A VM's Performance tab has the tabs Summary, Availability, Performance, Capacity, Security, Configuration in that order,

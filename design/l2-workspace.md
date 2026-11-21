@@ -117,6 +117,7 @@ A page is where four dimensions meet. The navigation shows each dimension in its
 ### 3.3 Pillar: the tabs
 
 - **What:** in Monitor and Improve, the tabs are the L2 pillars. The first tab, **Summary**, shows one line per pillar for the selected object. There is never one combined score.
+- **Tabs, not pills (D-093).** The selected tab and the panel under it are one shape, so the tab reads as the title of the page below it. Every tab shows its status dot.
 
 | Pillar | Monitor | Troubleshoot | Improve |
 |---|---|---|---|
@@ -136,7 +137,7 @@ A page is where four dimensions meet. The navigation shows each dimension in its
 
 ### 3.4 Time: one picker per page
 
-- **What:** one time window per page, in the object header: 1 hour, 24 hours, 7 days, 30 days, 1 year, custom.
+- **What:** one time window per page, in the object header, as a drop-down (D-093): last hour, 24 hours, 7 days, 30 days, last year. A custom range comes later: it needs the API to take a range, with the point size chosen from the span (5 minutes up to 24 hours, 1 hour, 4 hours, 1 day).
   - It stays when the object or the tab changes.
   - Inside a troubleshooting case, the window is the case's own and is fixed.
 - **Defaults follow the activity:**
