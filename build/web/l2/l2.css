@@ -106,7 +106,17 @@ svg.lc .cross { stroke: var(--text-muted); stroke-width: 1; }
 svg.lc .hit { fill: transparent; cursor: crosshair; }
 .chart .tip { position: absolute; pointer-events: none; background: var(--text); color: #fff; font-size: 13px; padding: 8px 10px; border-radius: 8px; min-width: 180px; z-index: 2; }
 .chart .tip div { white-space: nowrap; }
+svg.lc .ref { stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 3 4; }
+/* a VM's layers: one metric per row, its figures on the left, its chart on the right (monitor.md) */
+.metric { display: grid; grid-template-columns: 220px 1fr; gap: 16px; background: #fff; border-radius: 12px; padding: 12px 16px; margin: 10px 0; align-items: start; }
+.metric h4 { margin: 0 0 2px; font-size: 17px; }
+.metric dl { margin: 10px 0 0; display: grid; grid-template-columns: 1fr; gap: 0; }
+.metric dt { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-top: 8px; font-weight: 700; }
+.metric dd { margin: 0; font-size: 20px; font-weight: 800; }
+.metric dd .muted { font-size: 13px; font-weight: 400; }
+.metric .chart { margin: 0; padding: 0; }
 @media (max-width: 900px) {
+  .metric { grid-template-columns: 1fr; }
   .frame { grid-template-columns: 1fr; }
   aside.tree { border-right: 0; border-bottom: 1px solid var(--line); max-height: 40vh; }
   .cols2 { grid-template-columns: 1fr; }

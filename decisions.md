@@ -96,6 +96,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-089 | 2026-11-21 | Agent E2's flows decide the order of checks in a case: at each node the SP5 order, and a failed step proposes the next object. Agent E2 proposes links with evidence; L2 confirms or rules them out. Agent E2 never closes a case. | The flows are already written and benchmarked in Agent E2. PCM supplies the data; Agent E2 supplies the order (D-078). A human confirmation keeps a wrong link out of the SOPs (D-050). |
 | D-090 | 2026-11-21 | The L2 demo's troubleshooting stories come from Agent E2's benchmark, renamed into the ACME estate: `L4-037` (complaint), `L4-074` (L1 escalation), `L4-049` and `L4-045` (monitoring findings). | Each has several layers, causes that build up over time, and red herrings. Together they show all three triggers. L2 design, 11. |
 | D-091 | 2026-11-21 | The Performance tab above the cluster is two sections, consumer first: **VM**, then **Cluster**. VM: how many VMs were hit at each moment and how many different VMs over the window, and the worst VMs with the time and the cluster. Cluster: two charts on the same 0 to 100% scale, actual slowness (worst Cluster Performance and its 10th percentile) and potential slowness (worst Cluster Risk and its 90th percentile), the same metrics as vCommunity's Worst and Worst 10 Percent. A click on a time lists every cluster at that time. A class of service filter scopes both sections; Gold is the default. Monitoring shows what, when, where and how wide; never why. | Cluster Performance is built from its VMs' contention, so the consumer is read first. A large cluster can stay green while many of its VMs take turns. The worst line says whether anything is wrong; the percentile line says whether it is narrow or wide. Gold is the class that must always be green; Bronze is read when there is time. The why is the case's job (D-084). L2 design, 4.3. |
+| D-092 | 2026-11-21 | The Performance tab of a VM shows detail, not a summary: two stacked layers of trend charts, **Guest OS** on top and **Virtual Motherboard** (the VM's virtual hardware) under it, because the Guest OS runs on the Virtual Motherboard. Each metric has its own chart over the window, and its figures say which statistic they are: now, worst, 95th percentile. Never an average. A VM page has no Group by and no Inventory tab, and the cards that count VMs go too: they describe a group. A number always carries its unit, after the number; a metric name is Title Case and never holds its unit; abbreviations are capitals (CPU, VM, OS). | A single figure such as "CPU Ready 2.5" does not say whether it is now, the worst or a percentile, and an average hides the peak that the VM's owner felt. The Guest OS is not beside the Virtual Motherboard: it is on top of it, and a wait in one shows in the other. Group by, the VM counts and Inventory describe more than one object. Rationale: D-092. |
 
 ## Rationale
 
@@ -526,4 +527,25 @@ Source: Cost n Price n Value (in `sources/`).
 
 **Out of scope for 1.0**
 - Kubernetes: a logical entity with its own view.
+
+### D-092 The VM's Performance tab: two layers, with their statistic
+
+**What was wrong**
+- Guest OS and VM sat side by side, as if they were peers. The Guest OS runs on the Virtual Motherboard.
+- Each metric was one number: "cpu ready percent 2.5". It did not say whether it was now, the worst of 24 hours, or a percentile. An average is no use here: a VM is felt at its peak.
+- No unit after the number, lower case names, "cpu" for CPU.
+- Group by, "Just above the line" and "Children outside green" count VMs. On one VM they describe a group.
+- Inventory counts objects and their changes. It belongs to provider objects.
+
+**Now**
+- **Two layers, one over the other.** Guest OS first: Run Queue, Context Switches, Paging, Guest OS Performance. Virtual Motherboard under it: CPU Ready, Co-Stop, Memory Wait, Disk Latency, VM Performance.
+- **One chart per metric,** over the window, one point per slot as in D-091: a point holds the worst value inside it. Beside it three named figures: Now, Worst (with its time), 95th percentile. No average.
+- **95th percentile** is the value that 95% of the points were better than. For a metric where higher is better (the two Performance scores) it is the value that 95% of the points were above.
+- **Unit after the number,** attached for % and per second ("2.5%", "7,346/s"), a space otherwise ("5.6 ms"). The name never holds the unit: "CPU Ready", not "CPU Ready %".
+
+**Which tabs**
+- VM, Guest OS, virtual disk and vNIC have no Inventory tab. Inventory stays on estate, region, location, VCF instance, workload domain, cluster, host, datastore and the other provider objects.
+
+**Not changed**
+- The case page keeps its own VM and Guest OS cards (case.md). Its layout is the case's decision.
 

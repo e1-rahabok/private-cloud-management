@@ -185,6 +185,22 @@ story:
   - id: LST-20
     name: A time and a class are checked
     expect: { unknown_class: 400, time_outside_window: 400, class_on_another_tab: 400, at_selects_point: true }
+  - id: LST-21
+    name: A VM's Performance tab is two layers, each metric with its statistic and its unit (D-092)
+    story: L-2
+    given: { object: sg-app-117, window: 24h }
+    expect:
+      layer_order: [guest_os, virtual_motherboard]
+      guest_os_metrics: [run_queue_per_vcpu, context_switches_per_s, paging_per_s, guest_os_performance]
+      virtual_motherboard_metrics: [cpu_ready_percent, co_stop_percent, memory_wait_percent, disk_latency_ms, vm_performance]
+      points: 288
+      figures: [now, worst, percentile_95]
+      no_average: true
+      now_equals_the_realm_value: true
+      worst_is_the_worst_point: true
+      inventory_on_a_vm: 404
+      inventory_on_a_cluster: 200
+      group_by_ignored_on_a_vm: true
 
 page:
   - id: LPG-1
@@ -218,3 +234,9 @@ page:
   - id: LPG-14
     rule: On the estate's Performance tab, VM comes before Cluster; Gold is selected; a click on the Actual slowness chart adds the time to the address and the clusters table is headed with that time.
     decisions: [D-091]
+  - id: LPG-15
+    rule: >
+      A VM's Performance tab has the tabs Summary, Availability, Performance, Capacity, Security, Configuration in that order,
+      no Inventory, no Group by and no side-by-side cards. Guest OS comes first and Virtual Motherboard under it, one chart per metric,
+      with Now, Worst and 95th percentile. Every figure has its unit after the number and no name holds its unit or starts in lower case.
+    decisions: [D-092]

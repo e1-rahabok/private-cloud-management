@@ -80,7 +80,8 @@ cadence: [live]
 reads: [l2.pillars]
 ```
 
-- **Monitor and Improve only:** Summary, Availability, Performance, Capacity, Security, Configuration, Inventory.
+- **Monitor and Improve only:** Summary, Availability, Performance, Capacity, Security, Configuration, Inventory, in that order.
+  - **Inventory is a provider tab.** A VM, Guest OS, virtual disk or vNIC does not have it (l2.pillars, D-092).
 - **Troubleshoot has no tabs.** A case crosses pillars.
 - **No tab for compliance, cost or price.**
 
