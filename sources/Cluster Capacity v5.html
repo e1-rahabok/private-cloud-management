@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<title>Cluster Capacity — VMware Cloud Foundation Operations</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root{
+    /* Verified from real VCF Operations 9.1 screenshots (pixel-sampled) */
+    --bg-appbar:#0F171C;
+    --bg-page:#1B2B31;
+    --bg-card:#21333A;
+    --bg-nav-active:#074A69;
+    --accent:#39BEFB;
+    --border:#2E4650;
+
+    --status-info:#48ACD8;
+    --status-warning:#F9C635;
+    --status-immediate:#FE892A;
+    --status-critical:#F75949;
+    --status-good:#32D7A5;
+
+    --chart-1:#39BEFB;
+    --chart-2:#AE54CF;
+    --chart-3:#32D7A5;
+    --chart-4:#7272D4;
+    --chart-5:#EA5CAB;
+    --chart-6:#C7DC3C;
+
+    --text-primary:#E8EEF1;
+    --text-secondary:#8DA3AC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    /* Clarity documented font stack: "Clarity City","Avenir Next",sans-serif */
+    font-family:"Clarity City","Avenir Next",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--bg-page);
+    color:var(--text-primary);
+    font-size:14px; /* Clarity body size */
+  }
+  a{color:var(--accent); text-decoration:none;}
+
+  /* ===== App bar ===== */
+  header.appbar{
+    background:var(--bg-appbar);
+    display:flex;
+    align-items:center;
+    height:52px;
+    padding:0 16px;
+    gap:24px;
+    border-bottom:1px solid #000;
+  }
+  .brand{display:flex; align-items:center; gap:8px;}
+  .brand .logo{
+    width:28px; height:28px;
+    background:linear-gradient(135deg,#39BEFB,#7272D4);
+    border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:12px; color:#0F171C;
+  }
+  .brand .name{line-height:1.1;}
+  .brand .name .l1{font-weight:600; font-size:14px;}
+  .brand .name .l2{font-size:12px; color:var(--text-secondary);}
+
+  nav.toptabs{display:flex; gap:24px; height:52px;}
+  nav.toptabs a{
+    display:flex; align-items:center;
+    color:var(--text-secondary);
+    font-size:14px;
+    border-bottom:2px solid transparent;
+    padding:0 4px;
+  }
+  nav.toptabs a.active{color:#fff; border-bottom-color:var(--accent);}
+
+  .search{
+    flex:1;
+    max-width:520px;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:4px;
+    height:32px;
+    display:flex;
+    align-items:center;
+    padding:0 12px;
+    color:var(--text-secondary);
+  }
+  .appbar-icons{display:flex; align-items:center; gap:16px; margin-left:auto; color:var(--text-secondary);}
+  .appbar-icons svg{width:16px; height:16px; display:block;}
+
+  /* ===== Layout ===== */
+  .shell{display:flex; height:calc(100vh - 52px);}
+
+  nav.sidenav{
+    width:192px;
+    background:var(--bg-page);
+    border-right:1px solid var(--border);
+    padding:12px 0;
+    overflow-y:auto;
+    flex-shrink:0;
+  }
+  nav.sidenav .item{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 16px;
+    color:var(--text-secondary);
+    font-size:14px;
+    cursor:default;
+  }
+  nav.sidenav .item svg{width:16px; height:16px; flex-shrink:0;}
+  nav.sidenav .item.active{
+    background:var(--bg-nav-active);
+    color:#fff;
+    border-left:2px solid var(--accent);
+    padding-left:14px; /* 16px base minus the 2px active border, so text stays aligned */
+  }
+
+  main{flex:1; overflow-y:auto; padding:16px 20px;}
+
+  .crumb{font-size:12px; color:var(--text-secondary); margin-bottom:8px;}
+  .crumb a{color:var(--accent);}
+
+  .dash-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .dash-header h1{font-size:20px; font-weight:500; margin:0; color:#fff;} /* Clarity Title size, medium weight */
+  .dash-toolbar{display:flex; align-items:center; gap:16px;}
+  .dash-toolbar .actions{color:var(--accent); font-weight:600; font-size:12px; letter-spacing:.3px;}
+  .timerange{display:flex; border:1px solid var(--border); border-radius:4px; overflow:hidden;}
+  .timerange span{
+    padding:4px 12px; font-size:12px; color:var(--text-secondary);
+    border-right:1px solid var(--border);
+  }
+  .timerange span:last-child{border-right:none;}
+  .timerange span.active{background:var(--accent); color:#0F171C; font-weight:600;}
+
+  /* ===== Dashboard sections ===== */
+  .dash-section{ margin-bottom:24px; }
+  .dash-section-title{
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.8px;
+    color:var(--text-secondary);
+    margin:0 0 12px 0;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--border);
+  }
+  .dash-section-desc{
+    font-size:12px; line-height:1.5;
+    color:var(--text-secondary);
+    margin:0 0 12px 0;
+  }
+
+  /* ===== Widget grid ===== */
+  .row{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .row.row-2col{ grid-template-columns:repeat(2, 1fr); }
+  .row.row-4col{ grid-template-columns:repeat(4, 1fr); }
+  .row .chart-wrap.tall{ height:220px; }
+  .row .chart-wrap.compact{ height:90px; }
+  .health-stats{
+    display:flex; justify-content:flex-end; gap:14px;
+    font-size:12px; color:var(--text-secondary);
+    margin-bottom:8px;
+  }
+  .health-stats .good{ color:var(--status-good); }
+  .widget{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:4px;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+  .widget-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 12px;
+    border-bottom:1px solid var(--border);
+  }
+  .widget-header .title{
+    display:flex; align-items:center; gap:8px;
+    font-size:14px; font-weight:600; color:#fff;
+  }
+  .score-pill{
+    font-size:12px; font-weight:700;
+    padding:4px 8px; border-radius:999px;
+    color:#0F171C;
+  }
+  .widget-icons{display:flex; gap:8px; color:var(--text-secondary);}
+  .widget-icons svg{width:16px; height:16px; cursor:default;}
+  .widget-body{padding:12px;}
+  .chart-wrap{height:168px;}
+  .full-width{grid-column:1 / -1;}
+
+  /* ===== Table (View List widget) ===== */
+  .view-list table{width:100%; border-collapse:collapse; font-size:12px;}
+  .view-list th, .view-list td{
+    text-align:left;
+    padding:8px 12px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  .view-list th{
+    color:var(--text-secondary);
+    font-weight:600;
+    background:var(--bg-page);
+  }
+  .view-list th.num, .view-list td.num{text-align:right;}
+  .view-list td a{font-weight:500;}
+  .view-list tbody tr:hover{background:rgba(255,255,255,0.03);}
+
+  .widget-footer{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:8px 12px;
+    font-size:12px;
+    color:var(--text-secondary);
+    border-top:1px solid var(--border);
+  }
+  .health-pill{display:inline-flex; align-items:center; gap:8px; font-weight:500; color:var(--text-primary);}
+  .dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
+
+  /* ===== Inline text editing ===== */
+  [contenteditable="true"]{ border-radius:2px; }
+  [contenteditable="true"]:hover{ outline:1px dashed var(--accent); }
+  [contenteditable="true"]:focus{ outline:1px solid var(--accent); background:rgba(57,190,251,0.08); }
+
+  #save-btn{
+    display:none;
+    position:fixed; right:20px; bottom:20px;
+    background:var(--accent); color:#0F171C;
+    border:none; border-radius:20px;
+    padding:12px 20px; font-size:14px; font-weight:700;
+    cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.5);
+    z-index:1000;
+  }
+  #save-toast{
+    position:fixed; right:20px; bottom:64px;
+    background:var(--bg-card); color:var(--text-primary);
+    border:1px solid var(--border); border-radius:4px;
+    padding:8px 16px; font-size:12px;
+    opacity:0; pointer-events:none; transition:opacity .2s;
+    z-index:1000;
+  }
+  #save-toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="brand">
+    <div class="logo">vmw</div>
+    <div class="name">
+      <div class="l1" contenteditable="true">VMware Cloud Foundation</div>
+      <div class="l2" contenteditable="true">Operations</div>
+    </div>
+  </div>
+  <nav class="toptabs">
+    <a class="active" contenteditable="true">Operate</a>
+    <a contenteditable="true">Manage</a>
+    <a contenteditable="true">Protect</a>
+    <a contenteditable="true">Build</a>
+  </nav>
+  <div class="search">Search</div>
+  <div class="appbar-icons">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7M21 4v6h-6"></path></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 01-3.4 0"></path></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"></path></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a7 7 0 0114 0v1"></path></svg>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="sidenav">
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path></svg><span contenteditable="true">Home</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg><span contenteditable="true">Overview</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg><span contenteditable="true">Inventory</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg><span contenteditable="true">Alerts</span></div>
+    <div class="item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"></rect><path d="M3 9h18M9 21V9"></path></svg><span contenteditable="true">Dashboards</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M9 9h6v6H9z"></path></svg><span contenteditable="true">Automation Central</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"></path></svg><span contenteditable="true">Workbench</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M7 15l4-6 4 4 5-8"></path></svg><span contenteditable="true">Metrics</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"></path><path d="M8 9h8M8 13h8M8 17h5"></path></svg><span contenteditable="true">Logs</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"></path></svg><span contenteditable="true">Flows</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg><span contenteditable="true">Findings</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"></path></svg><span contenteditable="true">VCF Health</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"></circle><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"></path><circle cx="18" cy="8" r="2.5"></circle></svg><span contenteditable="true">Organizations</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"></rect><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg><span contenteditable="true">Workloads</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C7 8 4 12 4 15a8 8 0 0016 0c0-3-3-7-8-13z"></path></svg><span contenteditable="true">Green Score</span></div>
+    <div class="item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"></path></svg><span contenteditable="true">Administration</span></div>
+  </nav>
+
+  <main>
+    <div class="crumb"><a contenteditable="true">Dashboards</a> / <span contenteditable="true">Clusters Capacity</span></div>
+    <div class="dash-header">
+      <h1 contenteditable="true">Clusters Capacity</h1>
+      <div class="dash-toolbar">
+        <span class="actions" contenteditable="true">ACTIONS ▾</span>
+        <div class="timerange">
+          <span contenteditable="true">1H</span><span contenteditable="true">6H</span><span class="active" contenteditable="true">24H</span><span contenteditable="true">7D</span><span contenteditable="true">CUSTOM</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-section">
+    <h2 class="dash-section-title" contenteditable="true">Summary</h2>
+    <div class="dash-section-desc" contenteditable="true" style="color:#fff;"><span style="color:var(--status-warning); font-weight:700;">This text is temporary. We use to explain the design behind the dashboard. It will be replaced with explanation suitable for actual management of the environment.</span><br><br>3 trend charts are needed as capacity management has 3 dimensions.<ul style="margin:4px 0 0 0; padding-left:20px;"><li>Capacity: the actual consumption. It shows the counts of vSphere Clusters with Capacity Remaining (%) in red zone and orange zone. Yellow and Green zones are not shown to enable focus. They are shown in the table listing all clusters.</li><li>Performance Risk: Needed since you don't want performance problem. It shows the score of Cluster Performance Risk (%). We display the worst among the cluster, and the 90th percentile value. A big gap between the 2 lines indicate the problem is not widespread. Average is too late as we want all clusters to be performing. 95th percentile will not represent the whole population in clusters with many VMs</li><li>Performance: same with Performance Risk, but uses actual contention metrics. Needed as risk measures potential, not actual.</li></ul><br>If you mix prod and non-prod in the same chart, expect the numbers to be dominated by non-prod. If you want to focus on prod, add a filter at the top, or simply have 2 different dashboards and open them side by side.<br><br>Due to large cluster population and 5K VM, expect the numbers to be relatively stable and matches your overall business cycles and production changes.</div>
+    <div class="row">
+      <div class="widget">
+        <div class="widget-header">
+          <span class="title"><span contenteditable="true">Capacity</span></span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div class="chart-wrap"><canvas id="chart-c1" width="453" height="168" style="display: block; box-sizing: border-box; height: 168px; width: 453.7px;"></canvas></div>
+        </div>
+      </div>
+
+      <div class="widget">
+        <div class="widget-header">
+          <span class="title"><span contenteditable="true">Performance Risk (%)</span></span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div class="chart-wrap"><canvas id="chart-c2" width="453" height="168" style="display: block; box-sizing: border-box; height: 168px; width: 453.7px;"></canvas></div>
+        </div>
+      </div>
+
+      <div class="widget">
+        <div class="widget-header">
+          <span class="title"><span contenteditable="true">Performance (%)</span></span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div class="chart-wrap"><canvas id="chart-c3" width="453" height="168" style="display: block; box-sizing: border-box; height: 168px; width: 453.7px;"></canvas></div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <div class="dash-section">
+    <h2 class="dash-section-title" contenteditable="true">List</h2>
+    <div class="dash-section-desc" contenteditable="true" style="color:#fff;"><span style="color:var(--status-warning); font-weight:700;">This text is temporary. We use to explain the design behind the dashboard. It will be replaced with explanation suitable for actual management of the environment.</span><br><br>This table lists all the clusters, sorted by their VM provisioning status, then by capacity remaining. Clusters who can't accept new VM is listed first.<ul style="margin:4px 0 0 0; padding-left:20px;"><li>"Provision VM?" column defines if you should add provision or migrate VM to the cluster. True (1) means you can. False (0) means you should not.</li><li>Capacity Remaining (%) is a projected value. It only consider utilization. Allocation is included in Performance Risk. Reservation should not be used as i</li><li>Performance only use actual contention metrics, such as disk latency and CPU Co-Stop</li></ul></div>
+    <div class="row">
+      <div class="widget full-width view-list">
+        <div class="widget-header">
+          <span class="title" contenteditable="true">All Clusters</span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body" style="padding:0;">
+          <table>
+            <thead>
+              <tr>
+                <th contenteditable="true">Name</th>
+                <th contenteditable="true">Environment</th>
+                <th class="num" contenteditable="true">Provision VM?</th>
+                <th class="num" contenteditable="true">Capacity Remaining</th>
+                <th class="num" contenteditable="true">Performance</th>
+                <th class="num" contenteditable="true">Risk</th>
+                <th class="num" contenteditable="true">Overcommit Ratio</th>
+                <th class="num" contenteditable="true">Running Hosts</th>
+                <th class="num" contenteditable="true">Running VMs</th>
+                <th contenteditable="true">vSAN?</th>
+              </tr>
+            </thead>
+            <tbody id="view-list-body"><tr>
+    <td contenteditable="true"><a href="#">Cluster-02</a></td>
+    <td contenteditable="true">Production</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">0</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">30%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">58%</td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">83%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">1.2</td>
+    <td class="num" contenteditable="true">11</td>
+    <td class="num" contenteditable="true">42</td>
+    <td contenteditable="true">ESA</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-08</a></td>
+    <td contenteditable="true">Non-Production</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">0</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">39%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">63%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">45%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">3.1</td>
+    <td class="num" contenteditable="true">4</td>
+    <td class="num" contenteditable="true">80</td>
+    <td contenteditable="true">No</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-01</a></td>
+    <td contenteditable="true">Production</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">0</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">55%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">31%</td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">78%</td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">5.0</td>
+    <td class="num" contenteditable="true">15</td>
+    <td class="num" contenteditable="true">167</td>
+    <td contenteditable="true">OSA</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-07</a></td>
+    <td contenteditable="true">Non-Production</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">0</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">77%</td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">22%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">71%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">2.0</td>
+    <td class="num" contenteditable="true">8</td>
+    <td class="num" contenteditable="true">158</td>
+    <td contenteditable="true">OSA</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-03</a></td>
+    <td contenteditable="true">Mission Critical</td>
+    <td class="num" contenteditable="true" style="color:var(--status-good); font-weight:600;">1</td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">23%</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">76%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">30%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">2.5</td>
+    <td class="num" contenteditable="true">16</td>
+    <td class="num" contenteditable="true">107</td>
+    <td contenteditable="true">No</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-09</a></td>
+    <td contenteditable="true">Production</td>
+    <td class="num" contenteditable="true" style="color:var(--status-good); font-weight:600;">1</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">25%</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">96%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">55%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">1.3</td>
+    <td class="num" contenteditable="true">16</td>
+    <td class="num" contenteditable="true">80</td>
+    <td contenteditable="true">ESA</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-05</a></td>
+    <td contenteditable="true">Non-Production</td>
+    <td class="num" contenteditable="true" style="color:var(--status-good); font-weight:600;">1</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">30%</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">78%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">52%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">3.5</td>
+    <td class="num" contenteditable="true">12</td>
+    <td class="num" contenteditable="true">78</td>
+    <td contenteditable="true">No</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-10</a></td>
+    <td contenteditable="true">Production</td>
+    <td class="num" contenteditable="true" style="color:var(--status-good); font-weight:600;">1</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">34%</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">99%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">31%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">1.8</td>
+    <td class="num" contenteditable="true">6</td>
+    <td class="num" contenteditable="true">166</td>
+    <td contenteditable="true">No</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-06</a></td>
+    <td contenteditable="true">Production</td>
+    <td class="num" contenteditable="true" style="color:var(--status-good); font-weight:600;">1</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">51%</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">82%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">63%</td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">4.7</td>
+    <td class="num" contenteditable="true">9</td>
+    <td class="num" contenteditable="true">175</td>
+    <td contenteditable="true">No</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-04</a></td>
+    <td contenteditable="true">Non-Production</td>
+    <td class="num" contenteditable="true" style="color:var(--status-good); font-weight:600;">1</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">76%</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">87%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">32%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">2.5</td>
+    <td class="num" contenteditable="true">7</td>
+    <td class="num" contenteditable="true">48</td>
+    <td contenteditable="true">No</td>
+  </tr></tbody>
+          </table>
+        </div>
+        <div class="widget-footer">
+          <span contenteditable="true">📅 Jun 30, 2026, 9:16 AM – Jul 5, 2026, 9:16 AM</span>
+          <span contenteditable="true">1 - 10 of 10 items</span>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <div class="dash-section">
+    <h2 class="dash-section-title" contenteditable="true">Detail</h2>
+    <div class="dash-section-desc" contenteditable="true" style="color:#fff;"><span style="color:var(--status-warning); font-weight:700;">This text is temporary. We use to explain the design behind the dashboard. It will be replaced with explanation suitable for actual management of the environment.</span><br><br>This section provides details information of a single a cluster. You're investigating why.<br>The 2 trend charts show the main counters. As it's only 1 cluster and it's about capacity, it shows the cluster-level data.<br><ul style="margin: 4px 0px 0px; padding-left: 20px;"><li>Utilization is shown instead of Capacity Remaining as CR is a projection of utilization.<br></li><li>Memory tends to grow over time and more stable than CPU.<br></li><li>Imbalance is shown as it's likely the reason behind performance issue despite sufficient capacity (once you rule out configuration)</li></ul></div>
+    <div class="row row-2col">
+      <div class="widget">
+        <div class="widget-header">
+          <span class="title"><span contenteditable="true">Cluster-01 Utilization (%)</span></span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div class="chart-wrap tall"><canvas id="chart-cap1" width="701" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 701.5px;"></canvas></div>
+        </div>
+      </div>
+
+      <div class="widget">
+        <div class="widget-header">
+          <span class="title"><span contenteditable="true">Cluster-01 Performance (%)</span></span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div class="chart-wrap tall"><canvas id="chart-perf1" width="701" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 701.5px;"></canvas></div>        </div>
+      </div>
+    </div>
+
+    <div class="row row-2col">
+      <div class="widget">
+        <div class="widget-header">
+          <span class="title"><span contenteditable="true">CPU Utilization Imbalance</span></span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div class="chart-wrap tall"><canvas id="chart-cpu-imbalance" width="701" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 701.5px;"></canvas></div>
+        </div>
+      </div>
+
+      <div class="widget">
+        <div class="widget-header">
+          <span class="title"><span contenteditable="true">Memory Consumed Imbalance</span></span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div class="chart-wrap tall"><canvas id="chart-mem-imbalance" width="701" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 701.5px;"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-section-desc" contenteditable="true" style="color:#fff;"><span style="color:var(--status-warning); font-weight:700;">This text is temporary. We use to explain the design behind the dashboard.</span><br><br>If the average varies among hosts, that means the hosts did not carry equal loads.<br>If a host average and 95th percentile has wide gap, that means the host has volatile utilization.</div>
+
+    <div class="row">
+      <div class="widget full-width view-list">
+        <div class="widget-header">
+          <span class="title" contenteditable="true">ESXi Hosts</span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body" style="padding:0;">
+          <table>
+            <thead>
+              <tr>
+                <th contenteditable="true">Name</th>
+                <th class="num" contenteditable="true">Average CPU Utilization</th>
+                <th class="num" contenteditable="true">95P CPU Utilization</th>
+                <th class="num" contenteditable="true">Average RAM Consumed</th>
+                <th class="num" contenteditable="true">95P RAM Consumed<br></th>
+                <th class="num" contenteditable="true">Overcommit Ratio</th>
+                <th class="num" contenteditable="true">Running VMs</th>
+              </tr>
+            </thead>
+            <tbody id="esxi-hosts-body"><tr>
+    <td contenteditable="true"><a href="#">Cluster-01 ESXi 1</a></td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">14%</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">80%</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">2</td>
+    <td class="num" contenteditable="true" style="color:var(--status-immediate); font-weight:600;">1</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">3.7</td>
+    <td class="num" contenteditable="true">41</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-02 ESXi 2</a></td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">17%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">56%</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">3</td>
+    <td class="num" contenteditable="true" style="color:var(--status-immediate); font-weight:600;">2</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">1.6</td>
+    <td class="num" contenteditable="true">37</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-02 ESXi 3</a></td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">41%</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">25%</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">0</td>
+    <td class="num" contenteditable="true" style="color:var(--status-immediate); font-weight:600;">4</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">3.7</td>
+    <td class="num" contenteditable="true">25</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-02 ESXi 8</a></td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">50%</td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">20%</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">1</td>
+    <td class="num" contenteditable="true" style="color:var(--status-immediate); font-weight:600;">4</td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">4.1</td>
+    <td class="num" contenteditable="true">51</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-03 ESXi 5</a></td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">56%</td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">85%</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">4</td>
+    <td class="num" contenteditable="true" style="color:var(--status-immediate); font-weight:600;">1</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">1.5</td>
+    <td class="num" contenteditable="true">56</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-01 ESXi 6</a></td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">80%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">56%</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">0</td>
+    <td class="num" contenteditable="true" style="color:var(--status-immediate); font-weight:600;">2</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">2.3</td>
+    <td class="num" contenteditable="true">55</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-03 ESXi 7</a></td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">82%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">64%</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">0</td>
+    <td class="num" contenteditable="true" style="color:var(--status-immediate); font-weight:600;">2</td>
+    <td class="num" contenteditable="true" style="color:#FE892A; font-weight:600;">2.1</td>
+    <td class="num" contenteditable="true">58</td>
+  </tr><tr>
+    <td contenteditable="true"><a href="#">Cluster-01 ESXi 4</a></td>
+    <td class="num" contenteditable="true" style="color:#32D7A5; font-weight:600;">96%</td>
+    <td class="num" contenteditable="true" style="color:#F9C635; font-weight:600;">53%</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">4</td>
+    <td class="num" contenteditable="true" style="color:var(--status-immediate); font-weight:600;">7</td>
+    <td class="num" contenteditable="true" style="color:#F75949; font-weight:600;">4.0</td>
+    <td class="num" contenteditable="true">57</td>
+  </tr></tbody>
+          </table>
+        </div>
+        <div class="widget-footer">
+          <span contenteditable="true">📅 Jun 30, 2026, 9:16 AM – Jul 5, 2026, 9:16 AM</span>
+          <span contenteditable="true">1 - 8 of 8 items</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row row-2col">
+      <div class="widget">
+        <div class="widget-header">
+          <span class="title"><span contenteditable="true">ESXi CPU Utilization</span></span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div class="chart-wrap tall"><canvas id="chart-esxi-cpu-multi" width="701" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 701.5px;"></canvas></div>
+        </div>
+      </div>
+
+      <div class="widget">
+        <div class="widget-header">
+          <span class="title"><span contenteditable="true">ESXi Memory Consumed</span></span>
+          <div class="widget-icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 115.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div class="chart-wrap tall"><canvas id="chart-esxi-mem-multi" width="701" height="220" style="display: block; box-sizing: border-box; height: 220px; width: 701.5px;"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    </div>
+  </main>
+</div>
+
+<button id="save-btn">Save Changes</button>
+<div id="save-toast" class="show">Saved successfully.</div>
+
+<script>
+const labels = Array.from({length:24}, (_,i) => `${i}:00`);
+
+/* ===== 4-band (green/yellow/orange/red) trend charts ===== */
+function bandColor(v){
+  const s = getComputedStyle(document.documentElement);
+  if (v >= 80) return s.getPropertyValue('--status-good').trim();
+  if (v >= 60) return s.getPropertyValue('--status-warning').trim();
+  if (v >= 40) return s.getPropertyValue('--status-immediate').trim();
+  return s.getPropertyValue('--status-critical').trim();
+}
+
+function genWaveSeries(base, amplitude, noise, cycles){
+  return labels.map((_,i) => {
+    const wave = Math.sin((i/24) * Math.PI*2 * cycles) * amplitude;
+    const jitter = (Math.random()-0.5) * noise;
+    return Math.max(0, Math.min(100, Math.round(base + wave + jitter)));
+  });
+}
+
+function genRampSeries(start, end, noise){
+  return labels.map((_,i) => {
+    const trend = start + (end - start) * (i / (labels.length - 1));
+    const jitter = (Math.random()-0.5) * noise;
+    return Math.max(0, Math.min(100, Math.round(trend + jitter)));
+  });
+}
+
+function renderBandChart(canvasId, data){
+  new Chart(document.getElementById(canvasId), {
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        data,
+        segment:{ borderColor: ctx => bandColor((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) },
+        fill:false,
+        tension:0.35,
+        pointRadius:0,
+        borderWidth:3
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{mode:'index', intersect:false} },
+      scales:{
+        x:{ ticks:{maxTicksLimit:6, color:'#8DA3AC', font:{size:12}}, grid:{color:'#2E4650'} },
+        y:{ min:0, max:100, ticks:{color:'#8DA3AC', font:{size:12}}, grid:{color:'#2E4650'} }
+      }
+    }
+  });
+}
+
+/* ===== Health Chart widget (min/max/avg stats + gradient area + min-point marker) ===== */
+function renderHealthChart(canvasId, data, colorFn, ids){
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const avg = Math.round(data.reduce((sum, v) => sum + v, 0) / data.length);
+  const minIndex = data.indexOf(min);
+
+  document.getElementById(ids.min).textContent = min;
+  document.getElementById(ids.max).textContent = max;
+  document.getElementById(ids.avg).textContent = avg;
+
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const topColor = colorFn(data[data.length - 1]);
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.clientHeight || 90);
+  gradient.addColorStop(0, topColor + 'cc');
+  gradient.addColorStop(1, topColor + '40');
+  const critical = cssVar('--status-critical');
+
+  const range = Math.max(max - min, 4);
+  const pad = range * 0.25;
+  const yMin = Math.max(0, Math.floor(min - pad));
+  const yMax = Math.min(100, Math.ceil(max + pad));
+
+  new Chart(canvas, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        data,
+        segment:{ borderColor: ctx2 => colorFn((ctx2.p0.parsed.y + ctx2.p1.parsed.y) / 2) },
+        backgroundColor: gradient,
+        fill:'origin',
+        tension:0.35,
+        borderWidth:3,
+        pointRadius: data.map((_, i) => i === minIndex ? 6 : 0),
+        pointStyle: data.map((_, i) => i === minIndex ? 'triangle' : 'circle'),
+        pointRotation: data.map((_, i) => i === minIndex ? 180 : 0),
+        pointBackgroundColor: data.map((_, i) => i === minIndex ? critical : 'transparent'),
+        pointBorderColor: data.map((_, i) => i === minIndex ? critical : 'transparent')
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{mode:'index', intersect:false} },
+      scales:{
+        x:{ ticks:{maxTicksLimit:4, color:'#8DA3AC', font:{size:11}}, grid:{display:false} },
+        y:{ min:yMin, max:yMax, display:false }
+      }
+    }
+  });
+}
+
+/* ===== Summary trend charts ===== */
+function genIntSeries(min, max){
+  let current = randInt(min, max);
+  return labels.map(() => {
+    if (Math.random() < 0.15) {
+      current = Math.max(min, Math.min(max, current + randChoice([-1, 1])));
+    }
+    return current;
+  });
+}
+
+function cssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function bandColorRisk(v){
+  const s = getComputedStyle(document.documentElement);
+  if (v >= 75) return s.getPropertyValue('--status-critical').trim();
+  if (v >= 50) return s.getPropertyValue('--status-immediate').trim();
+  if (v >= 25) return s.getPropertyValue('--status-warning').trim();
+  return s.getPropertyValue('--status-good').trim();
+}
+
+function bandColorPerf(v){
+  const s = getComputedStyle(document.documentElement);
+  if (v >= 75) return s.getPropertyValue('--status-good').trim();
+  if (v >= 50) return s.getPropertyValue('--status-warning').trim();
+  if (v >= 25) return s.getPropertyValue('--status-immediate').trim();
+  return s.getPropertyValue('--status-critical').trim();
+}
+
+function renderDualLineChart(canvasId, seriesA, seriesB, colorFn, yMax, stepSize, wholeNumbers, unit){
+  const tension = wholeNumbers ? 0 : 0.35;
+  const fmt = v => wholeNumbers ? Math.round(v) : v;
+  new Chart(document.getElementById(canvasId), {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {
+          label: seriesA.label,
+          data: seriesA.data,
+          segment: colorFn ? { borderColor: ctx => colorFn((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) } : undefined,
+          borderColor: colorFn ? '#8DA3AC' : seriesA.color,
+          fill:false, tension, pointRadius:0, borderWidth:3
+        },
+        {
+          label: seriesB.label,
+          data: seriesB.data,
+          segment: colorFn ? { borderColor: ctx => colorFn((ctx.p0.parsed.y + ctx.p1.parsed.y) / 2) } : undefined,
+          borderColor: colorFn ? '#8DA3AC' : seriesB.color,
+          borderDash: colorFn ? [6,4] : undefined,
+          fill:false, tension, pointRadius:0, borderWidth:3
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:true, position:'bottom', labels:{ color:'#8DA3AC', font:{size:11}, boxWidth:16 } },
+        tooltip:{
+          mode:'index', intersect:false,
+          callbacks:{ label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}${unit || ''}` }
+        }
+      },
+      scales:{
+        x:{ ticks:{maxTicksLimit:6, color:'#8DA3AC', font:{size:12}}, grid:{color:'#2E4650'} },
+        y:{ min:0, max:yMax, ticks:{color:'#8DA3AC', font:{size:12}, stepSize, precision: wholeNumbers ? 0 : undefined, callback: v => `${v}${unit || ''}`}, grid:{color:'#2E4650'} }
+      }
+    }
+  });
+}
+
+function genImbalanceBand(avgSeries, spread, spreadNoise){
+  const high = [], low = [];
+  avgSeries.forEach(a => {
+    const s = Math.max(2, spread + (Math.random()-0.5) * spreadNoise);
+    high.push(Math.max(0, Math.min(100, Math.round(a + s))));
+    low.push(Math.max(0, Math.min(100, Math.round(a - s))));
+  });
+  return { high, low };
+}
+
+function genImbalanceBandVaried(avgSeries, minSpread, maxSpread){
+  const high = [], low = [];
+  avgSeries.forEach(a => {
+    const sHigh = minSpread + Math.random() * (maxSpread - minSpread);
+    const sLow = minSpread + Math.random() * (maxSpread - minSpread);
+    high.push(Math.max(0, Math.min(100, Math.round(a + sHigh))));
+    low.push(Math.max(0, Math.min(100, Math.round(a - sLow))));
+  });
+  return { high, low };
+}
+
+function renderTripleLineChart(canvasId, seriesHigh, seriesAvg, seriesLow, yMax, unit){
+  new Chart(document.getElementById(canvasId), {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        { label:seriesHigh.label, data:seriesHigh.data, borderColor:seriesHigh.color, fill:false, tension:0.35, pointRadius:0, borderWidth:3 },
+        { label:seriesAvg.label, data:seriesAvg.data, borderColor:seriesAvg.color, fill:false, tension:0.35, pointRadius:0, borderWidth:3 },
+        { label:seriesLow.label, data:seriesLow.data, borderColor:seriesLow.color, fill:false, tension:0.35, pointRadius:0, borderWidth:3 }
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:true, position:'bottom', labels:{ color:'#8DA3AC', font:{size:11}, boxWidth:16 } },
+        tooltip:{
+          mode:'index', intersect:false,
+          callbacks:{ label: ctx => `${ctx.dataset.label}: ${Math.round(ctx.parsed.y)}${unit || ''}` }
+        }
+      },
+      scales:{
+        x:{ ticks:{maxTicksLimit:6, color:'#8DA3AC', font:{size:12}}, grid:{color:'#2E4650'} },
+        y:{ min:0, max:yMax, ticks:{color:'#8DA3AC', font:{size:12}, callback: v => `${v}${unit || ''}`}, grid:{color:'#2E4650'} }
+      }
+    }
+  });
+}
+
+function renderMultiLineChart(canvasId, seriesList, yMax, unit){
+  new Chart(document.getElementById(canvasId), {
+    type:'line',
+    data:{
+      labels,
+      datasets: seriesList.map(s => ({
+        data: s.data, borderColor: s.color, fill:false, tension:0.35, pointRadius:0, borderWidth:2
+      }))
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ mode:'index', intersect:false, callbacks:{ label: ctx => `${Math.round(ctx.parsed.y)}${unit || ''}` } }
+      },
+      scales:{
+        x:{ ticks:{maxTicksLimit:6, color:'#8DA3AC', font:{size:12}}, grid:{color:'#2E4650'} },
+        y:{ min:0, max:yMax, ticks:{color:'#8DA3AC', font:{size:12}, callback: v => `${v}${unit || ''}`}, grid:{color:'#2E4650'} }
+      }
+    }
+  });
+}
+
+renderDualLineChart(
+  'chart-c1',
+  { label:'Clusters with Red CR', data:genIntSeries(0, 10), color:cssVar('--status-critical') },
+  { label:'Clusters with Orange CR', data:genIntSeries(0, 10), color:cssVar('--status-immediate') },
+  null, 10, 1, true
+);
+
+const riskWorst = genWaveSeries(55, 40, 10, 1.3);
+const risk90th = riskWorst.map((v, i) => {
+  const hour = parseInt(labels[i], 10);
+  const extraGap = Math.max(0, 25 - Math.abs(hour - 16) * 10);
+  return Math.max(0, v - randInt(5, 20) - extraGap);
+});
+renderDualLineChart(
+  'chart-c2',
+  { label:'Worst', data:riskWorst },
+  { label:'90th Percentile', data:risk90th },
+  bandColorRisk, 100, undefined, false, '%'
+);
+
+const perf90th = genWaveSeries(70, 25, 8, 1.1);
+const perfWorst = perf90th.map(v => Math.max(0, v - randInt(5, 20)));
+renderDualLineChart(
+  'chart-c3',
+  { label:'Worst', data:perfWorst },
+  { label:'90th Percentile', data:perf90th },
+  bandColorPerf, 100, undefined, false, '%'
+);
+
+const cap1 = genWaveSeries(50, 30, 20, 3.5);
+const mem1 = genRampSeries(60, 80, 3);
+const perf1 = genWaveSeries(55, 42, 6, 1);
+const perfRisk1 = genWaveSeries(50, 40, 10, 1.6);
+
+renderDualLineChart(
+  'chart-cap1',
+  { label:'CPU Utilization', data:cap1, color:cssVar('--chart-1') },
+  { label:'Memory Consumption', data:mem1, color:cssVar('--chart-2') },
+  null, 100, undefined, false, '%'
+);
+renderDualLineChart(
+  'chart-perf1',
+  { label:'Performance', data:perf1 },
+  { label:'Performance Risk', data:perfRisk1 },
+  bandColor, 100, undefined, false, '%'
+);
+
+const cpuImbalanceAvg = genWaveSeries(55, 15, 8, 2);
+const { high: cpuImbalanceHigh, low: cpuImbalanceLow } = genImbalanceBandVaried(cpuImbalanceAvg, 5, 35);
+renderTripleLineChart(
+  'chart-cpu-imbalance',
+  { label:'Highest among ESXi', data:cpuImbalanceHigh, color:cssVar('--chart-5') },
+  { label:'Average of all ESXi', data:cpuImbalanceAvg, color:cssVar('--chart-1') },
+  { label:'Lowest among ESXi', data:cpuImbalanceLow, color:cssVar('--chart-3') },
+  100, '%'
+);
+
+const memImbalanceAvg = genRampSeries(60, 75, 4);
+const { high: memImbalanceHigh, low: memImbalanceLow } = genImbalanceBand(memImbalanceAvg, 15, 8);
+renderTripleLineChart(
+  'chart-mem-imbalance',
+  { label:'Highest among ESXi', data:memImbalanceHigh, color:cssVar('--chart-5') },
+  { label:'Average of all ESXi', data:memImbalanceAvg, color:cssVar('--chart-1') },
+  { label:'Lowest among ESXi', data:memImbalanceLow, color:cssVar('--chart-3') },
+  100, '%'
+);
+
+const chartPalette = ['--chart-1','--chart-2','--chart-3','--chart-4','--chart-5','--chart-6'];
+
+const esxiCpuLines = Array.from({length:10}, () =>
+  genWaveSeries(randInt(40, 70), randInt(15, 35), randInt(10, 20), 1 + Math.random() * 3)
+);
+renderMultiLineChart(
+  'chart-esxi-cpu-multi',
+  esxiCpuLines.map((data, i) => ({ data, color: cssVar(chartPalette[i % chartPalette.length]) })),
+  100, '%'
+);
+
+const esxiMemLines = Array.from({length:10}, () =>
+  genRampSeries(randInt(50, 65), randInt(75, 90), randInt(2, 5))
+);
+renderMultiLineChart(
+  'chart-esxi-mem-multi',
+  esxiMemLines.map((data, i) => ({ data, color: cssVar(chartPalette[i % chartPalette.length]) })),
+  100, '%'
+);
+
+function healthDotColor(score){
+  if (score >= 70) return 'var(--status-good)';
+  if (score >= 40) return 'var(--status-warning)';
+  return 'var(--status-critical)';
+}
+
+const clusterNumbers = Array.from({length:10}, (_,i) => String(i+1).padStart(2,'0'));
+
+function randChoice(arr){ return arr[randInt(0, arr.length - 1)]; }
+
+const ENVIRONMENTS = ['Mission Critical', 'Production', 'Non-Production'];
+const VSAN_TYPES = ['ESA', 'OSA', 'No'];
+
+const clusters = clusterNumbers.map(n => {
+  const performance = randInt(15, 99);
+  return {
+    name: `Cluster-${n}`,
+    environment: randChoice(ENVIRONMENTS),
+    performance,
+    performanceRisk: randInt(10, 95),
+    capacityRemaining: randInt(10, 90),
+    overcommitRatio: (Math.random() * 4 + 1).toFixed(1),
+    runningHosts: randInt(4, 16),
+    runningVMs: randInt(40, 180),
+    vsan: randChoice(VSAN_TYPES)
+  };
+}).sort((a, b) => a.performance - b.performance)
+  .map((row, i) => ({ ...row, provisionVM: i < 4 ? 0 : 1 }))
+  .sort((a, b) => a.provisionVM - b.provisionVM || a.capacityRemaining - b.capacityRemaining);
+
+const tbody = document.getElementById('view-list-body');
+tbody.innerHTML = ''; // clear any rows baked in by a prior "Save changes to file"
+clusters.forEach(row => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td contenteditable="true"><a href="#">${row.name}</a></td>
+    <td contenteditable="true">${row.environment}</td>
+    <td class="num" contenteditable="true" style="color:${row.provisionVM ? 'var(--status-good)' : 'var(--status-critical)'}; font-weight:600;">${row.provisionVM}</td>
+    <td class="num" contenteditable="true" style="color:${capBandColor(row.capacityRemaining)}; font-weight:600;">${row.capacityRemaining}%</td>
+    <td class="num" contenteditable="true" style="color:${capBandColor(row.performance)}; font-weight:600;">${row.performance}%</td>
+    <td class="num" contenteditable="true" style="color:${bandColorRisk(row.performanceRisk)}; font-weight:600;">${row.performanceRisk}%</td>
+    <td class="num" contenteditable="true" style="color:${overcommitColor(parseFloat(row.overcommitRatio))}; font-weight:600;">${row.overcommitRatio}</td>
+    <td class="num" contenteditable="true">${row.runningHosts}</td>
+    <td class="num" contenteditable="true">${row.runningVMs}</td>
+    <td contenteditable="true">${row.vsan}</td>
+  `;
+  tbody.appendChild(tr);
+});
+
+/* ===== ESXi Hosts view list ===== */
+function perfBandColor(v){
+  const s = getComputedStyle(document.documentElement);
+  if (v >= 75) return s.getPropertyValue('--status-good').trim();
+  if (v >= 50) return s.getPropertyValue('--status-warning').trim();
+  if (v >= 25) return s.getPropertyValue('--status-immediate').trim();
+  return s.getPropertyValue('--status-critical').trim();
+}
+
+/* ===== Red 0-25% / Yellow 25-50% / Orange 50-75% / Green 75-100% (Capacity Remaining, Performance) ===== */
+function capBandColor(v){
+  const s = getComputedStyle(document.documentElement);
+  if (v >= 75) return s.getPropertyValue('--status-good').trim();
+  if (v >= 50) return s.getPropertyValue('--status-immediate').trim();
+  if (v >= 25) return s.getPropertyValue('--status-warning').trim();
+  return s.getPropertyValue('--status-critical').trim();
+}
+
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function overcommitColor(v){
+  const s = getComputedStyle(document.documentElement);
+  if (v < 1.0) return s.getPropertyValue('--status-good').trim();
+  if (v < 2.0) return s.getPropertyValue('--status-warning').trim();
+  if (v < 4.0) return s.getPropertyValue('--status-immediate').trim();
+  return s.getPropertyValue('--status-critical').trim();
+}
+
+const esxiClusterNames = shuffle(['Cluster-01','Cluster-01','Cluster-01','Cluster-02','Cluster-02','Cluster-02','Cluster-03','Cluster-03']);
+const esxiNumbers = shuffle([1,2,3,4,5,6,7,8]);
+
+const esxiHosts = esxiClusterNames.map((cluster, i) => ({
+  name: `${cluster} ESXi ${esxiNumbers[i]}`,
+  perf: randInt(8, 99),
+  risk: randInt(8, 99),
+  redAlerts: randInt(0, 4),
+  orangeAlerts: randInt(0, 7),
+  overcommit: (Math.random() * 3.5 + 1.5).toFixed(1),
+  vms: randInt(10, 65)
+})).sort((a, b) => a.perf - b.perf);
+
+const esxiBody = document.getElementById('esxi-hosts-body');
+esxiBody.innerHTML = '';
+esxiHosts.forEach(row => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td contenteditable="true"><a href="#">${row.name}</a></td>
+    <td class="num" contenteditable="true" style="color:${perfBandColor(row.perf)}; font-weight:600;">${row.perf}%</td>
+    <td class="num" contenteditable="true" style="color:${perfBandColor(row.risk)}; font-weight:600;">${row.risk}%</td>
+    <td class="num" contenteditable="true" style="color:var(--status-critical); font-weight:600;">${row.redAlerts}</td>
+    <td class="num" contenteditable="true" style="color:var(--status-immediate); font-weight:600;">${row.orangeAlerts}</td>
+    <td class="num" contenteditable="true" style="color:${overcommitColor(parseFloat(row.overcommit))}; font-weight:600;">${row.overcommit}</td>
+    <td class="num" contenteditable="true">${row.vms}</td>
+  `;
+  esxiBody.appendChild(tr);
+});
+
+let savedFileHandle = null;
+
+function showSaveToast(msg){
+  const toast = document.getElementById('save-toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 5000);
+}
+
+function getCleanHtml(){
+  const clone = document.documentElement.cloneNode(true);
+  clone.querySelector('#save-btn')?.remove();
+  clone.querySelector('#save-toast')?.remove();
+  return '<!DOCTYPE html>\n' + clone.outerHTML;
+}
+
+function downloadFallback(html){
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Cluster Capacity.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  showSaveToast('Direct saving unverified — downloaded updated file to your local workspace instead.');
+}
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+  const html = getCleanHtml();
+
+  if (!('showSaveFilePicker' in window)) {
+    downloadFallback(html);
+    return;
+  }
+
+  try {
+    if (!savedFileHandle) {
+      savedFileHandle = await window.showSaveFilePicker({
+        suggestedName: 'Cluster Capacity.html',
+        types: [{ description: 'HTML file', accept: {'text/html': ['.html']} }]
+      });
+    }
+    const writable = await savedFileHandle.createWritable();
+    await writable.write(html);
+    await writable.close();
+    showSaveToast('Saved successfully.');
+  } catch (err) {
+    if (err.name === 'AbortError') return; // user cancelled the picker
+    savedFileHandle = null;
+    downloadFallback(html);
+  }
+});
+</script>
+</body></html>
