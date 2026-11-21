@@ -94,7 +94,7 @@ A page is where four dimensions meet. The navigation shows each dimension in its
 
 | View | Path | Why |
 |---|---|---|
-| **Compute** (default) | Estate → Region → Location → VCF instance → Workload domain → Cluster → ESXi host → VM → Guest OS | The cluster is the unit of performance and capacity. Regions already scope the checks (D-039, D-042) and the NOC (D-068). |
+| **Compute** (default) | Estate → Region → Location → vCenter Server (the workload domain) → Cluster → ESXi host → VM → Guest OS. The VCF instance is not shown. | The cluster is the unit of performance and capacity. Regions already scope the checks (D-039, D-042) and the NOC (D-068). |
 | **Storage** | Estate → Location → vSAN cluster or datastore (vSAN, VMFS, NFS) → VM → virtual disk | Latency is judged per virtual disk. A datastore shows every VM on it, from any cluster. The array itself is out (5.6). |
 | **Network** | Estate → Location → distributed switch or NSX segment → port group → VM → vNIC | Drops are judged per vNIC. Flow dependencies are visible here: an NSX Edge on another cluster serves this VM. |
 | **Class of service** | Gold, Silver, Bronze → Location → Cluster → VM | Targets are set per class. Gold first in a large estate. |
@@ -107,7 +107,7 @@ A page is where four dimensions meet. The navigation shows each dimension in its
   - Monitor: worst first on the current pillar.
   - Troubleshoot: objects with open cases first.
   - Improve: largest opportunity first.
-- **Scale:** the tree expands down to the cluster. Below that, children show as a list with search. VCF Operations does the same once a section has more than 10 objects.
+- **Scale:** the tree expands down to the ESXi host. Below that, VMs show as a list with search. VCF Operations does the same once a section has more than 10 objects.
 - **Search** covers all five views.
 
 **A tree shows structure; a slice shows attributes.**

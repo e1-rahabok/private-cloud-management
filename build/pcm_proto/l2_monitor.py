@@ -647,7 +647,7 @@ def trend(E, n: dict, now: datetime, window: str, enable=()) -> list:
 
 # ---------------------------------------------------------------- the tree (l2.tree)
 
-TREE_LEAF_KINDS = {"cluster", "datastore", "port_group", "vm"}
+TREE_LEAF_KINDS = {"host", "datastore", "port_group", "vm"}
 
 
 def tree(now: datetime, view: str, nid: str, activity: str, pillar: str, window: str, enable=()) -> dict | None:
@@ -659,8 +659,10 @@ def tree(now: datetime, view: str, nid: str, activity: str, pillar: str, window:
     n = X.node(E, nid)
     if n is None:
         return None
-    kids = [k for k in X.children(E, view, nid) if k["kind"] not in ("host", "resource_pool", "vm", "guest_os", "virtual_disk", "vnic")
+    kids = [k for k in X.children(E, view, nid) if k["kind"] not in ("resource_pool", "vm", "guest_os", "virtual_disk", "vnic")
             or (view == "management" and k["kind"] == "vm")]
+    if view == "compute":  # the VCF instance is not a vCenter object: its workload domains (the vCenter Servers) sit under the location
+        kids = [g for k in kids for g in (X.children(E, view, k["id"]) if k["kind"] == "vcf_instance" else [k])]
     open_cases = l2_cases.open_counts(now, enable)
     fs = findings(now, enable)
     stale = stale_locations(now, enable)

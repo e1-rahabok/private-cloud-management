@@ -16,6 +16,9 @@ aside.tree .item { display: flex; align-items: center; gap: 4px; }
 aside.tree .caret { width: 22px; height: 22px; border: 0; background: none; cursor: pointer; color: var(--text-muted); font-size: 12px; padding: 0; flex: none; }
 aside.tree .caret[hidden] { visibility: hidden; display: inline-block; }
 aside.tree a.node { flex: 1; display: flex; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 14px; min-width: 0; }
+aside.tree .ic { display: inline-flex; flex: none; color: #2F6F9F; }
+aside.tree .ic svg { display: block; }
+aside.tree a.node[aria-current="true"] .ic { color: #fff; }
 aside.tree a.node span.nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 aside.tree a.node:hover { background: var(--page-bg); }
 aside.tree a.node[aria-current="true"] { background: var(--text); color: #fff; }
@@ -118,7 +121,7 @@ section.persp h3 { margin: 18px 0 6px; font-size: 17px; }
 svg.lc { max-width: 100%; height: auto; display: block; overflow: visible; font-family: inherit; }
 svg.lc .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; opacity: .9; }
 svg.lc .axis, svg.lc .bandlbl, svg.lc .direct { font-size: 12px; font-weight: 500; fill: var(--text-muted); font-variant-numeric: tabular-nums; }
-svg.lc .bandlbl { opacity: .75; }
+svg.lc .zones { opacity: .07; }
 svg.lc .direct { fill: var(--text); font-weight: 700; }
 svg.lc .series line, svg.lc .series path { stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 svg.lc .series.dashed line, svg.lc .series.dashed path { stroke-dasharray: 5 4; stroke-width: 1.25; }
