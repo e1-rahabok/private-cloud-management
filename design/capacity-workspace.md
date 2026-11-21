@@ -282,6 +282,24 @@ Path: `privatecloud.acme.com/capacity` (D-028).
   - Why: buyers usually size DRAM by habit (768 GB, 1 TB). The matching DRAM shows the class need: Silver 839 GB, Gold 520 GB, Bronze 660 GB on a 64-core host. Too little DRAM strands cores, which are licensed per core. Too much strands DRAM.
   - Planning values per class are settings with an owner (Capacity), not code.
 
+### 3.20 The boundary with L2's Capacity tab (D-093)
+
+- **What:** two capacity views, two horizons. Neither shows the other's numbers.
+
+| | L2, Monitor, Capacity tab | This workspace |
+|---|---|---|
+| Question | Can this cluster take more VMs now, and is it heading to closed? | When does the group run out, and what do we buy? |
+| Time | The window, up to now | 13 months back, 13 months ahead |
+| Unit | One cluster, or the clusters under any node | The cluster group |
+| Measure | Cluster Consumption against usable capacity as running (total, HA, buffer) | Weekly peak demand against usable capacity as planned (also a maintenance host) |
+| Output | Open or closed for new VMs (vCommunity's Periodic Cluster Check) | Run-out date, decision date, purchase plan |
+
+- **Why:**
+  - SP5 People: Capacity does not run day-to-day capacity. Closing a cluster to new VMs is day-to-day (section 1).
+  - A forecast on two pages becomes two forecasts. L2 shows none, and links here for months ahead.
+  - The two usable capacities differ on purpose. Planning holds back a maintenance host before it is needed. Running measures the hosts that run; a host in maintenance mode drops out by itself.
+- **Open:** whether "Full now: VMs waiting" (3.19) should also show "Closed for new VMs" from the check. See L2 design, section 13.
+
 ## 4. Pages
 
 | Path | Job | Main question |

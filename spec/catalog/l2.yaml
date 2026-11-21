@@ -195,11 +195,190 @@ entries:
       hosts not connected, HA restarts.
     decisions: [D-077]
 
-  l2.short_term_capacity:
+  # ---------------------------------------------------------------- statistics (D-094)
+
+  l2.statistics:
     description: >
-      Capacity as L2 sees it: today, not the forecast. Per cluster, CPU and memory utilization (average and 95th
-      percentile across hosts) and the imbalance between hosts. A cluster whose VMs wait is full now, whatever the
-      utilization (SP5). The forecast and purchase dates belong to the Capacity workspace (D-014).
+      Which statistic, on which axis. Over time on one object: a point holds the worst value of its slot; the figures
+      are Now, Worst (with its time) and 95th percentile; the status is the 95th percentile over the window, and the
+      worse of that and the last hour. Across objects at one time: the worst object, and the 10th (higher is better)
+      or 90th (higher is worse) percentile. Never an average on either axis; never a sum or average of percentages
+      across clusters.
+    over_time:
+      point: "the worst value inside its slot"
+      slots: { "1h": 5m, "24h": 5m, "7d": 1h, "30d": 4h, "1y": 1d }
+      figures: [now, worst, percentile_95]
+      status: "percentile_95 over the window; the worse of that and the last hour"
+    across_objects:
+      lines: [worst, percentile]
+      percentile: { higher_is_better: 10, higher_is_worse: 90 }
+    method: "nearest rank, as vCommunity: sort, take the value at position p% of the count, rounded up"
+    naming: >
+      A statistic is labelled by what it is. vCommunity's "Worst" check values are the (100 - Worst Percent)th
+      percentile of the check period, so PCM labels them "{p}th percentile, {period} to {end time}". "Worst" on a PCM
+      page is always the single worst point.
+    never: [average, sum_across_clusters]
+    decisions: [D-088, D-091, D-092, D-094]
+
+  # ---------------------------------------------------------------- Capacity tab (D-093)
+
+  l2.cluster_kpi_series:
+    description: >
+      The three vCommunity cluster KPIs over the window, each 0 to 100%, one point per slot (l2.statistics). Read
+      through VCF Operations (D-064); PCM keeps its own history (D-006): 5-minute points for 45 days, hourly for
+      13 months (synthetic data design).
+    kpis:
+      consumption: { key: "vCommunity|Cluster Consumption|Cluster Consumption Score", label: "Cluster Consumption", better: lower, read: "cluster-wide, against usable capacity" }
+      performance: { key: "vCommunity|Cluster Performance|Cluster Performance Score", label: "Cluster Performance", better: higher, read: "from the VMs: worst and 90th percentile of their contention" }
+      risk:        { key: "vCommunity|Cluster Risk|Cluster Risk Score", label: "Cluster Risk", better: lower, read: "from the worst host" }
+    order: [consumption, performance, risk]
+    bands:
+      higher_is_worse: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100"
+      higher_is_better: "green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
+    decisions: [D-093, D-094]
+
+  l2.cluster_check:
+    description: >
+      vCommunity's Periodic Cluster Check, read, never recomputed and never set by PCM. Once per period, per cluster:
+      the worst end of each KPI over the period and Close for Business. PCM names the rule that matched, from the three
+      published inputs, and labels each input by its percentile (l2.statistics naming). Kept as its own series for 13
+      months, one point per period: the 5-minute history it was made from is kept 45 days only.
+    source: "VCF-vCommunity-Adapter, Management Pack/app/metrics/cluster/periodic_cluster_check.py"
+    keys:
+      performance: "vCommunity|Periodic Cluster Check|Worst Cluster Performance"
+      risk: "vCommunity|Periodic Cluster Check|Worst Cluster Risk"
+      consumption: "vCommunity|Periodic Cluster Check|Worst Cluster Consumption"
+      close_for_business: "vCommunity|Periodic Cluster Check|Close for Business"
+    adapter_settings:
+      note: "Read from the vCommunity adapter instance. Not PCM settings: PCM reads the decision they produced."
+      period_hours: { default: 24, values: [1, 2, 4, 6, 8, 12, 24] }
+      time_utc: { default: "00:00" }
+      worst_percent: { default: 5, range: [0, 50] }
+    closure_levels:
+      note: "vCommunity constants, on each KPI's health (the value, or 100 minus it when higher is worse). A value on a level does not reach it."
+      performance: { red: "below 20", orange: "below 40" }
+      risk: { red: "above 80", orange: "above 60" }
+      consumption: { red: "above 80", orange: "above 60" }
+    rule:
+      - { id: 1, closes_when: "Consumption is red, or Performance is red", reason: "Consumption {c}% is above 80%. / Performance {p}% is below 20%." }
+      - { id: 2, closes_when: "Consumption and Performance are both orange, and Risk is orange or red", reason: "Consumption {c}% and Performance {p}% are both orange, and Risk {r}% is above 60%." }
+    risk_alone_never_closes: true
+    no_data: "Close for Business is not published when any input has no data. PCM shows 'No check', never 'Open'."
+    states: [open, closed, no_check, stale]
+    since: "the first check of the current unbroken run of closed periods, and the count of those checks"
+    examples:
+      note: "vCommunity's own table (periodic-cluster-check.md, The rule)"
+      rows:
+        - { performance: 15, risk: 10, consumption: 30, close: 1, rule: 1 }
+        - { performance: 90, risk: 10, consumption: 85, close: 1, rule: 1 }
+        - { performance: 35, risk: 65, consumption: 65, close: 1, rule: 2 }
+        - { performance: 35, risk: 90, consumption: 65, close: 1, rule: 2 }
+        - { performance: 35, risk: 55, consumption: 65, close: 0 }
+        - { performance: 90, risk: 90, consumption: 30, close: 0 }
+        - { performance: 35, risk: 90, consumption: 45, close: 0 }
+        - { performance: 22, risk: 10, consumption: 10, close: 0 }
+        - { performance: 90, risk: 10, consumption: 78, close: 0 }
+        - { performance: 90, risk: 10, consumption: 30, close: 0 }
+    decisions: [D-093, D-094]
+
+  l2.waiting_now:
+    description: >
+      "VMs waiting now": the cluster's Cluster Performance over the last hour is orange or red on the display bands
+      (below 50). The NOC's own number. Shown beside the check's verdict, never folded into it: the check decides once
+      per period and ignores its worst samples, so a cluster can be open at the check while its VMs wait now.
+    window: "last hour"
+    below: "th-cluster-perf-red (50): the NOC's red line, the start of orange"
+    decisions: [D-040, D-093]
+
+  l2.consumption_parts:
+    description: >
+      The parts of Cluster Consumption, each in % of usable capacity, cluster-wide (the hosts added up), as vCommunity
+      publishes them under vCommunity|Cluster Consumption. Memory Tiering only where the hosts have a tier.
+    parts:
+      cpu_thread_utilization: { label: "CPU Thread Utilization", unit: "%" }
+      memory_consumed:        { label: "Memory Consumed",        unit: "%" }
+      memory_ballooned:       { label: "Memory Ballooned",       unit: "%" }
+      memory_zip_swap:        { label: "Memory Zip Swap",        unit: "%", note: "swapped and compressed" }
+      memory_tiering:         { label: "Memory Tiering",         unit: "%", optional: true }
+    figures: [now, worst, percentile_95]
+    decisions: [D-093]
+
+  l2.usable_capacity:
+    description: >
+      Usable capacity as running, the denominator of Cluster Consumption: total, minus HA, minus buffer, over the hosts
+      that can run VMs (VCF Operations' usable capacity, applied to the running hosts' threads and DRAM, as
+      vCommunity). A host in maintenance mode, disconnected, powered off or not responding adds nothing. This is not
+      capacity.usable, which plans ahead and also holds back a maintenance host (Capacity design, 3.2).
+    steps: [total, ha, buffer, usable]
+    units: { cpu: threads, memory: "GB of DRAM" }
+    also: "running hosts of all hosts"
+    buffer_owner: "capacity (D-054): shown and linked, not edited on this page"
+    decisions: [D-054, D-093]
+
+  l2.host_spread:
+    description: >
+      "Spread between hosts": at each point, the highest and the lowest host of the cluster, for CPU Thread
+      Utilization and Memory Consumed, each in % of the host's own capacity. No average. Not vCommunity's CPU
+      Imbalance (running threads per running core), which is an input of Cluster Risk.
+    lines: [highest_host, lowest_host]
+    metrics: [cpu_thread_utilization, memory_consumed]
+    decisions: [D-093, D-094]
+
+  l2.capacity_hosts:
+    description: >
+      The hosts of the cluster, worst first by the higher of their two 95th percentiles: CPU Thread Utilization and
+      Memory Consumed, each 95th percentile and Worst with a sparkline; running VMs; CPU and Memory Overcommit; state.
+    states: [running, maintenance_mode, disconnected, not_responding, powered_off]
+    decisions: [D-093]
+
+  l2.capacity_class_default:
+    description: >
+      The class of service a Capacity tab above the cluster opens on: the first class with a cluster under the node,
+      in the order Gold, Silver, Bronze; All when the node has only mixed clusters. Mixed clusters count under All only.
+    order: [gold, silver, bronze, all]
+    decisions: [D-091, D-093]
+
+  l2.closed_count:
+    description: >
+      Per check period, the number of clusters in scope closed for new VMs, and how many closed and opened since the
+      check before. With class All under the estate, the changes equal vCommunity|Cluster Delta Close Count and Cluster
+      Delta Open Count on vSphere World. A cluster with no check in either period is not a change.
+    min_periods_for_chart: 7
+    decisions: [D-093]
+
+  l2.consumption_spread:
+    description: >
+      Two lines over the window across the clusters in scope: the highest Cluster Consumption and its 90th percentile.
+      The highest says whether any cluster is near full; the percentile says whether it is one or many.
+    percentile: 90
+    vcommunity: >
+      With class All under the estate, the two lines equal vSphere World's vCommunity|Highest Cluster Utilization and
+      Highest 10 Percent Cluster Utilization. For one class or one node, PCM computes the same from each cluster's score.
+    decisions: [D-091, D-093, D-094]
+
+  l2.near_closure:
+    description: >
+      The capacity iceberg (D-088): open clusters in scope whose Consumption at the latest check is above the orange
+      closure level (60), and that count at each check over the window, in words: rising, steady or falling (the
+      drift rule of l2.findings on the last seven counts; otherwise the sign of last minus first).
+    above: 60
+    decisions: [D-088, D-093]
+
+  l2.capacity_clusters_at:
+    description: >
+      Every cluster in scope at one selected time: closed first, then near closure, then highest Consumption. Verdict
+      at the latest check and since when; Consumption, Performance and Risk at the time; a Consumption sparkline over
+      the window; VMs waiting now. Before a click, the time is the highest point of the Consumption line.
+    decisions: [D-093]
+
+  l2.capacity_findings:
+    description: >
+      What the Capacity tab finds. Every chip on the tab has one of these behind it; no chip without a finding.
+    kinds:
+      closed_contention: { window: "24h", severity: red, outcome: problem, when: "closed at the latest check, with Performance red or by rule 2" }
+      closed_consumption: { window: "24h", severity: amber, outcome: improve, when: "closed at the latest check by Consumption red, with Performance not red" }
+      heading_to_closed: { window: "7d", severity: amber, outcome: improve, when: "open, and the last seven check values of Consumption pass the drift rule of l2.findings, rising" }
+    decisions: [D-083, D-093]
 
   # ---------------------------------------------------------------- Troubleshoot (L2 design, 5)
 
