@@ -324,58 +324,102 @@ const fmtDur = m => m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min
 const CHARTS = {};
 
 // One chart, one axis. series: [{ key, label, dash, color (fixed) or band (function of value) }].
-function lineChart(id, pts, series, o) {
-  CHARTS[id] = { pts, series, o };
-  const W = o.width ?? 1000, H = o.height ?? 240, L = o.left ?? 48, Rt = 140, T = 12, B = 30, iw = W - L - Rt, ih = H - T - B, n = pts.length;
+// The SVG is drawn at the width it is shown at, so a 12px label is 12px on screen whatever the column width.
+const seriesColor = (s, v) => s.band ? `var(--band-${s.band(v)})` : s.color;
+function chartSvg(id, W) {
+  const { pts, series, o } = CHARTS[id];
+  const H = o.height ?? 240, L = o.left ?? 48, Rt = o.nodirect ? (o.bands ? 80 : 16) : 140, T = 12, B = 28, iw = W - L - Rt, ih = H - T - B, n = pts.length;
   const fmt = o.fmt || ((v) => o.max === 100 ? v + '%' : n0(v));
   const max = o.max ?? Math.max(4, ...pts.flatMap(p => series.map(s => p[s.key] ?? 0))) * 1.1;
   const x = i => L + (n === 1 ? iw / 2 : i / (n - 1) * iw), y = v => T + ih - v / max * ih;
   const ticks = o.ticks ?? (o.max === 100 ? [0, 25, 50, 75, 100] : [0, Math.round(max / 2), Math.round(max)]);
   const span = new Date(pts[n - 1].t) - new Date(pts[0].t);
-  const xt = [0, 1, 2, 3, 4, 5, 6].map(k => Math.round(k * (n - 1) / 6));
-  let svg = `<svg class="lc" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}" data-chart="${id}">`;
-  if (o.bands) svg += o.bands.map(([lo, hi, b]) => `<text x="${W - 8}" y="${y((lo + hi) / 2) + 4}" text-anchor="end" class="bandlbl">${BAND_NAME[b]}</text>`).join('');
-  svg += ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rt}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v, true)}</text>`).join('');
-  svg += xt.map(i => `<text class="axis" x="${x(i)}" y="${H - 8}" text-anchor="middle">${esc(fmtTick(pts[i].t, o.minutes, span))}</text>`).join('');
+  const nx = Math.max(2, Math.min(6, Math.floor(iw / 110))), xt = [...new Set(Array.from({ length: nx + 1 }, (_, k) => Math.round(k * (n - 1) / nx)))];
+  CHARTS[id].g = { x, y, L, T, iw, ih };
+  const f = v => v.toFixed(1);
+  let svg = `<svg class="lc" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(o.label)}" data-chart="${id}">`;
+  const area = series.filter(s => !s.dash && !s.band);
+  if (area.length) svg += `<defs><linearGradient id="fg-${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="fm-${id}" maskUnits="userSpaceOnUse" x="${L}" y="${T}" width="${iw}" height="${ih}"><rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="url(#fg-${id})"/></mask></defs>`;
+  if (o.bands) svg += o.bands.map(([lo, hi, b]) => `<text x="${W - 4}" y="${f(y((lo + hi) / 2) + 4)}" text-anchor="end" class="bandlbl">${BAND_NAME[b]}</text>`).join('');
+  svg += ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rt}" y1="${f(y(v))}" y2="${f(y(v))}"/><text class="axis" x="${L - 10}" y="${f(y(v) + 4)}" text-anchor="end">${fmt(v, true)}</text>`).join('');
+  svg += xt.map((i, k) => `<text class="axis" x="${f(x(i))}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === xt.length - 1 ? 'end' : 'middle'}">${esc(fmtTick(pts[i].t, o.minutes, span))}</text>`).join('');
+  const base = y(0);
   for (const s of series) {
-    let segs = '';
+    // Each point holds the worst value inside its interval, so the line steps: flat across the interval, then a rise or fall.
+    let line = '', fill = '', path = '', open = false;
     for (let i = 1; i < n; i++) {
       const a = pts[i - 1][s.key], b = pts[i][s.key];
-      if (a == null || b == null) continue;
-      const col = s.band ? `var(--band-${s.band(s.worse(a, b))})` : s.color;
-      segs += `<line x1="${x(i - 1).toFixed(1)}" y1="${y(a).toFixed(1)}" x2="${x(i).toFixed(1)}" y2="${y(b).toFixed(1)}" stroke="${col}"${s.dash ? ' stroke-dasharray="7 5"' : ''}/>`;
+      if (a == null) { open = false; continue; }
+      const xa = x(i - 1), xb = x(i), ya = y(a);
+      if (s.band) {
+        line += `<line x1="${f(xa)}" y1="${f(ya)}" x2="${f(xb)}" y2="${f(ya)}" stroke="${seriesColor(s, a)}"/>`;
+        if (b != null) line += `<line x1="${f(xb)}" y1="${f(ya)}" x2="${f(xb)}" y2="${f(y(b))}" stroke="${seriesColor(s, s.worse(a, b))}"/>`;
+      } else {
+        path += `${open ? '' : `M${f(xa)} ${f(ya)}`}H${f(xb)}${b != null ? `V${f(y(b))}` : ''}`;
+        if (b == null) open = false; else open = true;
+      }
     }
-    svg += `<g class="series" data-series="${s.key}">${segs}</g>`;
+    if (!s.band) {
+      line = `<path d="${path}" fill="none" stroke="${s.color}"/>`;
+      if (!s.dash) {
+        let d = '', run = null;
+        for (let i = 0; i <= n; i++) {
+          const v = i < n ? pts[i][s.key] : null;
+          if (v != null && run == null) { run = i; d += `M${f(x(i))} ${f(base)}`; }
+          if (v != null) { d += `V${f(y(v))}`; if (i + 1 < n && pts[i + 1][s.key] != null) d += `H${f(x(i + 1))}`; }
+          if ((v == null || i === n - 1) && run != null) { d += `V${f(base)}Z`; run = null; }
+        }
+        fill = `<path d="${d}" fill="${s.color}" stroke="none"/>`;
+      }
+    }
+    if (fill) svg += `<g class="area" mask="url(#fm-${id})">${fill}</g>`;
+    svg += `<g class="series${s.dash ? ' dashed' : ''}" data-series="${s.key}">${line}</g>`;
   }
   // Direct labels at the right end, pushed apart when the lines end close together.
-  for (const r of o.refs || []) svg += `<line class="ref" x1="${L}" x2="${W - Rt}" y1="${y(r.value).toFixed(1)}" y2="${y(r.value).toFixed(1)}"/>`;
+  for (const r of o.refs || []) svg += `<line class="ref" x1="${L}" x2="${W - Rt}" y1="${f(y(r.value))}" y2="${f(y(r.value))}"/>`;
   const ends = series.map(s => ({ s, v: pts[n - 1][s.key] })).filter(e => e.v != null).map(e => ({ ...e, y: y(e.v) + 4 })).sort((a, b) => a.y - b.y);
   for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 15) ends[i].y = ends[i - 1].y + 15;
-  if (!o.nodirect) svg += ends.map(e => `<text class="direct" x="${W - Rt + 8}" y="${e.y}">${esc(e.s.short)}</text>`).join('');
-  if (o.selected != null) svg += `<line class="sel" x1="${x(o.selected)}" x2="${x(o.selected)}" y1="${T}" y2="${T + ih}"/>`;
-  svg += `<line class="cross" x1="0" x2="0" y1="${T}" y2="${T + ih}" visibility="hidden"/><rect class="hit" x="${L}" y="${T}" width="${iw}" height="${ih}"/></svg>`;
-  const legend = `<div class="legend">${series.map(s => `<span><svg width="28" height="10" aria-hidden="true"><line x1="0" x2="28" y1="5" y2="5" stroke="${s.color || 'var(--text)'}" stroke-width="2.5"${s.dash ? ' stroke-dasharray="7 5"' : ''}/></svg>${esc(s.label)}</span>`).join('')}
-    ${(o.refs || []).map(r => `<span><svg width="28" height="10" aria-hidden="true"><line x1="0" x2="28" y1="5" y2="5" stroke="var(--text-muted)" stroke-width="2" stroke-dasharray="3 4"/></svg>${esc(r.label)}</span>`).join('')}
-    ${o.bands ? `<span class="muted">Line color is the band of the value.</span>` : ''}${o.noclick ? '' : '<span class="muted">Click a time to see it below.</span>'}</div>`;
-  return `<div class="chart" data-chartbox="${id}">${legend}<div class="plot">${svg}<div class="tip" hidden></div></div></div>`;
+  if (!o.nodirect) svg += ends.map(e => `<text class="direct" x="${W - Rt + 8}" y="${f(e.y)}">${esc(e.s.short)}</text>`).join('');
+  if (o.selected != null) svg += `<line class="sel" x1="${f(x(o.selected))}" x2="${f(x(o.selected))}" y1="${T}" y2="${T + ih}"/>`;
+  svg += `<line class="cross" x1="0" x2="0" y1="${T}" y2="${T + ih}" visibility="hidden"/><g class="dots">${series.map(() => '<circle r="4" visibility="hidden"/>').join('')}</g><rect class="hit" x="${L}" y="${T}" width="${iw}" height="${ih}"/></svg>`;
+  return svg;
 }
+function lineChart(id, pts, series, o) {
+  CHARTS[id] = { pts, series, o };
+  const swatch = (c, dash) => `<svg width="18" height="8" aria-hidden="true"><line x1="1" x2="17" y1="4" y2="4" stroke="${c}" stroke-width="2" stroke-linecap="round"${dash ? ' stroke-dasharray="4 4"' : ''}/></svg>`;
+  const legend = `<div class="legend">${series.map(s => `<span>${swatch(s.color || 'var(--text-muted)', s.dash)}${esc(s.label)}</span>`).join('')}
+    ${(o.refs || []).map(r => `<span><svg width="18" height="8" aria-hidden="true"><line x1="1" x2="17" y1="4" y2="4" stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="2 3"/></svg>${esc(r.label)}</span>`).join('')}
+    ${o.bands ? `<span class="muted">Line color is the band of the value.</span>` : ''}${o.noclick ? '' : '<span class="muted">Click a time to see it below.</span>'}</div>`;
+  return `<div class="chart" data-chartbox="${id}">${legend}<div class="plot">${chartSvg(id, o.width ?? 1000)}<div class="tip" hidden></div></div></div>`;
+}
+function mountChart(box) {
+  const id = box.dataset.chartbox, C = CHARTS[id], { pts, series, o } = C, plot = box.querySelector('.plot'), tip = box.querySelector('.tip');
+  const W = Math.max(300, Math.round(plot.clientWidth) || (o.width ?? 1000));
+  plot.querySelector('svg.lc').outerHTML = chartSvg(id, W);
+  const svg = plot.querySelector('svg.lc'), hit = svg.querySelector('rect.hit'), cross = svg.querySelector('line.cross'), dots = [...svg.querySelectorAll('.dots circle')];
+  const { x, y } = C.g, vf = o.fmt || (v => o.max === 100 ? v + '%' : v);
+  const idx = ev => { const r = hit.getBoundingClientRect(); return Math.max(0, Math.min(pts.length - 1, Math.round((ev.clientX - r.left) / r.width * (pts.length - 1)))); };
+  hit.addEventListener('mousemove', ev => {
+    const i = idx(ev), sr = svg.getBoundingClientRect(), xv = x(i);
+    cross.setAttribute('x1', xv); cross.setAttribute('x2', xv); cross.setAttribute('visibility', 'visible');
+    series.forEach((s, k) => { const v = pts[i][s.key]; if (v == null) return dots[k].setAttribute('visibility', 'hidden'); dots[k].setAttribute('cx', xv); dots[k].setAttribute('cy', y(v)); dots[k].setAttribute('stroke', seriesColor(s, v)); dots[k].setAttribute('visibility', 'visible'); });
+    tip.innerHTML = `<div class="when">${esc(fmtPoint(pts[i].t, o.minutes))}</div>${series.map(s => { const v = pts[i][s.key]; return `<div class="row"><i style="background:${v == null ? 'var(--text-muted)' : seriesColor(s, v)}"></i><span>${esc(s.label)}</span><strong>${v == null ? '–' : vf(v)}</strong>${s.who && pts[i][s.who] ? `<span class="who">${esc(pts[i][s.who])}</span>` : ''}${s.band && v != null ? `<span class="who">${BAND_NAME[s.band(v)]}</span>` : ''}</div>`; }).join('')}`;
+    tip.hidden = false;
+    const left = ev.clientX - sr.left + 14;
+    tip.style.left = `${left + tip.offsetWidth > sr.width ? Math.max(0, ev.clientX - sr.left - tip.offsetWidth - 14) : left}px`; tip.style.top = `${Math.max(0, ev.clientY - sr.top - tip.offsetHeight - 10)}px`;
+  });
+  hit.addEventListener('mouseleave', () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tip.hidden = true; });
+  if (!o.noclick) hit.addEventListener('click', ev => go(url({ at: pts[idx(ev)].t })));
+}
+let chartResize = null;
 function wireCharts() {
-  for (const box of main.querySelectorAll('[data-chartbox]')) {
-    const { pts, series, o } = CHARTS[box.dataset.chartbox];
-    const svg = box.querySelector('svg.lc'), hit = svg.querySelector('rect.hit'), cross = svg.querySelector('line.cross'), tip = box.querySelector('.tip');
-    const idx = ev => { const r = hit.getBoundingClientRect(); return Math.max(0, Math.min(pts.length - 1, Math.round((ev.clientX - r.left) / r.width * (pts.length - 1)))); };
-    hit.addEventListener('mousemove', ev => {
-      const i = idx(ev), r = hit.getBoundingClientRect(), sr = svg.getBoundingClientRect();
-      const xv = +hit.getAttribute('x') + i / Math.max(1, pts.length - 1) * +hit.getAttribute('width');
-      cross.setAttribute('x1', xv); cross.setAttribute('x2', xv); cross.setAttribute('visibility', 'visible');
-      tip.innerHTML = `<strong>${esc(fmtPoint(pts[i].t, o.minutes))}</strong>${series.map(s => `<div>${esc(s.label)}: <strong>${pts[i][s.key] == null ? '–' : (o.fmt || (v => o.max === 100 ? v + '%' : v))(pts[i][s.key])}</strong>${s.who && pts[i][s.who] ? ` ${esc(pts[i][s.who])}` : ''}${s.band && pts[i][s.key] != null ? ` (${BAND_NAME[s.band(pts[i][s.key])]})` : ''}</div>`).join('')}`;
-      tip.hidden = false;
-      const left = ev.clientX - sr.left;
-      tip.style.left = `${Math.min(left + 14, sr.width - tip.offsetWidth - 4)}px`; tip.style.top = `${ev.clientY - sr.top + 12}px`;
-    });
-    hit.addEventListener('mouseleave', () => { cross.setAttribute('visibility', 'hidden'); tip.hidden = true; });
-    if (!o.noclick) hit.addEventListener('click', ev => go(url({ at: pts[idx(ev)].t })));
-  }
+  const all = () => main.querySelectorAll('[data-chartbox]');
+  all().forEach(mountChart);
+  if (chartResize) return;
+  let last = window.innerWidth, timer;
+  chartResize = () => { if (window.innerWidth === last) return; last = window.innerWidth; clearTimeout(timer); timer = setTimeout(() => all().forEach(b => { if (CHARTS[b.dataset.chartbox]) mountChart(b); }), 120); };
+  window.addEventListener('resize', chartResize);
 }
 function groupBy(d, note = '') {
   let h = `<div class="toolbar"><label for="grp">Group by</label><select id="grp">${GROUP_BY.map(([k, l]) => `<option value="${k}"${k === R.group ? ' selected' : ''}>${l}</option>`).join('')}</select>${note}</div>`;
@@ -398,8 +442,7 @@ function metricBlock(m, layer) {
   const series = [score ? { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
-    fmt, width: 760, height: 160, left: m.unit.length > 3 ? 104 : 72, minutes: m.minutes, noclick: true, nodirect: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined,
-    refs: [{ value: m.percentile_95, label: '95th percentile', short: '95th pct' }] });
+    fmt, width: 760, height: 160, left: m.unit.length > 3 ? 104 : 72, minutes: m.minutes, noclick: true, nodirect: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined });
   return `<div class="metric" data-metric="${m.key}"><div class="mfig"><h4>${esc(m.label)}</h4><div class="muted">${lowest ? 'Higher is better' : 'Lower is better'}</div>
     <dl><dt>Now</dt><dd>${fmt(m.now)}</dd><dt>Worst</dt><dd>${fmt(m.worst.v)} <span class="muted">at ${esc(fmtPoint(m.worst.t, m.minutes))}</span></dd><dt>95th percentile</dt><dd>${fmt(m.percentile_95)}</dd></dl></div>${chart}</div>`;
 }
