@@ -135,9 +135,9 @@ Third L2 build: the workspace is rebuilt around three activities, **Monitor, Tro
 
 | Level | Tests | Result |
 |---|---|---|
-| Catalog | LCAT-1 to LCAT-9 | 9 passed |
-| Story | LST-1 to LST-16, plus tree, stale, realms, generic complaint, agent and money checks | 24 passed |
-| Page | LPG-1 to LPG-13 | 12 browser checks and the specification check passed |
+| Catalog | LCAT-1 to LCAT-16 | all passed |
+| Story | LST-1 to LST-26, plus tree, stale, realms, generic complaint, agent and money checks | all passed |
+| Page | LPG-1 to LPG-19 | 18 browser checks and the specification check passed |
 | Demo rehearsal | 21 steps, 8 of them L2 | all OK |
 
 - **The whole estate is in the tree:** 1,200 hosts, 106 clusters, about 27,900 VMs, built from `spec/data/estate.yaml` (`l2_tree`). Every object a story names sits where the story says. Five views: Compute, Storage, Network, Class of service, Management.
