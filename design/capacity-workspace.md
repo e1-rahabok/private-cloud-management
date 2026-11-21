@@ -86,7 +86,7 @@ Path: `privatecloud.acme.com/capacity` (D-028).
 - **Why:**
   - Both capacity numbers read utilization against usable capacity. Neither reads contention.
   - A cluster with 200 days remaining can still be full today because its VMs wait for CPU (SP5: contention is the override).
-  - Capacity reads this signal. It does not own it: performance stays with L2 (L2 design, 3.3).
+  - Capacity reads this signal. It does not own it: performance stays with L2 (L2 design, 4.3).
 
 ### 3.5 PCM keeps years of history, because the forecast needs it
 
@@ -190,7 +190,7 @@ Path: `privatecloud.acme.com/capacity` (D-028).
     - powered-off period;
     - snapshot age;
     - exclusions.
-  - PCM applies them (D-039 daily check). Actions go through the action tiers (D-029). L2 approves until an action type is made automatic (L2 design, 3.7).
+  - PCM applies them (D-039 daily check). Actions go through the action tiers (D-029). L2 approves until an action type is made automatic (L2 design, 6.3).
 - **Why:**
   - SP5 People: Capacity does not run day-to-day work.
   - The definitions are a formal policy. Measurable definitions stop owners from disputing them.

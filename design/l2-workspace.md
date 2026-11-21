@@ -1,27 +1,39 @@
 # L2 workspace (Platform)
 
-Status: draft for the author's review. Decisions proposed here move to [`decisions.md`](../decisions.md) once accepted.
+Status: draft for the author's review. Rewritten around the three L2 activities (D-083 to D-090). Sections 3.1 to 3.17 of the first version are replaced; section 12 lists where each went.
 
 Path: `privatecloud.acme.com/l2` (D-028).
 
 ## 1. The role
 
-- SP5 calls this role **Platform**. It takes over when Level 1 cannot solve the problem.
+- SP5 calls this role **Platform**. It is the specialist behind L1.
 - **What it does** (SP5 People):
   - Focuses on insight, not alerts. Looks at the big picture to stop alerts from happening.
-  - Owns risk: configuration risk, and compliance risk after release 1.0 (D-022).
+  - Owns risk: configuration risk, and short-term capacity risk.
   - Advanced troubleshooting, often with logs.
   - Writes the knowledge base and the SOPs, and automates the SOPs.
   - After each problem it solves, updates the troubleshooting guide so L1 can handle the case next time.
   - Designs and maintains dashboards and alerts. It sets the thresholds L1 works with.
-  - May specialize: vSAN, networking.
-- **Cadence:**
-  - daily check, 10 minutes, twice a day (D-039)
-  - weekly check, 1 hour (D-042)
-  - monthly review, 1 day
-  - escalations at any time
-  - mobile push for red alerts (D-031)
-- **Scope:** VMware infrastructure (D-034), plus the Guest OS at OS level (D-038). Not applications.
+  - May specialize: storage, network.
+- **Three activities** (SP5 Day 2, D-083): **Monitor**, **Troubleshoot**, **Improve**.
+
+| | Monitor | Troubleshoot |
+|---|---|---|
+| Question | What is the problem? | Why does it happen? |
+| Direction | Top down: the whole estate first | Bottom up: one symptom, then its causes |
+| Nature | Proactive, on a cadence | Started by a known problem |
+| Metric | One KPI per object, worst first | Many metrics, layer by layer |
+| Logs | Rarely needed | Almost always needed |
+| Data | Massive: every object, compared | Deep: the objects in one chain, over weeks |
+| Ends in | A problem (→ Troubleshoot) or an opportunity (→ Improve) | A root cause, a corrective action and a detection |
+
+  - **Improve** acts on what monitoring found that is not broken: risk (configuration, short-term capacity) and efficiency (reclaim, rebalance, standardize, update).
+- **Cadence is a time window, not an activity** (D-083).
+  - PCM still runs the daily check twice a day (D-039) and the weekly check on Sunday (D-042).
+  - Their results are what Monitor shows for the 24-hour and 7-day windows. There is no page per cadence.
+- **Scope** (D-034, D-038, D-085): infrastructure only.
+  - In: server, storage as ESXi sees it, network, Windows, Linux.
+  - Out: applications, business transactions, compliance (until after 1.0, D-022), cost, price and value (FinOps, D-027).
 
 **Why this role is the centre of PCM**
 - L1 runs what L2 writes: SOPs, thresholds, actions.
@@ -35,255 +47,428 @@ Everything in this workspace serves these outcomes. Each outcome is a number PCM
 | Outcome | Measure | Why it is the right measure |
 |---|---|---|
 | Fewer alerts | Alert count and intensity, trend over months | SP5: well-run operations have few alerts. Insight replaces most yellow alerts. |
-| Fewer escalations of the same kind | Repeat escalations per problem type | Each solved problem should become an SOP that L1 can run. A repeat means the loop did not close. |
-| Problems found before customers notice | Share of issues first found by a check, not by an alert or a complaint | This is the prevention window: the time between "we know" and "the customer knows". |
-| Second time is fast | Time to diagnose a known problem | SP5: the first incident is forgivable once. The second is known within minutes. |
+| Fewer repeats of the same problem | Repeat cases per problem type | Each solved problem should become a detection and an SOP. A repeat means the loop did not close. |
+| Problems found before customers notice | Share of troubleshooting cases started by a monitoring finding, against those started by a complaint or an escalation | The case's trigger says who knew first (5.1). This is the prevention window. |
+| Second time is fast | Time to diagnose a known problem | SP5: the first incident is forgivable. The second is known within minutes. |
 
-- What L2 is **not** measured by: tickets closed. SP5 aims to remove tickets, not to process them faster (why-a-new-framework).
+- What L2 is **not** measured by: tickets closed. SP5 aims to remove tickets, not to process them faster.
 
-## 3. Design considerations
+## 3. The frame: four dimensions (D-086)
 
-### 3.1 The landing page is the check result, not the alert list
+A page is where four dimensions meet. The navigation shows each dimension in its own place, so they never mix in one menu. The first version mixed them: Today, Weekly and Monthly (time), Escalations (activity), Configuration and Inventory (pillar) in one row.
 
-- **What:** `/l2` opens on the latest daily check: what needs a human, worst first.
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ L2 Platform   [Monitor] [Troubleshoot] [Improve]            Rules  Calendar│  ← activity
+├───────────────┬──────────────────────────────────────────────────────────┤
+│ View: Compute▾│ FR-S-02 · Frankfurt › VCF fr-01 › wld-fr-prod      [24H▾] │  ← object, time
+│ ▸ Asia Pacific│ Summary Availability Performance Capacity Security Config │  ← pillar
+│ ▾ Europe      │          Inventory                                         │
+│   ▾ Frankfurt │                                                            │
+│     ▾ fr-01   │  Summary of this object                                    │
+│       FR-S-02 │  Children, worst first                                     │
+│       FR-G-01 │  Detail of the selected child                              │
+│   ▸ London    │                                                            │
+│ ▸ Americas    │                                                            │
+│ [search]      │                                                            │
+└───────────────┴──────────────────────────────────────────────────────────┘
+```
+
+### 3.1 Activity: the top bar
+
+- **What:** Monitor, Troubleshoot, Improve. Rules and Calendar sit apart, at the right, as utilities (section 7).
 - **Why:**
-  - An alert is bottom up. One object crossed a threshold. It is the tip of the iceberg; many objects sit just below.
-  - An alert list says nothing about the whole environment, and L2's job is the whole environment.
-  - Opening on alerts trains L2 into reactive work. Opening on the check trains it into prevention.
-  - Alerts are still one click away. They are a guard rail, not the starting point.
+  - L2 switches activity many times a day. The activity is the first thing a user needs to know: "am I looking for problems, solving one, or improving?"
+  - VCF Operations' top bar (Operate, Manage, Protect, Build) groups product functions. "Manage" is too broad to tell a user what to do there.
+  - The three words are SP5's own Day 2 verbs. Each names one job.
 
-### 3.2 Three verdicts, never one health score
+### 3.2 Object: the inventory tree is the menu
 
-- **What:** the check result shows three separate verdicts.
-  - **Present health:** is it up, is it fast, is it safe.
-  - **Risk:** configuration, capacity trend, and compliance after 1.0.
-  - **Efficiency:** waste.
+- **What:** the left pane is the inventory tree. Selecting a node scopes every view to it. The root is the whole estate.
+  - Switching activity keeps the selected object. Selecting another object keeps the activity. Neither nests inside the other.
 - **Why:**
-  - A single score drops on risk and waste too. It reads low while everything runs well, and soon nobody trusts it.
-  - The three verdicts lead to different actions with different urgency:
-    - present health means fix today;
-    - risk means plan a change;
-    - efficiency means reclaim when convenient.
+  - Inventory has two jobs. It is a pillar L2 manages (counts, distribution, churn), and it is how anyone moves around the estate. vCenter and VCF Operations both work this way; users already know it.
+  - An object scoped once, then read through every activity, keeps context. Changing tools and re-finding the object loses it.
 
-  Mixing them hides which kind of work is waiting.
+**Five views** (D-087). Each is a hierarchy operations uses. vCenter's datacenters and folders are admin constructs and are left out; the workload domain is VCF's unit and stays.
 
-### 3.3 Top down, worst first, provider before consumer
+| View | Path | Why |
+|---|---|---|
+| **Compute** (default) | Estate → Region → Location → VCF instance → Workload domain → Cluster → ESXi host → VM → Guest OS | The cluster is the unit of performance and capacity. Regions already scope the checks (D-039, D-042) and the NOC (D-068). |
+| **Storage** | Estate → Location → vSAN cluster or datastore (vSAN, VMFS, NFS) → VM → virtual disk | Latency is judged per virtual disk. A datastore shows every VM on it, from any cluster. The array itself is out (5.6). |
+| **Network** | Estate → Location → distributed switch or NSX segment → port group → VM → vNIC | Drops are judged per vNIC. Flow dependencies are visible here: an NSX Edge on another cluster serves this VM. |
+| **Class of service** | Gold, Silver, Bronze → Location → Cluster → VM | Targets are set per class. Gold first in a large estate. |
+| **Management** | Location → VCF instance → appliances (vCenter, NSX Manager, NSX Edge, SDDC Manager, VCF Operations, VCF Automation) | SP5's second side of VCF: the software that runs the IaaS. A grey screen (story N-2) belongs here. |
 
-- **What:** every list starts at the cluster, sorted by its worst KPI. From a failing cluster, PCM goes to its hosts, then to its VMs.
-  - When a single VM is investigated, PCM first shows whether its cluster and host are serving their VMs well.
+- **The VM and the Guest OS are two nodes** (D-038). The Guest OS is the VM's child, never merged into it.
+- **An appliance appears twice:** as a VM in Compute (in the management domain) and as an appliance in Management. It is one object; both nodes open the same record.
+- **Each node shows** its status for the current pillar and time window, and its count of open cases.
+- **Children are sorted by the activity:**
+  - Monitor: worst first on the current pillar.
+  - Troubleshoot: objects with open cases first.
+  - Improve: largest opportunity first.
+- **Scale:** the tree expands down to the cluster. Below that, children show as a list with search. VCF Operations does the same once a section has more than 10 objects.
+- **Search** covers all five views.
+
+**A tree shows structure; a slice shows attributes.**
+- Structure: where an object sits. The tree.
+- Attributes: what objects share. Host model, BIOS and firmware, ESXi build, VMware Tools version, virtual hardware version, Guest OS type, environment. These are not trees. Every list has **Group by** on them (4.2).
+
+### 3.3 Pillar: the tabs
+
+- **What:** in Monitor and Improve, the tabs are the L2 pillars. The first tab, **Summary**, shows one line per pillar for the selected object. There is never one combined score.
+
+| Pillar | Monitor | Troubleshoot | Improve |
+|---|---|---|---|
+| Availability | Yes | Yes | Partial: restore and HA tests |
+| Performance | Yes | Yes | Yes |
+| Capacity (short term only; long term is the Capacity workspace, D-014) | Yes | No (SP5) | Yes: reclaim, rebalance |
+| Security (present: platform hygiene, D-049) | Yes | A breach goes to the security team (D-044) | No |
+| Configuration | Drift and variance against the standard | Evidence: the cause is often here | Correct, update, simplify, optimize |
+| Inventory | Count, distribution, churn, unexplained changes | Evidence: what changed over the weeks | Stock-take, orphaned objects |
+
+- **Troubleshoot has no pillar tabs.** One case crosses pillars: a performance symptom, a configuration cause, an inventory change three weeks earlier. The pillars appear inside the case as kinds of evidence.
+- **Configuration and inventory are not SP5 pillars** but L2 manages them. SP5: configuration is "both the problem and solution to all the above pillars".
+- **Left out:** compliance (after 1.0, D-022); cost, price and value (FinOps, D-027, D-056).
 - **Why:**
-  - At 100,000 VMs, starting from a VM is a needle in a haystack. A parent's verdict tells where to look next.
-  - "Clear the infrastructure first." If the cluster fails most of its VMs, troubleshooting one VM wastes hours.
-  - Cluster and host health is judged from their VMs (worst VM and 90th percentile), never from cluster averages. An average hides the victim.
+  - SP5's own table (Day 2 monitoring, troubleshooting and optimizing against the pillars) is not uniform. Capacity and compliance are not troubleshot. Pages follow that table instead of offering every tab everywhere.
+  - VCF Operations' object tabs mix pillars (Capacity) with types of data (Metrics, Logs, Events). A user must know which tool answers a question. PCM's tabs are questions; the data comes to them.
 
-### 3.4 One fixed order of checks, the what before the why
+### 3.4 Time: one picker per page
 
-- **What:** the investigation view always follows the SP5 order.
+- **What:** one time window per page, in the object header: 1 hour, 24 hours, 7 days, 30 days, 1 year, custom.
+  - It stays when the object or the tab changes.
+  - Inside a troubleshooting case, the window is the case's own and is fixed.
+- **Defaults follow the activity:**
+
+| Activity | Default window | Why |
+|---|---|---|
+| Monitor | 24 hours, from the latest daily check run | The daily check is the morning's starting point (SP5). 7 days shows the weekly check; 1 year shows baselines. |
+| Troubleshoot | The case window: from "fine until" to now, plus the weeks before for changes | Causes can build up over weeks. Metrics need the complaint window; changes need the weeks before it. |
+| Improve | 30 days | Opportunities and risk move slowly. |
+
+- **Performance reads the 20-second peak** of each 5-minute interval, not the 5-minute average. A spike of a few seconds disappears in 300 seconds of average.
+- **Over a window, an object's score is its 95th percentile:** not the average (it hides problems), not the worst (too noisy). This is the rule of the author's sample dashboard (`sources/Cluster Performance v2.html`).
+- **Why:** in vCenter and VCF Operations, time is set per chart or per widget. Moving between them resets it. One window per page keeps every number on the page about the same period.
+
+### 3.5 Pages are addressed by the four dimensions
+
+- Every page is a URL of activity, view, object, pillar and window, so any state can be shared or reopened. Section 10 lists the routes.
+
+## 4. Monitor
+
+The question: **what is wrong, at risk or wasteful, across the whole estate?** Monitoring is top down and works on massive data. One object over a threshold is the tip of the iceberg; Monitor shows the iceberg.
+
+### 4.1 Summary, then children worst first, then detail
+
+- **What:** every node shows the same three parts. This follows the author's sample dashboards.
+  - **Summary:** the node's trend for the pillar, and the count of children outside the green zone over time.
+  - **Children, worst first:** each child's score (95th percentile over the window), with its red and orange alerts.
+  - **Detail:** the selected child's trend and its own children. Going down one level is going one level deeper into vSphere.
+- **At the root this is the estate:** 1,200 hosts, all clusters, all VMs of the synthetic ACME estate.
+- **Why:**
+  - SP5: "insight is top down; alert is bottom up". A list of alerts shows only what crossed a line.
+  - Worst first at every level means L2 walks only the branches that matter. At 100,000 VMs, starting from a VM is a needle in a haystack.
+
+### 4.2 The iceberg and the shared cause
+
+- **The iceberg:** for each KPI, the number of objects just below the red line, and its trend. A rising count under the waterline warns before any alert fires.
+- **Group by** (3.2) on any list. It answers SP5's insight question: "Is performance degrading? Is there a common pattern and cause?"
+  - Example (story M-1, section 11): clusters in the middle of a hardware refresh show more remote memory. Grouped by host model, the pattern is on the older hosts only.
+- **Why:** preventing a widespread problem needs insight from the whole data set. One object's chart cannot show that 40 clusters share a firmware version and a rising error count.
+
+### 4.3 The KPI model
+
+From SP5 Performance Management:
+- **VM KPI** includes the Guest OS, because the VM and its Guest OS are one logical entity for monitoring. The two stay separate objects for troubleshooting (5.6).
+- **Cluster KPI** uses only the contention of its running VMs, never utilization. Built from the worst VM and the 90th percentile, never from averages: an average hides the victim.
+- **vSAN KPI** uses the disk latency of every VM on the vSAN datastore, from any cluster.
+- **NSX KPI** is separate, because NSX has a many-to-many relation to clusters.
+- **The internal threshold is stricter than the SLA.** SP5: proactive work needs a line that is crossed before the contract is.
+- **Leading indicators** (SP5's "kitchen" metrics) sit under each KPI: per vCPU, per virtual disk, per vNIC. The weekly check reads them (D-042).
+
+### 4.4 What each window adds
+
+| Window | Shows | Source |
+|---|---|---|
+| 24 hours | The latest daily check: findings worst first, the day ahead using the last week's pattern, business context | D-039 |
+| 7 days | What a day cannot show: slow drift (5 of 6 nights the same way, 10% in total), hidden in the average (one vCPU or one virtual disk at its line while the VM is green), configuration drift | D-042 |
+| 1 year | Baselines per KPI, for consumers and providers; quarterly and yearly patterns | SP5 monthly: "overall performance analysis and baselining" |
+
+- **No finding is repeated across windows.** The 7-day window shows only what the 24-hour window cannot.
+
+### 4.5 Where a finding goes
+
+- **A problem** (present health: down, slow, a security event) → **"Troubleshoot this"** opens a case with the finding as its trigger (5.1), its object and its window.
+- **A risk or an opportunity** (configuration drift, capacity trend, waste) → **Improve**, on the same object.
+- **Explained by the calendar:** a finding that business context explains shows the calendar entry and drops to the bottom (7.2).
+- **Why:** SP5: monitoring ends either in a problem to troubleshoot or in an opportunity to improve. A finding that goes nowhere is noise.
+
+### 4.6 Alerts that slipped through
+
+- **What:** alerts since the previous run that no finding predicted. Each links to the rule that would have caught it (7.1).
+- **Why:** SP5's improvement loop. Over months, fewer alerts slip through.
+
+### 4.7 The inventory and configuration tabs
+
+- **Inventory:** counts per node and change since the start of the window; distribution across children (SP5: keep it balanced); every change matched to what explains it (D-081). Explained changes are counted; unexplained ones are listed, production and Gold first.
+- **Configuration:** drift against the standard and variance across peers (SP5: keep variance minimal). Example: one host in a cluster with a different NTP server.
+
+## 5. Troubleshoot
+
+The question: **why is it down or slow?** Troubleshooting is bottom up, deep and rarely simple.
+
+### 5.1 Escalation is one trigger; troubleshooting is the activity (D-084)
+
+- **What:** every troubleshooting effort is a **case**. A case has one of three triggers:
+
+| Trigger | Who starts it | What it carries |
+|---|---|---|
+| **Complaint** | L2 logs it in PCM (5.2) | Who complained, which VM, the symptom, since when, what the requester already checked |
+| **L1 escalation** | L1, after its SOP (D-040) | The SOP steps and results, villains and victims, what L1 already did (5.3) |
+| **Monitoring finding** | L2, from Monitor (4.5) | The finding, its object, its window, its evidence |
+
+- **Why:**
+  - The activity is the question "why", whoever asked it. An escalation is a handover with entry criteria, not a way of working.
+  - SP5: troubleshooting is best done "proactively, quietly, with no one rushing you". A case from a finding is that kind.
+  - One case model gives one place for every open problem, and the trigger mix is an L2 measure (section 2).
+- **The case list:** open cases first, then closed, scoped to the selected object and its children. Each row shows the trigger, the object, the symptom, the age and the current link of the chain.
+
+### 5.2 Logging a complaint
+
+- **What:** "Log complaint" in Troubleshoot. Fields:
+  - the VM (or Guest OS) named in the complaint; a complaint about an application is logged against its VMs;
+  - who complained, and through whom (for example the owner's manager);
+  - the symptom: slow or down;
+  - since when, and "fine until";
+  - what the requester says they already checked.
+- **Why:**
+  - SP5 "A day in the life of a cloud admin": the application team arrives having "verified" the CPU, the disk latency, the patches and the reboots, and blames the shared platform. Recording what they checked is the start of the evidence, not the end.
+  - A complaint does not start with an alert: L1 did not see it. Without a form, it lives in chat and email, and the second time is not faster.
+
+### 5.3 An escalation arrives complete
+
+- **What:** an L1 escalation arrives with its evidence already gathered (D-040). L2 accepts it, or rejects it with a reason. Rejection should be rare, because PCM fills the evidence.
+- **Why:** SP5 Exit and Entry criteria: L1's exit criteria are L2's entry criteria. A rejection for missing evidence points to a gap in the SOP and feeds back into authoring (7.1).
+
+### 5.4 The chain of causes
+
+- **What:** the case page builds the chain of causes, one link at a time.
+  - Problem A is caused by B, which is caused by C, which is caused by D.
+  - It is a graph, not a line. Several causes can meet: a leftover snapshot (main cause) and a VM split across two NUMA nodes (contributing cause) both slow the same database.
+  - Each link has a state: **proposed**, **confirmed** with its evidence, or **ruled out** with its evidence. Ruled-out links stay visible.
+  - **Red herrings** are ruled-out links. Example: receive drops on another VM; "add vCPUs and a host" proposed by a manager.
+  - Each node of the chain is an inventory object. Clicking it moves the tree to that object, with the case window held.
+- **Why:**
+  - SP5: "there is a good chance that the root cause is different than the symptoms. It may happen on a different object altogether."
+  - The first version investigated one object at one point in time and ended at the first failed step. Real problems have several layers and several causes.
+  - Keeping ruled-out links stops two engineers from checking the same wrong idea, and shows the requester what was proven, not only what was found.
+
+### 5.5 The SP5 order at every node, with Agent E2 flows (D-089)
+
+- **What:** at each node, the checks run in the SP5 order.
   - **Down:** log → saturation → configuration → known bug.
   - **Slow:** contention → consumption → configuration → known bug → log.
-  - Configuration and known bugs sit inside each pillar, not after it.
+  - PCM pre-runs the steps it has data for and shows which pass. L2 starts at the first failed step.
+- **Agent E2's flows decide the next node.**
+  - Each flow is an expert's order of checks (Agent E2 `REPOSITORY-MAP.md`, Flows). A complaint about a slow VM starts at `vm-slow`. A step of one flow opens another flow on another object: the CPU flow, the storage flow, the cluster flow.
+  - This is how a chain grows: a failed step on the VM proposes a link to its datastore, and the storage flow runs there.
+  - Agent E2 **proposes** a link and its evidence. L2 **confirms** or **rules it out**. Agent E2 never closes a case (section 8).
 - **Why:**
-  - Experts under pressure skip steps. The classic skip is jumping to "CPU is at 100%" when there is no contention: that is a busy VM, not a slow one.
-  - A fixed order makes two engineers reach the same conclusion. It also lets PCM pre-run the steps and show which ones pass, so L2 starts at the first failed step.
-  - The same order appears in L1's SOPs, in the daily check and in troubleshooting. One mental model across the team.
+  - Experts under pressure skip steps. The classic skip is "CPU is at 100%" when there is no contention: that is a busy VM, not a slow one.
+  - A fixed order makes two engineers reach the same conclusion.
+  - The flows already exist and are tested in Agent E2's benchmark. PCM supplies the data; Agent E2 supplies the order.
 
-### 3.5 The VM and the Guest OS are separate, with evidence for each side
+### 5.6 Layers and realms
 
-- **What:** investigation pages show VM health and Guest OS health side by side, as two objects. Each has its "on my court" evidence:
-  - VM: CPU Ready, Co-stop, Overlap, Other Wait; memory latency, swapped, ballooned; disk latency; vMotion stun time.
-  - Guest OS: run queue, context switches, paging.
+- **What:** the case shows the layers in scope, each with its own "on my court" verdict:
+  1. Guest OS (Windows, Linux): run queue, context switches, paging, disk queue.
+  2. VM: CPU Ready, Co-stop, Overlap, Other Wait; memory latency, swapped, ballooned; disk latency per virtual disk; drops per vNIC; vMotion stun time.
+  3. ESXi host, and the physical server: ESXi Performance; hardware, firmware and driver versions.
+  4. Cluster: Cluster Performance; imbalance across hosts.
+  5. Storage as ESXi sees it: adapter, path, device and kernel latency; vSAN; datastore.
+  6. Network: vNIC, port group, distributed switch, NSX, physical NIC.
+- **The chain starts at the Guest OS** (step 1 of Agent E2's `vm-slow` flow): quantify the slowness where the requester sees it, then read the VM.
+- **Handing out of scope:** when the evidence points outside the infrastructure, the case says so and hands the evidence over.
+  - The Guest OS waits and the VM does not → the Windows or Linux team.
+  - The storage device latency is high and the ESXi layers are clean → the storage team, for the array.
+  - Every layer is clean → the application owner. PCM says what was checked and that vSphere has no counter for what is left.
 - **Why:**
-  - "A day in the life of a cloud admin" (SP5 source): the application team proves the Guest OS is fine and blames the shared platform. Without evidence on both sides, the argument is about reputation, not data.
-  - With both sides shown, the conversation takes minutes:
-    - The VM is not waiting → the cause is inside Windows or Linux, and the evidence goes to the OS team.
-    - The VM is waiting → it is the platform's problem, and L2 owns it.
+  - SP5: performance troubleshooting is an exercise in elimination, layer by layer. Each layer needs one verdict.
+  - With both sides' evidence shown, the argument is about data, not reputation: the conversation takes minutes, not days of ping-pong.
+  - Scope (D-085): no application troubleshooting, no business transaction correlation. Applications enter a case only as the words of the complaint.
 
-### 3.6 Business context is an input, not a memory
+### 5.7 One timeline across the chain
 
-- **What:** L2 records the expected events: month-end batch, a planned migration, a retail peak, a DR test, a maintenance window. PCM reads them when it judges what is abnormal.
+- **What:** one timeline for every object in the chain, over the case window and the weeks before it:
+  - metric anomalies at the 20-second peak;
+  - events: vMotion, snapshot taken or left, host maintenance, HA restart;
+  - log messages, including on objects that never raised an alarm;
+  - changes, matched to what explains them (D-081): the PCM action record, a change window, a VCF Automation request, DRS;
+  - business calendar entries;
+  - alerts.
 - **Why:**
-  - SP5: an insight is useless to someone who does not know the environment. Anomaly detection by mathematics alone gives false positives, because it has no business context.
-  - Today this context lives in one senior engineer's head. That fails SP5's acid test: the lead takes a long holiday and nobody calls them.
-  - Written down, the context serves:
-    - the daily check, which knows that low IOPS on a sale day is bad;
-    - Agent E2, which explains a finding with today's context;
-    - the next engineer on shift.
+  - SP5's story: "it was not slow yesterday", but VMs were added for months and soft errors were investigated for weeks. The cause is often several changes over weeks that meet on one day.
+  - In vCenter and VCF Operations, metrics, events, logs and changes are separate tabs or tools. Moving between them loses the object and the time. The timeline puts them on one axis.
 
-### 3.7 Policy as code decides what runs automatically (D-079)
+### 5.8 Breadth: who else
 
-- **What:**
-  - The daily and weekly checks come with proposed fixes.
-  - Each action type has a **policy** in the catalog: its tier (automatic, approval, never), its guardrails, its version and its owner.
-  - A fix whose action type is automatic, and that passes every guardrail, runs. A fix that breaks a guardrail becomes a proposal for L2, with the guardrail named.
-  - PCM keeps a record per action type: approvals, rejections, rollbacks. It is evidence for L2, never a gate.
-  - **"Propose a policy change":** L2 edits a tier and guardrails. PCM replays the change against recent history, then L2 publishes it as a new version.
+- **What:** for any symptom in the case, "Who else?" runs the same test across the estate: other VMs on the same cluster, datastore, host model, ESXi build or change.
 - **Why:**
-  - Automatic approval is a contradiction. If an approval can be automated, it is not needed; remove it from the policy.
-  - Guardrails make automation safe: blast radius, time windows, class of service, expiry and undo, a scoped service account. A count of past clicks does not.
-  - Replay before publish shows what the change would have done, as threshold replay does (3.9).
-  - A rejection with a reason is still data. It tells L2 which rule or guardrail is wrong.
-  - *This replaces the first version of 3.7, a trust ladder in which an action type "earned" automation by its approval count (D-079).*
+  - Agent E2's `vm-slow` flow, step 3: several slow VMs point to a shared cause; tuning one VM would not help.
+  - This is where Troubleshoot uses Monitor's data. One complaint can reveal a pattern that becomes a monitoring finding on its own.
 
-### 3.8 Escalations arrive complete, and the loop closes
+### 5.9 Closing a case
 
-- **What:**
-  - An L1 escalation arrives with its evidence already gathered (D-040).
-  - L2 accepts it or rejects it with a reason. Rejection should be rare, because PCM fills the evidence.
-  - An escalation closes only with:
-    1. a root cause;
-    2. a corrective action that prevents a repeat;
-    3. a decision on detection: a new check step, a new alert, or a new SOP so L1 can handle it next time.
+- **What:** a case closes only with:
+  1. the root cause, and any contributing causes, as confirmed links of the chain;
+  2. a corrective action that prevents a repeat;
+  3. a decision on detection: a new check rule, a new alert, a new or updated SOP, or none with a reason.
+- **Log-based detection is validated first:** PCM counts the proposed message on healthy objects over the last 5 working days. A message seen 1,000 times on healthy hosts is noise (SP5's VDI example).
 - **Why:**
   - SP5: an RCA is done when the alert that detects a recurrence is set up, not when the cause is named.
-  - L2 then becomes measurably less needed for known problems (section 2). Without this rule, L2 solves the same problem every month.
-  - An L1 escalation that L2 rejects for missing evidence points to a gap in the SOP. It is fed back into SOP authoring.
+  - The detection feeds Monitor (a check rule) and L1 (an SOP), so the second time is fast.
 
-### 3.9 L2 authors what L1 runs: SOPs, thresholds, actions
+### 5.10 A suspected breach goes to the security team (D-044)
 
-- **What:**
-  - L2 writes and edits SOPs (in `/docs`), check rules, thresholds and the SOP buttons L1 may press.
-  - Agent E2 drafts an SOP from a closed RCA. L2 reviews and publishes it. The NOC sees the new SOP at once.
-  - Every published change is versioned.
-- **Why:**
-  - SP5 People: L2 develops and automates the SOPs, and sets the thresholds L1 uses.
-  - Documentation and action in one place (D-024). The SOP that L1 reads is the same object that drives L1's buttons, so they cannot drift apart.
-  - Any threshold change is tested against the last 30 days first. PCM shows how many alerts the new value would have raised.
-    - Reason: alert storms come from thresholds set conservatively and never measured. If a threshold cannot be shown to be rare, it should not ship.
+- **What:** when a finding points to a breach, L2 secures the evidence and hands it over: the logs, the events, and the configuration at that point in time. PCM does not investigate the breach.
+- **Why:** SP5: a breach is a forensic investigation, not troubleshooting. An L2 engineer who "just checks" can destroy the trail.
 
-### 3.10 Configuration is reviewed by urgency, against a standard
+## 6. Improve
 
-- **What:** the configuration page orders findings by the SP5 time dimension:
+The question: **what should be better, though nothing is broken?** SP5 Optimize: "you may discover nothing to fix, but you discover the opportunity to improve."
+
+### 6.1 What lands here
+
+- **Risk:** configuration drift and variance; short-term capacity (a cluster that will not serve the expected load this week).
+- **Efficiency:** reclaim powered-off, idle and oversized VMs; rebalance between clusters; standardize; update versions.
+- **Lessons:** corrective actions from closed cases that are larger than one fix.
+- **Framed in capacity, never in money.** Reclaim shows what it frees and how far it moves the next purchase decision (Capacity workspace). Money is FinOps (D-027).
+- Opportunities roll up the tree: each node shows the count and size of what lies below it.
+
+### 6.2 Configuration by urgency, against a standard
+
+- **What:** configuration opportunities are ordered by the SP5 time dimension:
   1. **Correct it:** wrong, insecure, against the standard.
   2. **Update it:** old versions, oldest first, out of support first.
   3. **Simplify it:** variance and complexity.
-  4. **Optimize it:** cost and capacity.
+  4. **Optimize it:** capacity.
 
-  Every finding offers two choices: fix the setting, or fix the standard.
+  Every item offers two choices: fix the setting, or fix the standard.
+- **Why:** grouping thousands of settings by product feature hides urgency. Drift means nothing without a documented standard, and sometimes the standard is the one out of date.
+
+### 6.3 Policy as code decides what runs automatically (D-079)
+
+- **What:** proposed fixes carry an action type. Each action type has a policy: its tier (automatic, approval, never), its guardrails, its version and its owner.
+  - A fix whose action type is automatic, and that passes every guardrail, runs. A fix that breaks a guardrail becomes a proposal for L2, with the guardrail named.
+  - The approval, rejection and rollback record per action type is evidence, never a gate.
+  - Policies are edited in Rules (7.1): "Propose a policy change", replay, publish.
+- **Why:** automatic approval is a contradiction. Guardrails make automation safe; a count of past clicks does not.
+
+### 6.4 The decision register (D-043)
+
+- **What:** a decision is an improvement with an owner and a due date. The register lists them: overdue, open, done. Recording one needs what, an owner and a due date.
+- **The monthly review is Improve and Monitor on one screen in the room:** the decision register first, then Monitor at the estate root with the 1-year window. PCM prepares it; there is no separate monthly page.
+- **Why:** a meeting that starts with new topics never checks the old ones. Decisions without owners come back unchanged next month.
+
+## 7. Utilities: Rules and Calendar
+
+Neither is an activity. Each is opened from the top bar, and also from where it applies.
+
+### 7.1 Rules: L2 authors what L1 and PCM run
+
+- **What:** SOPs (in `/docs`, D-082), check rules, thresholds, alerts, the SOP buttons L1 may press, and action policies.
+  - A case closed with a detection (5.9) opens the matching rule as a draft. Agent E2 drafts an SOP from the closed case; L2 reviews and publishes it.
+  - Every published change is versioned.
+  - **Any threshold change is replayed against the last 30 days first.** PCM shows how many alerts the new value would have raised.
 - **Why:**
-  - Thousands of settings exist. Grouping them by product feature hides urgency. Grouping by Day 2 impact shows it.
-  - Drift means nothing without a documented standard. When reality differs, one of the two is wrong. Sometimes the standard is out of date. Offering "fix the standard" stops L2 from forcing a bad standard onto a good estate.
-  - Default filter is the Gold class of service, so critical workloads come first in a large estate.
+  - SP5 People: L2 develops and automates the SOPs and sets the thresholds L1 uses.
+  - Alert storms come from thresholds set conservatively and never measured. If a threshold cannot be shown to be rare, it should not ship.
 
-### 3.11 One workspace, with specialty lenses
+### 7.2 Calendar: business context is an input, not a memory
 
-- **What:** one L2 workspace. Storage and network specialists use lenses inside it (the default is platform), not separate workspaces.
+- **What:** L2 records the expected events: month-end and quarter-end close, payday, end-of-day batch, a planned migration, a DR test, a maintenance window. Monitor reads them when it judges what is abnormal; a case shows them on its timeline.
 - **Why:**
-  - With vSAN and NSX, storage and network are software in the same stack. One incident often crosses all three.
-  - Separate workspaces bring back the "ping-pong between teams" that SP5 calls the manual stage of maturity. Each team proves "it is not on my court" with a different screen.
-  - One workspace means one evidence set, one timeline, one RCA.
-  - The lens changes the default view, not the data. SP5's storage test: agree within 1 minute whether a problem is storage.
-  - This follows D-011 (one workspace per role): storage and network specialists share the Platform role.
+  - SP5: an insight is useless to someone who does not know the environment. Low IOPS on the day before a holiday sale means sales are not happening.
+  - Today this context lives in one senior engineer's head. That fails SP5's acid test: the lead takes a long holiday and nobody calls them.
 
-### 3.12 Time windows follow the job
-
-| Job | Default window | Why |
-|---|---|---|
-| Troubleshooting | Last 8–24 hours, any point in the past | Older data rarely matters for a live problem. By the time someone looks, the problem may be gone, so going back to any point in time is a must. |
-| Daily check | Next 12 hours, from 1 week of data | Prevent today's alerts. |
-| Weekly check | 1 week, per-instance metrics | Patterns a day cannot show (D-042). |
-| Monthly review | 1 year | Baselines, quarterly patterns, large problems. |
-
-- Performance reads the **20-second peak** of each 5-minute interval, not the 5-minute average. A spike of a few seconds disappears in 300 seconds of average.
-
-### 3.13 Logs beside metrics
-
-- **What:** every investigation shows the log events of the same object and time window next to its metrics.
-- **Why:**
-  - Availability lives mostly in logs, not metrics.
-  - The root cause is often a log message on another object that never became an alarm.
-  - SP5 check before turning a log message into an alert: count how often it appears on healthy objects over a week. PCM runs this count when L2 proposes a log-based alert. A message seen 1,000 times in 5 days on healthy hosts is noise.
-
-### 3.14 The monthly review is a team meeting (D-043)
-
-- **What:** `/l2/monthly` is presented on one screen in the room as a live dashboard.
-  - PCM prepares it in advance:
-    - one-year baselines;
-    - repeated escalations;
-    - alerts that slipped through;
-    - configuration risk progress;
-    - the capacity outlook;
-    - progress against the year's goals.
-  - The meeting records decisions with owners and due dates.
-  - Next month's pack opens with their status.
-- **Why:**
-  - It is the one day the whole team meets, so its time goes to judgement, not slide-making.
-  - Goals held in PCM are measured from the same data every month. Goals in a slide deck are forgotten by March.
-  - Decisions without owners come back unchanged next month.
-
-### 3.15 A suspected breach goes to the security team (D-044)
-
-- **What:** when a finding points to a breach, L2 secures the evidence and hands it over. PCM does not investigate the breach.
-  - Evidence: the logs, the events, and the configuration at that point in time.
-- **Why:**
-  - SP5: a breach is a forensic investigation, not troubleshooting.
-  - Evidence handling has its own rules. An L2 engineer who "just checks" can destroy the trail.
-
-### 3.16 Agent E2: explains and drafts, never decides
+## 8. Agent E2: explains, proposes and drafts, never decides
 
 - **Agent E2 may:**
-  - explain a finding in the context of the knowledge base and today's business context;
-  - suggest the next check step;
+  - explain a finding with the knowledge base and today's business context;
+  - run its flows to propose the next link of a chain, with evidence (5.5);
   - draft the RCA and the SOP;
   - answer "why" questions with sources.
 - **Agent E2 may not:**
+  - confirm or rule out a link;
   - set a severity;
   - approve an action;
   - change an action policy;
-  - close an escalation.
-- **Accountability (D-050):** each Agent E2 task records two fields: Agent E2's ID and the human who ordered the task.
-  - Agent E2 can never act beyond what that person may do.
-  - For actions that run automatically, the second field is the policy owner and the policy version (D-050, D-079).
+  - close a case.
+- **Accountability (D-050):** each Agent E2 task records Agent E2's ID and the human who ordered it. For automatic runs, the second field is the policy owner and the policy version (D-079).
+- **Why:** a confident wrong answer at L2 level spreads: it becomes an SOP that L1 runs at 03:00. Grounding in the knowledge base plus a human confirmation keeps the knowledge correct.
+
+## 9. Specialty lenses are views
+
+- **What:** storage and network specialists use the Storage and Network views of the same workspace (3.2), not separate workspaces.
 - **Why:**
-  - A confident wrong answer from an LLM at L2 level spreads: it becomes an SOP that L1 runs at 03:00.
-  - Grounding in the knowledge base plus a human approval keeps the knowledge correct.
+  - With vSAN and NSX, storage and network are software in the same stack. One case often crosses all three.
+  - Separate workspaces bring back the "ping-pong between teams" SP5 calls the manual stage of maturity.
+  - One workspace means one evidence set, one timeline, one RCA.
 
-### 3.17 Considerations from the weekly, monthly and inventory build
+## 10. Routes
 
-- **The weekly check shows only what a day cannot.**
-  - Decision: no daily finding is repeated. The weekly page has three kinds of finding: slow drift, a peak hidden in an average, configuration drift.
-  - Why: L2 also does architecture and engineering (D-046). An hour spent re-reading the daily findings is an hour lost. Repeating them also teaches people to skim.
-  - **Slow drift:** a metric that moves the same way on at least 5 of 6 night-to-night steps, by at least 10% in total. One night of +1.4% is noise; seven in a row is a straight line to full. Example: a snapshot left by a backup job grows with every write until the datastore fills.
-  - **Hidden in the average:** one vCPU or one virtual disk at its red line while the VM total is green. A VM-level alert never fires, because the average dilutes one instance by the number of instances. Examples:
-    - one vCPU at 97% in an 8-vCPU VM averaging 14%: a single-threaded process, where more vCPUs will not help;
-    - one log disk at 38 ms while the VM averages 4 ms.
-  - The second example is also the alert that slipped through. The weekly check explains it and names the check rule that would have caught it. That closes the loop the daily check left open.
-- **A weekly finding needs an owner and an action.**
-  - Decision: "Assign" refuses either one alone. Unassigned findings sort first.
-  - Why: D-042 says each finding goes to L2 with an owner and an action. A finding with only an owner gets read, not done.
-- **The monthly pack opens with last month's decisions.**
-  - Decision: the first section is the decision register with its states: overdue, open, done. Recording a decision needs what, an owner and a due date. Decisions are a table in the PCM database.
-  - Why: a meeting that starts with new topics never checks the old ones. In the synthetic story, the overdue decision on backup snapshots is the cause of this week's slow drift. The room sees both on one screen.
-- **Goals and the capacity outlook are read, not recomputed.**
-  - Decision: the goal projection is the CIO page's number. The capacity outlook is the Capacity workspace's own: groups in the round, peak warnings, waste.
-  - Why: two numbers for one goal end the meeting in an argument about which is right. L2 does not plan capacity (D-014).
-- **A repeated escalation's loop closes only with a detection.**
-  - Decision: a problem type shows "Loop closed" only when an RCA added a check rule or an SOP.
-  - Why: the L2 measure is fewer repeats, not faster closures (L2 design, 2). Closing FR-S-02 with a new class-of-service check rule closes the class-mismatch loop on the monthly page at once.
-- **Detailed inventory: explained changes are counted, unexplained ones are listed.**
-  - Decision: each change is matched in a fixed order: the PCM action record, an approved change window, a VCF Automation request, DRS. Unmatched changes are listed one by one, production and Gold first. "This was expected" needs a reason.
-  - Why: an estate of 1,200 hosts makes tens of thousands of changes a week, most of them DRS moves. A list of all of them is unreadable. The question L2 asks is "is it expected?", so the page answers it and shows only the exceptions.
-  - The PCM action record comes first: PCM's own changes, including automatic policy runs, are never flagged as unexplained, and they show both identity fields (D-050).
-  - Example: a CPU limit set directly in vCenter on a production Gold VM, outside any window. No request, no PCM action. This is the change that causes "slow" complaints weeks later.
+| Path | What |
+|---|---|
+| `/l2` | Redirects to `/l2/monitor`, estate root, Summary, 24 hours |
+| `/l2/monitor/{view}/{object}/{pillar}?window=` | Monitor on one object and pillar |
+| `/l2/troubleshoot/{view}/{object}` | Cases on an object and its children |
+| `/l2/troubleshoot/new` | Log complaint |
+| `/l2/troubleshoot/case/{case}` | One case: chain, timeline, layers, close |
+| `/l2/improve/{view}/{object}/{pillar}?window=` | Opportunities on one object and pillar, and the decision register |
+| `/l2/rules` | SOPs, check rules, thresholds, alerts, L1 actions, action policies |
+| `/l2/calendar` | Business calendar |
 
-## 4. Pages
+- `{view}` is one of `compute`, `storage`, `network`, `class`, `management`. `{object}` is the object's ID; `estate` is the root.
+- Landing on Monitor follows SP5: the daily check first thing in the morning, "before you jump into the first problem".
 
-| Path | Job | Main question |
-|---|---|---|
-| `/l2` | Daily check result | What needs me today? |
-| `/l2/escalations` | Escalations from L1 | What did L1 hand over, and is it complete? |
-| `/l2/investigate/{object}` | Troubleshooting | Why is it down or slow? |
-| `/l2/weekly` | Weekly check result | What does a week show that a day did not? |
-| `/l2/monthly` | Monthly review and team meeting (D-043) | How are we doing against this year's goals, and what do we decide for next month? |
-| `/l2/configuration` | Configuration risk | What is wrong, outdated, complex or wasteful? |
-| `/l2/inventory` | Detailed inventory and changes (D-020) | What changed, and is that expected? |
-| `/l2/context` | Business calendar (3.6) | What is expected this week? |
-| `/l2/authoring` | SOPs, check rules, thresholds, L1 actions, alerts | What should L1 and PCM do next time? |
+## 11. Demo stories (D-090)
 
-- Nine pages, compared with five for NOC. L2's work is broader and deeper: the NOC answers one question in the present; L2 owns past, present and future.
-- No capacity planning pages: that is the Capacity workspace (D-014).
-- SP5 People: capacity "does not get involved in the day-to-day capacity". The reverse also holds: day-to-day capacity (a cluster that cannot serve its current demand) is a performance matter for L2, not a planning matter.
+The troubleshooting stories come from Agent E2's benchmark (`benchmark/questions/`). Each has several layers, events spread over time and red herrings. The specification renames them into the ACME estate.
 
-## 5. Open questions for the author
+| Story | Trigger | Agent E2 source | What it shows |
+|---|---|---|---|
+| **T-1** | Complaint, logged by L2 | `L4-037` ERP slow after the change window | A chain over several layers. A snapshot the backup left on Sunday doubles the datastore reads: disk latency, Co-stop, Other Wait and System time rise. Contributing: the VM spans two NUMA nodes. Ruled out: receive drops on another VM; "add 8 vCPUs and a ninth host". |
+| **T-2** | L1 escalation | `L4-074` Web applications slow on Monday | Every web VM shows Ready on every host while hosts run at 30-48%. The pool runs flat at 40 GHz: a weekend change script put the CPU limit on the wrong pool. Ruled out: "add two hosts". |
+| **M-1** | Monitoring finding | `L4-049` vNUMA after a move to an older host | Monitor, grouped by host model, shows remote memory rising on clusters mid-refresh. The case: DRS moved a database VM to an older host; its virtual NUMA layout was fixed at power-on on a newer one. The estate's two host generations (`spec/data/estate.yaml`) carry it. |
+| **M-2** | Monitoring finding | `L4-045` Other Wait after the weekend backup | One symptom on two VMs, two causes: a real wait from a leftover snapshot, and an accounting issue of an older ESXi build on an idle VM. Not every high number is a problem. |
+
+- Existing stories stay where they still fit: L-1 (an escalation) becomes a case; L-2 (Guest OS cause) becomes a short case that ends in a hand-over; L-3, L-6, L-8 and L-9 feed Monitor and Improve.
+
+## 12. What this replaces
+
+| First version | Now |
+|---|---|
+| 3.1 Landing page is the check result | Section 10: landing on Monitor, 24 hours |
+| 3.2 Three verdicts, never one score | 3.3: Summary tab, one line per pillar; 4.5: problem → Troubleshoot, risk and efficiency → Improve |
+| 3.3 Top down, worst first, provider before consumer | 4.1, 4.3 |
+| 3.4 One fixed order of checks | 5.5, now at every node of a chain |
+| 3.5 VM and Guest OS side by side | 5.6 |
+| 3.6 Business context | 7.2 |
+| 3.7 Policy as code | 6.3, 7.1 |
+| 3.8 Escalations arrive complete | 5.1, 5.3, 5.9 |
+| 3.9 L2 authors what L1 runs | 7.1 |
+| 3.10 Configuration by urgency | 6.2 |
+| 3.11 Specialty lenses | Section 9: views |
+| 3.12 Time windows follow the job | 3.4 |
+| 3.13 Logs beside metrics | 5.7: one timeline |
+| 3.14 Monthly review | 6.4 |
+| 3.15 Breach handover | 5.10 |
+| 3.16 Agent E2 | Section 8 |
+| 3.17 Weekly, monthly, inventory build | 4.4, 4.7, 6.4 |
+| Pages: Today, Weekly, Monthly, Escalations, Investigate, Configuration, Inventory, Calendar, Thresholds | Section 10 |
+
+## 13. Open questions for the author
 
 1. **Who owns PCM's own configuration** (class-of-service definitions, action tiers)?
-   - Proposal: L2 proposes changes. The Operations Manager approves them after 1.0. Until then, L2 owns them.
+   - Proposal: L2 proposes changes; the Operations Manager approves them after 1.0. Until then, L2 owns them (D-045).

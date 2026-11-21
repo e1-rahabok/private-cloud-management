@@ -118,7 +118,7 @@ The core is everything the four workspaces share: data, definitions, engines, id
   - SOPs and the action types they contain;
   - class of service.
 
-  L2 edits it (D-045). Every change is versioned. A threshold change is replayed against the last 30 days before it is published (L2 design, 3.9).
+  L2 edits it (D-045). Every change is versioned. A threshold change is replayed against the last 30 days before it is published (L2 design, 7.1).
 - **Why:**
   - The rules change more often than the code. Making them data lets L2 tune them without regenerating PCM.
   - **Start from the Agent E2 threshold catalog.** It already holds the SP5 values with their sources. One catalog serves both PCM and Agent E2, so an explanation from Agent E2 never contradicts a number PCM shows.
@@ -146,7 +146,7 @@ The core is everything the four workspaces share: data, definitions, engines, id
 
   | Register | Owner | Read by |
   |---|---|---|
-  | Business calendar (L2 design, 3.6) | L2 | Check engine, Agent E2 |
+  | Business calendar (L2 design, 7.2) | L2 | Check engine, Agent E2 |
   | Demand register (Capacity design, 3.6) | Capacity | Forecast engine |
   | Goals (D-043) | Monthly review | Executive, monthly review |
   | Decisions and owners (D-043) | Monthly review | Next month's review |

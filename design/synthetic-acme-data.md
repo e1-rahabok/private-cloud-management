@@ -90,12 +90,12 @@ Each story is one or more objects with a planted condition, and the expected res
 
 | ID | Story | Expected result |
 |---|---|---|
-| L-1 | The escalation from N-1 arrives | Evidence is filled automatically: VM owner and the VM metrics showing it is not the cause. Agent E2 drafts the cause: a Bronze VM in a Silver cluster. L2 closes it with a cause, a fix and a new check rule (L2 design, 3.8). |
-| L-2 | An application owner complains that VM SG-APP-117 is slow | VM health is green; Guest OS run queue is high. The page shows the cause is inside the Guest OS, with evidence for the Windows team (L2 design, 3.5). |
-| L-3 | Daily check: one host in cluster VA-G-05 has a different NTP and log configuration from its peers | Configuration, "Correct it" (L2 design, 3.10). Option: fix the host, or fix the standard. |
+| L-1 | The escalation from N-1 arrives | Evidence is filled automatically: VM owner and the VM metrics showing it is not the cause. Agent E2 drafts the cause: a Bronze VM in a Silver cluster. L2 closes it with a cause, a fix and a new check rule (L2 design, 5.9). |
+| L-2 | An application owner complains that VM SG-APP-117 is slow | VM health is green; Guest OS run queue is high. The page shows the cause is inside the Guest OS, with evidence for the Windows team (L2 design, 5.6). |
+| L-3 | Daily check: one host in cluster VA-G-05 has a different NTP and log configuration from its peers | Configuration, "Correct it" (L2 design, 6.2). Option: fix the host, or fix the standard. |
 | L-4 | Daily check proposes moving 6 VMs from the hot cluster SG-S-04 to SG-S-06 | The proposal waits for L2 approval under policy v1 (tier approval). The record (23 approvals, 0 rollbacks) is evidence. L2 proposes policy v2 (automatic, with guardrails), replays it, publishes it; the waiting move then runs under v2 with no approval record (D-079). |
 | L-5 | An alert 4 days ago was not predicted by any check | It appears in "slipped through" (D-039). |
-| L-6 | Business calendar: the next quarter-end close in all locations, and the next payday in Singapore | The checks explain the rise instead of flagging an anomaly (L2 design, 3.6). |
+| L-6 | Business calendar: the next quarter-end close in all locations, and the next payday in Singapore | The checks explain the rise instead of flagging an anomaly (L2 design, 7.2). |
 | L-7 | The end-of-day batch in London ran 40 minutes longer last night; a datastore behind it shows rising latency | The daily check flags it as insight, before the batch window closes late and hits the start of business (SP5 prevention window). |
 
 ### Capacity

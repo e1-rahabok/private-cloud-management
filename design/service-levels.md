@@ -114,7 +114,7 @@ A minute is unsecured when, at that minute, any check fails for the VM or its su
 - **A certificate expiring soon is a risk, not unsecured time.** SP5 separates present health from risk (future health).
   - An expired certificate is unsecured now.
   - A certificate expiring in 21 days is a warning. It is shown next to the SLA, not inside it.
-- **The maintenance window comes from the business calendar** (L2 design, 3.6). SSH turned on for patching inside the window is agreed change, not a breach. Turned on outside it, the time counts.
+- **The maintenance window comes from the business calendar** (L2 design, 7.2). SSH turned on for patching inside the window is agreed change, not a breach. Turned on outside it, the time counts.
 - **Phase 1.0 is a small benchmark, with the same formula as later.** When compliance arrives in phase 2, more checks feed the same number. The Executive page, the trend and the goals keep their meaning. Starting with a different formula would break the trend when phase 2 arrives.
 
 ### 3.3 Reading it: promise, reality, KSI
