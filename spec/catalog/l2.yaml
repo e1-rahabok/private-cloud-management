@@ -82,6 +82,50 @@ entries:
     near_line: { from: 75, to: 80 }
     decisions: [D-088]
 
+  l2.consumer_hits:
+    description: >
+      For the VMs in scope (under the node, of the selected class of service): at each point of the window, how many
+      VMs were below green, and how many different VMs were below green since the window started. A second line
+      climbing while the first stays low means different VMs took turns. A point holds the worst value inside it.
+    kpi: "VM Performance (vCommunity|VM Performance|VM Performance Score), 20-second peaks"
+    below_green: "VM Performance below 75"
+    points: { "1h": "5 minutes", "24h": "5 minutes", "7d": "1 hour", "30d": "4 hours", "1y": "1 day" }
+    decisions: [D-091]
+
+  l2.worst_vms:
+    description: >
+      The VMs in scope with the lowest VM Performance in the window, worst first, each with the time of its worst
+      point, its cluster and location, and how many other VMs in scope were below green in the same 5 minutes.
+      With a selected time: the VMs below green at that time. What, when and where; never why (D-084).
+    rows: 20
+    decisions: [D-091]
+
+  l2.provider_spread:
+    description: >
+      Two lines per KPI over the window, across the clusters in scope. Actual slowness: the lowest Cluster
+      Performance, and its 10th percentile. Potential slowness: the highest Cluster Risk, and its 90th percentile.
+      The worst line says whether anything is wrong; the percentile line says whether it is narrow or wide.
+    kpi:
+      performance: "vCommunity|Cluster Performance|Cluster Performance Score, higher is better"
+      risk: "vCommunity|Cluster Risk|Cluster Risk Score, higher is worse"
+    percentile: { performance: 10, risk: 90, method: "nearest rank, as vCommunity: the cluster at position p% of the count, rounded up" }
+    bands:
+      performance: "green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
+      risk: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100"
+    vcommunity: >
+      With class All, the four lines equal vSphere World's vCommunity|Worst Cluster Performance, Worst 10 Percent
+      Cluster Performance, Worst Cluster Risk and Worst 10 Percent Cluster Risk. Those are across all clusters, so for
+      one class PCM computes the same metrics from each cluster's score.
+    class_of_service: { options: [gold, silver, bronze, all], default: gold }
+    decisions: [D-091]
+
+  l2.clusters_at:
+    description: >
+      Every cluster in scope at one selected time, worst Cluster Performance first: Performance and Risk at that
+      time, VMs below green at that time, and different VMs hit over the window. The selected time is a click on
+      any chart of the tab; before a click, the worst point of the window.
+    decisions: [D-091]
+
   l2.node_summary:
     description: >
       Every node in Monitor shows three parts: a summary (its own trend for the pillar and the count of children

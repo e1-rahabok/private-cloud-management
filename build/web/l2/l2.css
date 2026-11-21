@@ -86,6 +86,26 @@ input[type=text], input[type=number], input[type=datetime-local] { font: inherit
 .timeline li.before { background: #F7F6F2; }
 .timeline li.mark { background: var(--hero-bg); color: #fff; font-weight: 800; grid-template-columns: 1fr; }
 .timeline .k { font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; color: var(--text-muted); }
+/* Performance above the cluster: VM, then Cluster (monitor.md). Band colors carry the value's band; position on the 0 to 100 axis carries it too. */
+body.l2 { --band-green: #0E9F8E; --band-yellow: #B39200; --band-orange: #C9480C; --band-red: #8F1D13; --series-1: #0B1B2B; --series-2: #2F6FDE; }
+.toolbar .lbl { font-size: 14px; color: var(--text-muted); }
+section.persp { margin-top: 8px; }
+section.persp h2 .muted, section.persp h3 .muted { font-size: 14px; font-weight: 600; margin-left: 6px; }
+section.persp h3 { margin: 18px 0 6px; font-size: 17px; }
+.chart { background: #fff; border-radius: 12px; padding: 12px 14px 6px; margin: 8px 0 12px; }
+.chart .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 13px; margin-bottom: 4px; }
+.chart .legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart .plot { position: relative; }
+svg.lc { width: 100%; height: auto; display: block; }
+svg.lc .grid { stroke: var(--line); stroke-width: 1; }
+svg.lc .axis, svg.lc .bandlbl, svg.lc .direct { font-size: 12px; fill: var(--text-muted); }
+svg.lc .direct { fill: var(--text); font-weight: 700; }
+svg.lc .series line { stroke-width: 2.5; stroke-linecap: round; }
+svg.lc .sel { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 3 3; }
+svg.lc .cross { stroke: var(--text-muted); stroke-width: 1; }
+svg.lc .hit { fill: transparent; cursor: crosshair; }
+.chart .tip { position: absolute; pointer-events: none; background: var(--text); color: #fff; font-size: 13px; padding: 8px 10px; border-radius: 8px; min-width: 180px; z-index: 2; }
+.chart .tip div { white-space: nowrap; }
 @media (max-width: 900px) {
   .frame { grid-template-columns: 1fr; }
   aside.tree { border-right: 0; border-bottom: 1px solid var(--line); max-height: 40vh; }

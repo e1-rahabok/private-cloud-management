@@ -16,7 +16,7 @@ os.environ["PCM_DB"] = ":memory:"  # tests never touch the working database
 
 import yaml
 
-from build.pcm_proto import generator, l2, l2_cases as C, l2_estate as X, l2_improve as I, l2_monitor as M, noc
+from build.pcm_proto import generator, l2, l2_cases as C, l2_estate as X, l2_improve as I, l2_monitor as M, l2_performance as P, noc
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = yaml.safe_load((ROOT / "spec/tests/l2.yaml").read_text())
@@ -75,6 +75,20 @@ class Catalog(Base):
 
     def test_LCAT_8_iceberg(self):
         self.assertEqual(M.near_line_count(T["LCAT-8"]["given"]["scores"]), T["LCAT-8"]["expect"]["near_line"])
+
+    def test_LCAT_10_worst_and_percentile(self):
+        g, e = T["LCAT-10"]["given"], T["LCAT-10"]["expect"]
+        self.assertEqual(min(g["performance"]), e["worst"])
+        self.assertEqual(P.nearest_rank(g["performance"], 10), e["percentile_10_of_three"])
+        self.assertEqual(P.nearest_rank(g["twenty"], 10), e["percentile_10_of_twenty"])
+        self.assertEqual(P.nearest_rank(g["twenty"], 90), e["percentile_90_of_twenty"])
+        self.assertEqual(P.PERCENTILE, {"performance": 10, "risk": 90})
+        b = e["bands"]
+        self.assertEqual((P.perf_band(74), P.risk_band(74), P.risk_band(20), P.perf_band(20)),
+                         (b["performance_74"], b["risk_74"], b["risk_20"], b["performance_20"]))
+
+    def test_LCAT_11_weighted_average_by_color(self):
+        self.assertEqual(round(P.kpi(T["LCAT-11"]["given"]["scores"]), 2), T["LCAT-11"]["expect"]["kpi"])
 
     def test_LCAT_9_tree(self):
         e = T["LCAT-9"]["expect"]
@@ -329,6 +343,68 @@ class Improve(Base):
     def test_improve_never_shows_money(self):
         text = str(I.view(NOW, "compute", "estate", "summary", "30d"))
         self.assertNotRegex(text, r"\$|USD|\bcost\b|\bprice\b")
+
+
+class PerformanceTab(Base):
+    """M-3: the Performance tab above the cluster, VM then Cluster (D-091)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.d = P.view(NOW, "compute", "estate", "24h", enable=())
+
+    def _at(self, rel):
+        t = generator.rel(rel, NOW).isoformat()
+        return next(p for p in self.d["provider"]["performance"] if p["t"] >= t)
+
+    def test_LST_17_actual_slowness(self):
+        e = T["LST-17"]["expect"]
+        self.assertEqual(self.d["class"], e["default_class"])
+        self.assertEqual(self.d["provider"]["clusters"], e["gold_clusters"])
+        self.assertEqual(P.view(NOW, "compute", "estate", "24h", "all")["provider"]["clusters"], e["all_clusters"])
+        n = self._at(e["at_narrow"]["at"])
+        self.assertEqual((n["worst_cluster"], P.perf_band(n["worst"]), P.perf_band(n["percentile"])),
+                         (e["at_narrow"]["worst_cluster"], e["at_narrow"]["worst_band"], e["at_narrow"]["percentile_band"]))
+        w = self._at(e["at_wide"]["at"])
+        self.assertEqual((P.perf_band(w["worst"]), P.perf_band(w["percentile"])), (e["at_wide"]["worst_band"], e["at_wide"]["percentile_band"]))
+        self.assertTrue(self.d["selected"]["default"])
+        self.assertEqual(self.d["clusters_at"][0]["cluster"], e["default_selected"]["cluster_first"])
+        lo, hi = (generator.rel(x, NOW) for x in e["default_selected"]["within"])
+        self.assertTrue(lo <= datetime.fromisoformat(self.d["selected"]["t"]) <= hi + timedelta(minutes=5))
+
+    def test_LST_18_potential_slowness(self):
+        e = T["LST-18"]["expect"]
+        r = self.d["provider"]["risk"][-1]
+        self.assertEqual((r["worst_cluster"], P.risk_band(r["worst"]), P.risk_band(r["percentile"])),
+                         (e["highest_now"], e["highest_band"], e["percentile_band"]))
+
+    def test_LST_19_taking_turns_and_together(self):
+        e = T["LST-19"]["expect"]
+        s = P._cluster_series((), NOW.isoformat(), "24h")["VA-G-03"]
+        row = next(r for r in self.d["clusters_at"] if r["cluster"] == "VA-G-03")
+        self.assertGreaterEqual(s["different"], e["VA-G-03"]["different_vms_at_least"])
+        self.assertLessEqual(max(s["hit"]), e["VA-G-03"]["most_at_once_at_most"])
+        self.assertEqual(row["performance_band"], e["VA-G-03"]["performance_band_at_default"])
+        c = self.d["consumer"]
+        self.assertGreaterEqual(c["most_at_once"], e["most_at_once_at_least"])
+        lo, hi = (generator.rel(x, NOW) for x in e["most_at_within"])
+        self.assertTrue(lo <= datetime.fromisoformat(c["most_at"]) <= hi + timedelta(minutes=5))
+        self.assertTrue(all(v["together"] >= 0 and v["cluster"] for v in c["worst_vms"]))
+
+    def test_LST_20_time_and_class_are_checked(self):
+        from build.pcm_proto import server
+        q = lambda **k: {key: [v] for key, v in k.items()}
+        for query in (q(**{"class": "platinum"}), q(at=(NOW - timedelta(days=3)).isoformat()), q(**{"class": "gold"}, at="yesterday")):
+            with self.assertRaises(ValueError):
+                server.l2_get(["monitor", "compute", "estate", "performance"], NOW, (), query)
+        with self.assertRaises(ValueError):
+            server.l2_get(["monitor", "compute", "estate", "capacity"], NOW, (), q(**{"class": "gold"}))
+        t = self.d["provider"]["performance"][100]["t"]
+        d = server.l2_get(["monitor", "compute", "estate", "performance"], NOW, (), q(at=t))["perf"]
+        self.assertEqual((d["selected"]["index"], d["selected"]["default"], d["consumer"]["worst_vms_mode"]), (100, False, "at"))
+
+    def test_performance_tab_only_above_the_cluster(self):
+        self.assertIn("perf", M.pillar_view(NOW, "compute", "fr", "performance", "24h"))
+        self.assertNotIn("perf", M.pillar_view(NOW, "compute", "FR-G-04", "performance", "24h"))
 
 
 class SpecRules(unittest.TestCase):

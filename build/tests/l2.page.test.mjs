@@ -112,6 +112,17 @@ try {
   const snap = await page.innerText('[data-decision="d-snapshots"]');
   check('LPG-11', snap.includes('Overdue'), snap.replace(/\s+/g, ' '));
 
+  // LPG-14 Performance above the cluster: VM, then Cluster; Gold by default; a click on a time selects it
+  await go('/l2/monitor/compute/estate/performance');
+  const sections = await page.$$eval('section.persp', xs => xs.map(x => x.dataset.section));
+  const gold = await page.innerText('nav[aria-label="Class of service"] a[aria-current="true"]');
+  const hit = page.locator('[data-chartbox="perf"] rect.hit'); await hit.scrollIntoViewIfNeeded();
+  const hb = await hit.boundingBox();
+  await Promise.all([page.waitForURL(/[?&]at=/), hit.click({ position: { x: hb.width * 0.5, y: 20 } })]); await page.waitForSelector('body[data-ready="1"]');
+  const atParam = new URL(page.url()).searchParams.get('at');
+  const head = await page.getAttribute('h3[data-at]', 'data-at');
+  check('LPG-14', sections.join() === 'vm,cluster' && gold === 'Gold' && !!atParam && head === atParam && (await page.innerText('h3[data-at]')).includes('the time you picked'), `${sections}; ${gold}; at=${atParam}`);
+
   // LPG-12 contrast and no foreign request
   const contrast = async () => page.evaluate(() => {
     const parse = c => (c.match(/[\d.]+/g) || []).map(Number);
@@ -137,6 +148,7 @@ try {
   const shot = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 2 });
   shot.on('dialog', d => d.accept('Reason given in the test'));
   for (const [p, name, full] of [['/l2', 'l2-monitor-estate', false], ['/l2/monitor/compute/ld/performance?window=7d&group=host_model', 'l2-monitor-group-by', false],
+    ['/l2/monitor/compute/estate/performance', 'l2-monitor-performance', true],
     ['/l2/troubleshoot/compute/estate', 'l2-troubleshoot-cases', false], ['/l2/troubleshoot/case/case-inc-tk-s-03', 'l2-case-escalation', true],
     ['/l2/troubleshoot/case/case-sg-app-117', 'l2-case-guest-os', true], ['/l2/improve/compute/estate/summary', 'l2-improve', false], ['/l2/rules', 'l2-rules', false]]) {
     await shot.goto(BASE + withNow(p)); await shot.waitForSelector('body[data-ready="1"]', { timeout: 60000 });

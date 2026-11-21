@@ -595,6 +595,53 @@ stories:
       root_cause_link: m2-snap
     decisions: [D-090]
 
+  M-3:
+    title: Gold takes three different hits in one day, and one cluster drifts toward contention
+    trigger: monitoring
+    note: >
+      The Performance tab's teaching day (monitor.md, Performance tab). Each hit shows one shape. Monitoring shows
+      what happened, when, where and how wide. Why it happened is the case's job (D-091).
+    objects:
+      wide_clusters: [SG-G-01, SG-G-02, SG-G-03, SG-G-04, SG-G-05, TK-G-01, TK-G-02, TK-G-03]
+      narrow_cluster: FR-G-04
+      turns_cluster: VA-G-03
+      risk_cluster: SG-G-05
+    plant:
+      wide:
+        what: "8 of the 26 Gold clusters, in Singapore and Tokyo, at the same time"
+        from: "now - 575 minutes"
+        to: "now - 525 minutes"
+        vm_share: 0.35
+        vm_performance: { from: 30, to: 60 }
+      narrow:
+        what: "One Gold cluster alone"
+        from: "now - 900 minutes"
+        to: "now - 790 minutes"
+        vm_share: 0.6
+        vm_performance: { from: 22, to: 58 }
+      turns:
+        what: "Different VMs of one Gold cluster, one or two at a time, all day"
+        vms: 40
+        minutes: { from: 10, to: 25 }
+        vm_performance: { from: 50, to: 68 }
+      risk:
+        what: "Cluster Risk of one Gold cluster rises over 7 days, ahead of any contention"
+        seven_days_ago: 34
+        now: 68
+    expect:
+      provider:
+        at_narrow: { worst_band: orange, worst_cluster: FR-G-04, percentile_band: green }
+        at_wide: { worst_band: orange, percentile_band_not: green }
+        default_selected_time: narrow
+        risk_worst_cluster_now: SG-G-05
+        risk_worst_band_now: orange
+        risk_percentile_band_now: green
+      consumer:
+        turns_cluster_different_vms_at_least: 40
+        turns_cluster_most_at_once_at_most: 3
+        hit_together_at_wide: "at least 100 VMs in the same 5 minutes"
+    decisions: [D-091]
+
   # ---------------------------------------------------------------- Weekly, monthly and inventory stories
 
   L-8:

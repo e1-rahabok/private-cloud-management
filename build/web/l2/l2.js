@@ -31,7 +31,7 @@ const main = document.getElementById('main');
 function parseRoute() {
   const seg = location.pathname.replace(/\/+$/, '').split('/').slice(2).map(decodeURIComponent);
   const win = QS.get('window');
-  const r = { activity: seg[0] || 'monitor', view: 'compute', object: 'estate', pillar: 'summary', window: win, group: QS.get('group') || '' };
+  const r = { activity: seg[0] || 'monitor', view: 'compute', object: 'estate', pillar: 'summary', window: win, group: QS.get('group') || '', cls: QS.get('class') || '', at: QS.get('at') || '' };
   if (r.activity === 'monitor' || r.activity === 'improve') {
     r.view = seg[1] || 'compute'; r.object = seg[2] || 'estate'; r.pillar = seg[3] || 'summary';
     r.window = win || (r.activity === 'improve' ? '30d' : '24h');
@@ -52,8 +52,13 @@ const recall = () => { try { return JSON.parse(sessionStorage.getItem('l2.last')
 function url(o = {}) {
   const x = { ...R, ...o };
   const keepWin = x.window && x.activity !== 'troubleshoot' ? `window=${x.window}` : '';
-  const grp = x.group && x.activity === 'monitor' && x.pillar === 'performance' ? `group=${enc(x.group)}` : '';
-  const q = qjoin(PASS, keepWin, grp);
+  const perfTab = x.activity === 'monitor' && x.pillar === 'performance';
+  const grp = x.group && perfTab ? `group=${enc(x.group)}` : '';
+  const cls = x.cls && perfTab ? `class=${enc(x.cls)}` : '';
+  // A selected time belongs to one object, window and class: changing any of them goes back to the worst time.
+  const moved = ['activity', 'view', 'object', 'pillar', 'window', 'cls'].some(k => k in o && o[k] !== R[k]);
+  const at = perfTab && ('at' in o ? o.at : moved ? '' : x.at);
+  const q = qjoin(PASS, keepWin, grp, cls, at ? `at=${enc(at)}` : '');
   let p;
   if (x.activity === 'monitor' || x.activity === 'improve') p = `/l2/${x.activity}/${x.view}/${enc(x.object)}/${x.pillar}`;
   else if (x.activity === 'troubleshoot') p = x.caseId ? `/l2/troubleshoot/case/${enc(x.caseId)}` : x.newComplaint ? `/l2/troubleshoot/new` : `/l2/troubleshoot/${x.view}/${enc(x.object)}`;
@@ -203,22 +208,21 @@ async function monitor(msg = '') {
     wireFindings(monitor);
     return;
   }
-  const d = await getJSON(`monitor/${R.view}/${enc(R.object)}/${R.pillar}`, qjoin(`window=${R.window}`, R.group ? `group_by=${R.group}` : ''));
+  const d = await getJSON(`monitor/${R.view}/${enc(R.object)}/${R.pillar}`, qjoin(`window=${R.window}`, R.group ? `group_by=${R.group}` : '',
+    R.pillar === 'performance' && R.cls ? `class=${enc(R.cls)}` : '', R.pillar === 'performance' && R.at ? `at=${enc(R.at)}` : ''));
   const head = objHead(d.object) + `${runLine(d.run)}` + tabs({ [R.pillar]: d.status }) + `<div class="msg" role="status">${esc(msg)}</div>`;
   const c = d.content;
   let body = '';
-  if (R.pillar === 'performance') {
+  if (R.pillar === 'performance' && d.perf) {
+    body += perfTab(d.perf, d);
+  } else if (R.pillar === 'performance') {
     const ice = c.iceberg;
     const unit = d.trend.length && d.trend[0].unit ? d.trend[0].unit : 'score';
     body += `<div class="cards"><div class="card ${d.status}"><h3>This object ${chip(d.status)}</h3><div class="big2">${d.score ?? '–'}</div><div class="muted">Over ${R.window}${d.score_now !== null && R.window !== '1h' ? `; last hour ${d.score_now}` : ''}</div></div>
       <div class="card"><h3>Trend</h3>${spark(d.trend)}<div class="muted">${unit === 'score' ? 'Score over the window' : 'Clusters outside green over the window'}</div></div>
       <div class="card ${d.outside_green ? 'amber' : 'green'}"><h3>Children outside green</h3><div class="big2">${d.outside_green} <span class="muted" style="font-size:16px">of ${d.children_total}</span></div></div>
       ${ice ? `<div class="card" data-iceberg><h3>Just above the line</h3><div class="big2">${n0(ice.near_line)}</div><div class="muted">VMs between ${ice.near_line_from} and ${ice.near_line_to}, ${esc(ice.direction)} over 7 days; ${n0(ice.below_green)} below green, of ${n0(ice.vms)}</div>${bars(ice.trend_7_days)}</div>` : ''}</div>`;
-    body += `<div class="toolbar"><label for="grp">Group by</label><select id="grp">${GROUP_BY.map(([k, l]) => `<option value="${k}"${k === R.group ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`;
-    if (d.group_by) {
-      body += `<table class="data" data-groupby="${d.group_by.attribute}"><thead><tr><th>${esc(GROUP_BY.find(g => g[0] === d.group_by.attribute)[1])}</th>${d.group_by.rows[0] && 'hosts' in d.group_by.rows[0] ? '<th class="num">Hosts</th>' : ''}<th class="num">VMs</th><th class="num">Below green</th><th class="num">Just above the line</th><th class="num">Wider than their host's NUMA node</th><th class="num">Worst</th><th>Status</th></tr></thead><tbody>
-        ${d.group_by.rows.map(r => `<tr data-group="${esc(r.value)}"><td>${esc(r.value)}</td>${'hosts' in r ? `<td class="num">${n0(r.hosts)}</td>` : ''}<td class="num">${n0(r.vms)}</td><td class="num">${n0(r.below_green)}</td><td class="num">${n0(r.near_line)}</td><td class="num">${n0(r.wider_than_numa_node)}</td><td class="num">${r.worst}</td><td>${chip(r.status)}</td></tr>`).join('')}</tbody></table>`;
-    }
+    body += groupBy(d);
     if (d.realms) {
       const realm = (name, r) => `<div class="card ${r.status}"><h3>${name} ${chip(r.status)}</h3>${Object.entries(r).filter(([k]) => k !== 'status').map(([k, v]) => `<div class="row"><span>${esc(k.replaceAll('_', ' '))}</span><span>${v}</span></div>`).join('')}</div>`;
       body += `<h2>VM and Guest OS, side by side</h2><div class="cols2">${realm('VM', d.realms.vm)}${realm('Guest OS', d.realms.guest_os)}</div>
@@ -254,12 +258,134 @@ async function monitor(msg = '') {
   main.innerHTML = head + (d.stale ? '<p class="why">No data from this location\'s VCF Operations. Shown grey, never green.</p>' : '') + body;
   const g = document.getElementById('grp');
   if (g) g.addEventListener('change', () => { location.href = url({ group: g.value }); });
+  if (d.perf) wireCharts(d.perf);
   main.querySelectorAll('form.expect').forEach(fm => fm.addEventListener('submit', async e => {
     e.preventDefault();
     const r = await postJSON(`inventory/${fm.dataset.c}/expected`, Object.fromEntries(new FormData(fm)));
     await monitor(r.status === 200 ? 'Recorded as expected.' : r.body.error); document.body.dataset.expected = String(r.status);
   }));
   wireFindings(monitor);
+}
+// ---------------------------------------------------------------- Performance above the cluster: VM, then Cluster (monitor.md)
+const CLASS_NAME = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze', all: 'All classes' };
+const BAND_NAME = { green: 'Green', yellow: 'Yellow', orange: 'Orange', red: 'Red' };
+const perfBand = v => v == null ? 'no_data' : v >= 75 ? 'green' : v >= 50 ? 'yellow' : v >= 25 ? 'orange' : 'red';
+const riskBand = v => v == null ? 'no_data' : perfBand(100 - v);
+const statusOfBand = b => ({ green: 'green', yellow: 'amber', orange: 'red', red: 'red' }[b] || 'no_data');
+const fmtPoint = (iso, minutes) => new Date(iso).toLocaleString('en-GB', minutes >= 1440 ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const fmtTick = (iso, minutes, span) => new Date(iso).toLocaleString('en-GB', span > 2 * 86400000 ? { day: 'numeric', month: 'short' } : { hour: '2-digit', minute: '2-digit' });
+const fmtDur = m => m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`;
+const CHARTS = {};
+
+// One chart, one axis. series: [{ key, label, dash, color (fixed) or band (function of value) }].
+function lineChart(id, pts, series, o) {
+  CHARTS[id] = { pts, series, o };
+  const W = 1000, H = 240, L = 48, Rt = 140, T = 12, B = 30, iw = W - L - Rt, ih = H - T - B, n = pts.length;
+  const max = o.max ?? Math.max(4, ...pts.flatMap(p => series.map(s => p[s.key] ?? 0))) * 1.1;
+  const x = i => L + (n === 1 ? iw / 2 : i / (n - 1) * iw), y = v => T + ih - v / max * ih;
+  const ticks = o.max === 100 ? [0, 25, 50, 75, 100] : [0, Math.round(max / 2), Math.round(max)];
+  const span = new Date(pts[n - 1].t) - new Date(pts[0].t);
+  const xt = [0, 1, 2, 3, 4, 5, 6].map(k => Math.round(k * (n - 1) / 6));
+  let svg = `<svg class="lc" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}" data-chart="${id}">`;
+  if (o.bands) svg += o.bands.map(([lo, hi, b]) => `<text x="${W - 8}" y="${y((lo + hi) / 2) + 4}" text-anchor="end" class="bandlbl">${BAND_NAME[b]}</text>`).join('');
+  svg += ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rt}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${o.max === 100 ? v + '%' : n0(v)}</text>`).join('');
+  svg += xt.map(i => `<text class="axis" x="${x(i)}" y="${H - 8}" text-anchor="middle">${esc(fmtTick(pts[i].t, o.minutes, span))}</text>`).join('');
+  for (const s of series) {
+    let segs = '';
+    for (let i = 1; i < n; i++) {
+      const a = pts[i - 1][s.key], b = pts[i][s.key];
+      if (a == null || b == null) continue;
+      const col = s.band ? `var(--band-${s.band(s.worse(a, b))})` : s.color;
+      segs += `<line x1="${x(i - 1).toFixed(1)}" y1="${y(a).toFixed(1)}" x2="${x(i).toFixed(1)}" y2="${y(b).toFixed(1)}" stroke="${col}"${s.dash ? ' stroke-dasharray="7 5"' : ''}/>`;
+    }
+    svg += `<g class="series" data-series="${s.key}">${segs}</g>`;
+  }
+  // Direct labels at the right end, pushed apart when the lines end close together.
+  const ends = series.map(s => ({ s, v: pts[n - 1][s.key] })).filter(e => e.v != null).map(e => ({ ...e, y: y(e.v) + 4 })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 15) ends[i].y = ends[i - 1].y + 15;
+  svg += ends.map(e => `<text class="direct" x="${W - Rt + 8}" y="${e.y}">${esc(e.s.short)}</text>`).join('');
+  if (o.selected != null) svg += `<line class="sel" x1="${x(o.selected)}" x2="${x(o.selected)}" y1="${T}" y2="${T + ih}"/>`;
+  svg += `<line class="cross" x1="0" x2="0" y1="${T}" y2="${T + ih}" visibility="hidden"/><rect class="hit" x="${L}" y="${T}" width="${iw}" height="${ih}"/></svg>`;
+  const legend = `<div class="legend">${series.map(s => `<span><svg width="28" height="10" aria-hidden="true"><line x1="0" x2="28" y1="5" y2="5" stroke="${s.color || 'var(--text)'}" stroke-width="2.5"${s.dash ? ' stroke-dasharray="7 5"' : ''}/></svg>${esc(s.label)}</span>`).join('')}
+    ${o.bands ? `<span class="muted">Line color is the band of the value.</span>` : ''}<span class="muted">Click a time to see it below.</span></div>`;
+  return `<div class="chart" data-chartbox="${id}">${legend}<div class="plot">${svg}<div class="tip" hidden></div></div></div>`;
+}
+function wireCharts(p) {
+  for (const box of main.querySelectorAll('[data-chartbox]')) {
+    const { pts, series, o } = CHARTS[box.dataset.chartbox];
+    const svg = box.querySelector('svg.lc'), hit = svg.querySelector('rect.hit'), cross = svg.querySelector('line.cross'), tip = box.querySelector('.tip');
+    const idx = ev => { const r = hit.getBoundingClientRect(); return Math.max(0, Math.min(pts.length - 1, Math.round((ev.clientX - r.left) / r.width * (pts.length - 1)))); };
+    hit.addEventListener('mousemove', ev => {
+      const i = idx(ev), r = hit.getBoundingClientRect(), sr = svg.getBoundingClientRect();
+      const xv = +hit.getAttribute('x') + i / Math.max(1, pts.length - 1) * +hit.getAttribute('width');
+      cross.setAttribute('x1', xv); cross.setAttribute('x2', xv); cross.setAttribute('visibility', 'visible');
+      tip.innerHTML = `<strong>${esc(fmtPoint(pts[i].t, o.minutes))}</strong>${series.map(s => `<div>${esc(s.label)}: <strong>${pts[i][s.key] ?? '–'}${o.max === 100 ? '%' : ''}</strong>${s.who && pts[i][s.who] ? ` ${esc(pts[i][s.who])}` : ''}${s.band && pts[i][s.key] != null ? ` (${BAND_NAME[s.band(pts[i][s.key])]})` : ''}</div>`).join('')}`;
+      tip.hidden = false;
+      const left = ev.clientX - sr.left;
+      tip.style.left = `${Math.min(left + 14, sr.width - tip.offsetWidth - 4)}px`; tip.style.top = `${ev.clientY - sr.top + 12}px`;
+    });
+    hit.addEventListener('mouseleave', () => { cross.setAttribute('visibility', 'hidden'); tip.hidden = true; });
+    hit.addEventListener('click', ev => { location.href = url({ at: pts[idx(ev)].t }); });
+  }
+  main.querySelectorAll('[data-cls]').forEach(a => a.addEventListener('click', ev => { ev.preventDefault(); location.href = url({ cls: a.dataset.cls }); }));
+}
+function groupBy(d, note = '') {
+  let h = `<div class="toolbar"><label for="grp">Group by</label><select id="grp">${GROUP_BY.map(([k, l]) => `<option value="${k}"${k === R.group ? ' selected' : ''}>${l}</option>`).join('')}</select>${note}</div>`;
+  if (d.group_by) {
+      h += `<table class="data" data-groupby="${d.group_by.attribute}"><thead><tr><th>${esc(GROUP_BY.find(g => g[0] === d.group_by.attribute)[1])}</th>${d.group_by.rows[0] && 'hosts' in d.group_by.rows[0] ? '<th class="num">Hosts</th>' : ''}<th class="num">VMs</th><th class="num">Below green</th><th class="num">Just above the line</th><th class="num">Wider than their host's NUMA node</th><th class="num">Worst</th><th>Status</th></tr></thead><tbody>
+        ${d.group_by.rows.map(r => `<tr data-group="${esc(r.value)}"><td>${esc(r.value)}</td>${'hosts' in r ? `<td class="num">${n0(r.hosts)}</td>` : ''}<td class="num">${n0(r.vms)}</td><td class="num">${n0(r.below_green)}</td><td class="num">${n0(r.near_line)}</td><td class="num">${n0(r.wider_than_numa_node)}</td><td class="num">${r.worst}</td><td>${chip(r.status)}</td></tr>`).join('')}</tbody></table>`;
+    }
+  return h;
+}
+function perfTab(p, d) {
+  const cls = CLASS_NAME[p.class], m = p.point_minutes, sel = p.selected, C = p.consumer, P = p.provider;
+  const when = fmtPoint(sel.t, m);
+  const filter = `<div class="toolbar"><span class="lbl">Class of service</span><nav class="windows" aria-label="Class of service">${p.classes.map(k => `<a href="${url({ cls: k })}" data-cls="${k}"${k === p.class ? ' aria-current="true"' : ''}>${CLASS_NAME[k]}</a>`).join('')}</nav>
+    ${sel.default ? '' : `<a class="link" href="${url({ at: '' })}">Back to the worst time</a>`}</div>
+    ${p.stale_locations.length ? `<p class="why">No data from ${esc(p.stale_locations.join(', '))}. Left out, never counted as green.</p>` : ''}`;
+  // VM
+  const vmChart = lineChart('vm', C.points, [
+    { key: 'below_green', label: 'VMs below green at that time', short: 'At that time', color: 'var(--series-1)' },
+    { key: 'different', label: 'Different VMs hit since the window started', short: 'Different', color: 'var(--series-2)', dash: true }],
+    { label: `${cls} VMs hit over the window`, minutes: m, selected: sel.default ? null : sel.index });
+  const vmRows = C.worst_vms.map(v => `<tr data-vm="${esc(v.vm)}"><td>${objLink(v.vm)}</td><td class="num">${v.vm_performance}</td><td>${chip(v.status)}</td><td>${esc(fmtPoint(v.at, 5))}</td><td>${objLink(v.cluster)}</td><td>${esc(v.location)}</td><td class="num">${n0(v.together)}</td></tr>`).join('');
+  let vm = `<section class="persp" data-section="vm"><h2>VM <span class="muted">consumer</span></h2>
+    <p>${C.vms ? `${n0(C.different)} different ${esc(cls)} VMs were below green in the window, of ${n0(C.vms)}. Never more than ${n0(C.most_at_once)} at once, at ${esc(fmtPoint(C.most_at, m))}.` : `No ${esc(cls)} VM under this object.`}
+    ${C.vms ? ` ${n0(C.near_line)} sit just above the line (75 to 80) over the window.` : ''}</p>
+    ${C.vms ? vmChart : ''}
+    <h3>${sel.default ? 'Worst VMs in the window' : `VMs below green at ${esc(when)}`} <span class="muted">${n0(C.worst_vms_total)} in all${C.worst_vms_total > C.worst_vms.length ? `, the worst ${C.worst_vms.length} shown` : ''}</span></h3>
+    ${C.worst_vms.length ? `<table class="data" data-worst-vms><thead><tr><th>VM</th><th class="num">VM Performance</th><th>Status</th><th>Time</th><th>Cluster</th><th>Location</th><th class="num">Other VMs hit in the same 5 minutes</th></tr></thead><tbody>${vmRows}</tbody></table>
+    <p class="muted">The same time on many rows: something common hit them. Different times: one cluster, or one VM.</p>` : `<p class="muted">No ${esc(cls)} VM was below green${sel.default ? ' in the window' : ' at that time'}.</p>`}
+    ${groupBy(d, '<span class="muted">every class, every VM under this object</span>')}</section>`;
+  // Cluster
+  const minutesOut = key => P.performance.filter(x => x[key] != null && x[key] < 75).length * m;
+  const low = P.performance.reduce((a, x) => x.worst != null && (a == null || x.worst < a.worst) ? x : a, null);
+  const outW = minutesOut('worst'), outP = minutesOut('percentile');
+  const perfLine = !P.clusters ? `No ${esc(cls)} cluster under this object.`
+    : !outW ? `Every ${esc(cls)} cluster stayed green.`
+    : `Lowest: ${low.worst}% at ${esc(fmtPoint(low.t, m))}, ${esc(low.worst_cluster)}; the ${P.percentile.performance}th percentile then ${low.percentile}%. The worst cluster was out of green for ${fmtDur(outW)}. ${outP ? `The ${P.percentile.performance}th percentile was out of green for ${fmtDur(outP)}: wide at those times.` : `The ${P.percentile.performance}th percentile stayed green: narrow, a few clusters or one.`}`;
+  const rNow = P.risk[P.risk.length - 1];
+  const riskLine = !P.clusters ? '' : `Highest now: ${rNow.worst}% (${BAND_NAME[riskBand(rNow.worst)]}), ${esc(rNow.worst_cluster)}. The ${P.percentile.risk}th percentile now: ${rNow.percentile}% (${BAND_NAME[riskBand(rNow.percentile)]}).`;
+  const perfBands = [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']];
+  const riskBands = [[0, 25, 'green'], [25, 50, 'yellow'], [50, 75, 'orange'], [75, 100, 'red']];
+  const minOf = (a, b) => Math.min(a, b), maxOf = (a, b) => Math.max(a, b);
+  const perfChart = lineChart('perf', P.performance, [
+    { key: 'worst', who: 'worst_cluster', label: 'Worst Cluster Performance', short: 'Worst', band: perfBand, worse: minOf },
+    { key: 'percentile', label: `${P.percentile.performance}th percentile`, short: `${P.percentile.performance}th pct`, band: perfBand, worse: minOf, dash: true }],
+    { label: 'Actual slowness: Cluster Performance, 0 to 100%', max: 100, minutes: m, bands: perfBands, selected: sel.index });
+  const riskChart = lineChart('risk', P.risk, [
+    { key: 'worst', who: 'worst_cluster', label: 'Highest Cluster Risk', short: 'Highest', band: riskBand, worse: maxOf },
+    { key: 'percentile', label: `${P.percentile.risk}th percentile`, short: `${P.percentile.risk}th pct`, band: riskBand, worse: maxOf, dash: true }],
+    { label: 'Potential slowness: Cluster Risk, 0 to 100%', max: 100, minutes: m, bands: riskBands, selected: sel.index });
+  const bchip = (v, b) => `<span class="chip ${statusOfBand(b)}">${v}%</span>`;
+  const atRows = p.clusters_at.map(r => `<tr data-cluster-at="${esc(r.cluster)}"><td>${objLink(r.cluster)}</td><td>${esc(r.location)}</td><td>${esc(CLASS_NAME[r.class_of_service] || r.class_of_service)}</td><td class="num">${bchip(r.performance, r.performance_band)}</td><td class="num">${bchip(r.risk, r.risk_band)}</td><td class="num">${n0(r.vms_hit)}</td><td class="num">${n0(r.different_vms_hit)}</td></tr>`).join('');
+  const cl = `<section class="persp" data-section="cluster"><h2>Cluster <span class="muted">provider</span></h2>
+    ${P.clusters ? `<h3>Actual slowness</h3><p data-perf-line>${perfLine}</p>${perfChart}
+    <h3>Potential slowness</h3><p data-risk-line>${riskLine}</p>${riskChart}
+    <h3 data-at="${esc(sel.t)}">Clusters at ${esc(when)} <span class="muted">${sel.default ? 'the worst point of the window' : 'the time you picked'}; worst first</span></h3>
+    <table class="data" data-clusters-at><thead><tr><th>Cluster</th><th>Location</th><th>Class</th><th class="num">Performance</th><th class="num">Risk</th><th class="num">VMs below green then</th><th class="num">Different VMs hit in the window</th></tr></thead><tbody>${atRows}</tbody></table>`
+    : `<p class="muted">No ${esc(cls)} cluster under this object.</p>`}</section>`;
+  return filter + vm + cl;
 }
 function childrenTable(d) {
   if (!d.children.length) return '';

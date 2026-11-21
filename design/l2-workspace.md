@@ -179,13 +179,37 @@ The question: **what is wrong, at risk or wasteful, across the whole estate?** M
 
 ### 4.3 The KPI model
 
-From SP5 Performance Management:
+From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter`, `docs/concepts/kpi-scoring-models.md`):
+- **Every KPI is 0 to 100% with the same four bands:** green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0. Performance is higher-is-better. Risk is higher-is-worse, so its bands run the other way: green 0 to 25, red 75 to 100.
+- **A KPI is a weighted average of its sub-metrics,** and a worse sub-metric weighs more (1 at 100, 16 at 0). One red sub-metric among green ones still shows.
 - **VM KPI** includes the Guest OS, because the VM and its Guest OS are one logical entity for monitoring. The two stay separate objects for troubleshooting (5.6).
-- **Cluster KPI** uses only the contention of its running VMs, never utilization. Built from the worst VM and the 90th percentile, never from averages: an average hides the victim.
+- **Cluster Performance** uses only the contention of its running VMs, never utilization: the worst VM and the 90th percentile of CPU Ready, Co-Stop, memory latency and disk latency, plus the worst host's bad packets. It is a consumer metric, rolled up to the provider.
+- **Cluster Risk** is the leading indicator: how close the cluster is to contention, from its worst host (utilization, imbalance, ballooning, overcommit, reservations, monster VMs).
 - **vSAN KPI** uses the disk latency of every VM on the vSAN datastore, from any cluster.
-- **NSX KPI** is separate, because NSX has a many-to-many relation to clusters.
+- **NSX KPI** is separate, because NSX has a many-to-many relation to clusters. NSX, vSAN and top-of-rack switch metrics come from vCommunity.
 - **The internal threshold is stricter than the SLA.** SP5: proactive work needs a line that is crossed before the contract is.
 - **Leading indicators** (SP5's "kitchen" metrics) sit under each KPI: per vCPU, per virtual disk, per vNIC. The weekly check reads them (D-042).
+- **Kubernetes** is a logical entity with its own view. Not in 1.0.
+
+### 4.3.1 The Performance tab above the cluster (D-091)
+
+- **Two perspectives, consumer first:** VM, then Cluster. Cluster Performance is made of VM contention, so the VM section explains the cluster lines underneath.
+- **One class of service filter** scopes both sections. Gold by default. Silver, Bronze and All (the vSphere World view) are one click away.
+- **VM section:**
+  - **Hit over time:** one chart, one count axis, two lines. VMs below green at each time, and different VMs hit since the start of the window. The second line climbing while the first stays low means VMs took turns.
+  - **In words:** "412 different VMs were hit; never more than 37 at once."
+  - **Worst VMs:** the VM, its worst VM Performance, the time, its cluster and location, and how many other VMs were hit in the same 5 minutes. The same time on many rows points to something common; the cluster lines should show it. Different times point to one cluster or one VM.
+  - **Just above the line:** the iceberg (4.2).
+- **Cluster section:**
+  - **Actual slowness:** one chart, 0 to 100%, two lines. Worst Cluster Performance (solid) and the 10th percentile across clusters (dashed), as vCommunity's Worst 10 Percent. Each line takes the band color of its value.
+    - The worst line is good: no issue.
+    - The worst line is bad and the 10th percentile is good: a narrow problem, a few clusters or one.
+    - Both are bad: a wide problem.
+  - **Potential slowness:** the same chart for Cluster Risk. The highest (solid) and the 90th percentile (dashed).
+  - **Clusters at a time:** a click on either chart, or on the VM chart, picks a time. The table lists every cluster in scope at that time, worst first: Performance, Risk, VMs hit at that time, and different VMs hit over the window. Before any click, the time is the worst point of the window.
+  - A click on a cluster opens it in the tree: its hosts, then vSAN, NSX and the switches underneath.
+- **What, not why:** the tab says what was hit, when, where and how wide. Causes, including a VM that slows itself (a limit, too many vCPUs), are the case's (D-084).
+- **At the cluster and below,** the tab stays as 4.1: the summary, the children worst first, the detail.
 
 ### 4.4 What each window adds
 
@@ -451,7 +475,7 @@ The troubleshooting stories come from Agent E2's benchmark (`benchmark/questions
 |---|---|
 | 3.1 Landing page is the check result | Section 10: landing on Monitor, 24 hours |
 | 3.2 Three verdicts, never one score | 3.3: Summary tab, one line per pillar; 4.5: problem → Troubleshoot, risk and efficiency → Improve |
-| 3.3 Top down, worst first, provider before consumer | 4.1, 4.3 |
+| 3.3 Top down, worst first; on Performance, consumer before provider (D-091) | 4.1, 4.3, 4.3.1 |
 | 3.4 One fixed order of checks | 5.5, now at every node of a chain |
 | 3.5 VM and Guest OS side by side | 5.6 |
 | 3.6 Business context | 7.2 |

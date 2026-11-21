@@ -5,7 +5,7 @@ role: l2
 cadence: [daily, weekly, monthly]
 vocabulary: catalog/vocabulary/l2.yaml
 design: design/l2-workspace.md
-decisions: [D-039, D-042, D-083, D-086, D-088]
+decisions: [D-039, D-042, D-083, D-086, D-088, D-091]
 ---
 
 # L2 Monitor
@@ -47,12 +47,54 @@ api: /api/l2/monitor/{view}/{object}/{pillar}
   - Group by reads every VM under the object, not only direct children. Each group shows its VMs, hosts, how many sit below green and just above the line, the worst score, and how many VMs are wider than their host's NUMA node.
 - **Pillar content:**
   - **Availability** (l2.availability_events): VMs down this month, counted or not; hosts not connected; HA restarts.
-  - **Performance:** as above.
+  - **Performance:** as above at the cluster and below. Above the cluster: the next section.
   - **Capacity** (l2.short_term_capacity): per cluster, CPU and memory utilization, average and 95th percentile across its hosts, and the imbalance. A cluster whose VMs wait says "Full now".
   - **Security** (l2.security_hygiene): hosts with SSH or ESXi Shell on outside a window, lockdown off, root logins, certificates near expiry.
   - **Configuration** (l2.configuration_variance): drift against the standard, and the variance across peers (ESXi builds, VMware Tools versions) with counts.
   - **Inventory** (l2.inventory_counts, l2.change_explanation): children by type with the change over the window; distribution across children; unexplained changes listed one by one, production and Gold first, with "This was expected" (reason required); explained changes counted by type.
 - **States:** normal; empty; stale ("No data" for a location whose VCF Operations is not answering, never green); loading; error.
+
+## Performance tab above the cluster
+
+```yaml
+question: "Were VMs hit, when, where and how wide; and is any cluster heading toward contention?"
+role: l2
+cadence: [daily, weekly]
+reads: [l2.consumer_hits, l2.worst_vms, l2.provider_spread, l2.clusters_at, l2.iceberg]
+api: /api/l2/monitor/{view}/{object}/performance
+decisions: [D-091]
+```
+
+On every node above the cluster: estate, region, location, VCF instance, workload domain, class of service. L2 design, 4.3.1.
+
+- **Class of service** (query `class`): Gold, Silver, Bronze, All. Default Gold. One filter for both sections. A VM counts by its own class; a cluster by its class.
+- **Selected time** (query `at`): one time for the page, set by a click on any chart. Default: the worst point of Worst Cluster Performance in the window. "Back to the worst time" clears it.
+- **Points:** 5 minutes for 1 hour and 24 hours; 1 hour for 7 days; 4 hours for 30 days; 1 day for 1 year. A point holds the worst value inside it.
+
+### VM
+
+- **Hit over time** (l2.consumer_hits): one chart, one count axis.
+  - Line 1: VMs below green at that point.
+  - Line 2: different VMs hit since the start of the window.
+  - Under it, in words: "{different} different VMs were hit; never more than {most} at once, at {time}."
+- **Worst VMs** (l2.worst_vms): 20 rows, worst first, and the count of all.
+  - VM, worst VM Performance, the time of it, cluster, location, class.
+  - Hit in the same 5 minutes: how many other VMs in scope were below green at that time.
+  - With a selected time: the VMs below green at that time instead, worst first.
+- **Just above the line** (l2.iceberg): VMs between 75 and 80, in scope.
+- **Group by** stays with this section: it reads every VM under the node.
+
+### Cluster
+
+- **Actual slowness** (l2.provider_spread): one chart, 0 to 100%.
+  - Solid: Worst Cluster Performance. Dashed: its 10th percentile across the clusters in scope, as vCommunity's Worst 10 Percent.
+  - Each segment takes the band color of its value: green, yellow, orange, red.
+  - In words: the worst value, when, which cluster; and the 10th percentile at the same time.
+- **Potential slowness** (l2.provider_spread): the same, for Cluster Risk. Solid: the highest. Dashed: the 90th percentile.
+- **Clusters at {selected time}** (l2.clusters_at): every cluster in scope, worst Performance first.
+  - Cluster, location, class, Performance at the time, Risk at the time, VMs below green at the time, different VMs hit over the window.
+  - A click on a cluster selects it in the tree.
+- **States:** normal; empty ("No {class} cluster under this object."); stale (a location without data is left out and named); loading; error.
 
 ## Findings
 
