@@ -21,7 +21,7 @@ const chip = s => `<span class="chip ${s}">${STATUS[s] || esc(s)}</span>`;
 const PILLARS = ['availability', 'performance', 'capacity', 'security', 'configuration', 'inventory'];
 const PNAME = { summary: 'Summary', availability: 'Availability', performance: 'Performance', capacity: 'Capacity', security: 'Security', configuration: 'Configuration', inventory: 'Inventory' };
 const WINDOWS = [['1h', 'Last hour'], ['24h', 'Last 24 hours'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days'], ['1y', 'Last year']];
-const KIND = { estate: 'Estate', region: 'Region', location: 'Location', vcf_instance: 'VCF instance', workload_domain: 'Workload domain', cluster: 'Cluster', host: 'ESXi host', vm: 'VM', guest_os: 'Guest OS', datastore: 'Datastore', virtual_disk: 'Virtual disk', distributed_switch: 'Distributed switch', port_group: 'Port group', vnic: 'vNIC', class_of_service: 'Class of service', resource_pool: 'Resource pool' };
+const KIND = { estate: 'Estate', region: 'Region', location: 'Location', vcf_instance: 'VCF instance', workload_domain: 'vCenter Server', cluster: 'Cluster', host: 'ESXi host', vm: 'VM', guest_os: 'Guest OS', datastore: 'Datastore', virtual_disk: 'Virtual disk', distributed_switch: 'Distributed switch', port_group: 'Port group', vnic: 'vNIC', class_of_service: 'Class of service', resource_pool: 'Resource pool' };
 const TRIGGER = { complaint: 'Complaint', escalation: 'Escalation from L1', finding: 'Monitoring finding' };
 const GROUP = { correct_it: 'Correct it', update_it: 'Update it', simplify_it: 'Simplify it', optimize_it: 'Optimize it' };
 const DETECTION = { new_check_rule: 'New check rule', new_alert: 'New alert', new_sop: 'New SOP for L1', sop_updated: 'SOP updated', none_with_reason: 'None, with a reason' };
@@ -93,13 +93,35 @@ async function topBar(openCases) {
 }
 
 // ---------------------------------------------------------------- inventory tree (frame.md, Inventory tree)
-const TREE_HIDDEN = new Set(['host', 'resource_pool', 'vm', 'guest_os', 'virtual_disk', 'vnic']);
+const TREE_HIDDEN = new Set(['resource_pool', 'vm', 'guest_os', 'virtual_disk', 'vnic']);
+// vCenter's own object icons, drawn small. Inventory shows what an object is, not how it is doing: no status dot here.
+const IC = (d, extra = '') => `<svg class="ico" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round">${d}${extra}</svg>`;
+const ICONS = {
+  estate: IC('<circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"/>'),
+  region: IC('<path d="M1.5 4.5h4.5l1.5 1.5h7v7.5h-13z"/>'),
+  location: IC('<path d="M2.5 14V6.5L8 3l5.5 3.5V14zM1.5 14h13"/><path d="M5.5 8.5h1.5M9 8.5h1.5M5.5 11h1.5M9 11h1.5"/>'),
+  workload_domain: IC('<rect x="2" y="2" width="12" height="9" rx="1"/><path d="M5 14h6M8 11v3"/><path d="M5 6.5l1.2 1.2L9 5"/>'),
+  vcf_instance: IC('<rect x="2" y="2" width="12" height="9" rx="1"/><path d="M5 14h6M8 11v3"/>'),
+  cluster: IC('<rect x="2" y="2.5" width="12" height="3.5" rx=".6"/><rect x="2" y="7" width="12" height="3.5" rx=".6"/><path d="M4 4.3h1.5M4 8.8h1.5"/><path d="M1 12.5h14"/><path d="M3.5 12.5v1.5M8 12.5v1.5M12.5 12.5v1.5"/>'),
+  host: IC('<rect x="2.5" y="2" width="11" height="12" rx="1"/><path d="M2.5 6h11M2.5 10h11M5 4h1.5M5 8h1.5M5 12h1.5"/><circle cx="11" cy="12" r=".5" fill="currentColor"/>'),
+  resource_pool: IC('<circle cx="8" cy="8" r="6" stroke-dasharray="2 1.6"/><circle cx="8" cy="8" r="2.5"/>'),
+  vm: IC('<path d="M8 1.8l5.5 3v6.4l-5.5 3-5.5-3V4.8z"/><path d="M2.7 4.9L8 8l5.3-3.1M8 8v6"/>'),
+  guest_os: IC('<rect x="2" y="3" width="12" height="9" rx="1"/><path d="M4.5 6l2 1.6-2 1.6M8 9.5h3"/>'),
+  datastore: IC('<ellipse cx="8" cy="4" rx="5.5" ry="2"/><path d="M2.5 4v8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2V4M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2"/>'),
+  virtual_disk: IC('<rect x="2" y="3" width="12" height="10" rx="1"/><circle cx="8" cy="8" r="2.5"/>'),
+  distributed_switch: IC('<rect x="1.5" y="5" width="13" height="6" rx="1"/><path d="M4 8h.01M6.5 8h.01M9 8h.01M11.5 8h.01"/><path d="M4 5V3M12 5V3"/>'),
+  port_group: IC('<circle cx="4" cy="8" r="1.6"/><circle cx="12" cy="4" r="1.6"/><circle cx="12" cy="12" r="1.6"/><path d="M5.5 7.3l5-2.6M5.5 8.7l5 2.6"/>'),
+  vnic: IC('<rect x="2.5" y="4" width="11" height="7" rx="1"/><path d="M5 11v2M8 11v2M11 11v2M5 6.5v1.5M8 6.5v1.5M11 6.5v1.5"/>'),
+  class_of_service: IC('<path d="M8 1.8l1.9 4 4.3.6-3.1 3 .8 4.3L8 11.6l-3.9 2.1.8-4.3-3.1-3 4.3-.6z"/>'),
+  appliance: IC('<rect x="2" y="3" width="12" height="10" rx="1"/><path d="M5 6.5h6M5 9.5h3"/>'),
+};
+const icon = kind => `<span class="ic k-${esc(kind)}" title="${esc(KIND[kind] || kind)}">${ICONS[kind] || ICONS.vm}</span>`;
 const treeQ = node => `view=${R.view}&node=${enc(node)}&activity=${['improve', 'troubleshoot'].includes(R.activity) ? R.activity : 'monitor'}&pillar=${R.pillar || 'summary'}&window=${R.window || '24h'}`;
 function treeItems(rows, openPath, levels, selected) {
   return rows.map(r => {
     const open = openPath.includes(r.id) && levels[r.id];
     return `<li data-node="${esc(r.id)}"><div class="item"><button type="button" class="caret" aria-label="Expand ${esc(r.name)}" aria-expanded="${open ? 'true' : 'false'}"${r.expandable ? '' : ' hidden'}>${open ? '▾' : '▸'}</button>
-      <a class="node" data-obj="${esc(r.id)}" href="${objURL(r.id)}"${r.id === selected ? ' aria-current="true"' : ''} title="${esc(r.name)}"><span class="dot ${r.status}" aria-label="${STATUS[r.status] || r.status}"></span><span class="nm">${esc(r.name)}</span>${r.open_cases ? `<span class="badge" title="Open cases">${r.open_cases}</span>` : ''}</a></div>
+      <a class="node" data-obj="${esc(r.id)}" href="${objURL(r.id)}"${r.id === selected ? ' aria-current="true"' : ''} title="${esc(r.name)}">${icon(r.kind)}<span class="nm">${esc(r.name)}</span>${r.open_cases ? `<span class="badge" title="Open cases">${r.open_cases}</span>` : ''}</a></div>
       ${open ? `<ul>${treeItems(levels[r.id], openPath, levels, selected)}</ul>` : ''}</li>`;
   }).join('');
 }
@@ -110,7 +132,7 @@ async function tree() {
   const first = await getTree(treeQ(R.object));
   if (first.node.view !== R.view) R.view = first.node.view;
   const path = first.node.path.map(p => p.id);
-  const visible = path.filter((id, i) => i === 0 || !TREE_HIDDEN.has(first.node.path[i].kind) || (R.view === 'management' && first.node.path[i].kind === 'vm'));
+  const visible = path.filter((id, i) => { const k = first.node.path[i].kind; return i === 0 || (!TREE_HIDDEN.has(k) || (R.view === 'management' && k === 'vm')) && !(R.view === 'compute' && k === 'vcf_instance'); });
   const selected = visible[visible.length - 1];
   const levels = {};
   const ids = visible.filter(id => id !== R.object);
@@ -120,7 +142,7 @@ async function tree() {
   const root = levels.estate || [];
   box.innerHTML = `<label for="view">View</label><select id="view">${first.views.map(v => `<option value="${v.id}"${v.id === R.view ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select>
     <label for="find">Search</label><input id="find" type="text" placeholder="Name of any object" autocomplete="off"><ul class="results" id="results"></ul>
-    <ul><li data-node="estate"><div class="item"><span class="caret" hidden></span><a class="node" data-obj="estate" href="${objURL('estate')}"${selected === 'estate' ? ' aria-current="true"' : ''}><span class="dot ${['red', 'amber', 'no_data'].find(s => root.some(r => r.status === s)) || 'green'}"></span><span class="nm">ACME estate</span>${first.open_cases && R.object === 'estate' ? `<span class="badge">${first.open_cases}</span>` : ''}</a></div>
+    <ul><li data-node="estate"><div class="item"><span class="caret" hidden></span><a class="node" data-obj="estate" href="${objURL('estate')}"${selected === 'estate' ? ' aria-current="true"' : ''}>${icon('estate')}<span class="nm">ACME estate</span>${first.open_cases && R.object === 'estate' ? `<span class="badge">${first.open_cases}</span>` : ''}</a></div>
     <ul>${treeItems(root, visible, levels, selected)}</ul></li></ul>`;
   TREE = { view: R.view, object: R.object, selected };
   document.getElementById('view').addEventListener('change', e => { go(url({ view: e.target.value, object: 'estate', caseId: undefined, newComplaint: undefined, activity: ['monitor', 'improve', 'troubleshoot'].includes(R.activity) ? R.activity : 'monitor', pillar: R.pillar || 'summary' })); });

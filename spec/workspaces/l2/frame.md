@@ -46,10 +46,10 @@ api: /api/l2/tree
 ```
 
 - **Left pane.** A view picker above the tree: Compute (default), Storage, Network, Class of service, Management.
-- **The root is the estate.** The tree expands down to the cluster. A cluster's hosts, a host's VMs and a VM's Guest OS are listed in the content area, worst first, not in the tree.
+- **The root is the estate.** In Compute the tree follows vCenter: Region (folder), Location (datacenter), vCenter Server (one per workload domain), Cluster, ESXi host. The VCF instance is not a level. A host's VMs and a VM's Guest OS are listed in the content area, not in the tree.
+- **Each object has its vCenter icon,** so the tree reads like the vSphere Client.
 - **Each node shows:**
-  - its name;
-  - a status dot for the current pillar and window (Summary uses the worst pillar);
+  - its name and icon. No status dot: in a large estate the upper levels are always red, and a dot that never changes carries nothing;
   - the count of open cases on it and below it, when there are any.
 - **Children are sorted by activity** (l2.tree child_sort): Monitor worst first; Troubleshoot open cases first; Improve largest opportunity first.
 - **Selecting a node** changes the object of the current page and keeps the activity, pillar and window.
