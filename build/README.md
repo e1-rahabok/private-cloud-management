@@ -148,6 +148,13 @@ Third L2 build: the workspace is rebuilt around three activities, **Monitor, Tro
 - **Speed:** the specification files were parsed again on every call, about 0.3 s each. They are now parsed once per change. The estate summary answers in about 1.5 s, other L2 calls in 0.1 to 0.5 s.
 - **Still planted:** the chains for planted stories come from the story file, because Agent E2's flow executor is not called yet. A complaint about any other VM runs a generic SP5 order on that VM's counters.
 
+**The Capacity tab (D-094, D-095, D-096):** `pcm_proto/l2_capacity.py`. The snapshot table (CPU and memory average and 95th across hosts, "imbalance") is gone.
+- **On a cluster:** the verdict of the PCM adapter's Periodic Cluster Check in words, with the rule that matched ("Closed for new VMs since the check of 19 Oct. Consumption 82% is above 80%."), beside "Contention now" from the last hour. Three charts in the rule's order (Cluster Consumption, Performance, Risk) with the closure levels, Now, Worst, 95th percentile and the check value named by its percentile ("95th percentile, 24 hours to 19 Oct, 00:00 UTC"). The check strip, one cell per check. What consumption is made of, usable capacity (total, HA, buffer), the spread between hosts (highest and lowest, no average), the hosts worst first. A host or VM shows its cluster's page with its host marked.
+- **Above the cluster:** Gold first, always. Clusters closed per check, the highest Cluster Consumption and its 90th percentile, near closure (open, above 60%), and every cluster at a clicked time. No total, no forecast word; one link to the Capacity workspace.
+- **Story M-4:** LD-B-01 shows red at 77 and stays open, then closes at 82; FR-B-04 drifts up (a 7-day finding); FR-B-03 is near closure and steady. FR-S-02 (N-1) is open at the check with contention now at 22.
+- **One definition:** each Consumption check value is exactly the 95th percentile of that day's 5-minute points. Performance and Risk are the Performance tab's own series; their check values come from it, so both tabs show one number. Found in review: the first cut drew Performance from that series but took its check value from a separate model (77.5 against 87); fixed.
+- **Found in review and fixed:** "Contention now" said 22 while the chart's last point said 31; the last point is now the NOC's value now. A closed cluster's chip had no finding row in the 7-day window; the window now links to the daily finding instead of repeating it. An old daily finding quoted the Capacity workspace's decision date on L2; it now names no date.
+
 **Policy as code (D-079):** the trust ladder is gone. Action policies (tier and guardrails, versioned, owned) decide what runs automatically. The approval record is evidence only. "Propose a policy change" replays against history before Publish. The L-4 move runs automatically under v2, with the policy owner and version as its accountable party and no approval record.
 
 **Capacity engine:** decision dates on every page now come from `pcm_proto/capacity.py` (13-month forecast, usable capacity, purchase plan). They are no longer planted from stories.
@@ -166,7 +173,7 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 
 - **SP5 host specification:** Silver fits 25.9 VMs on a 64-core, 768 GB host; memory binds; the matching DRAM is 839 GB. Gold 520 GB, Bronze 660 GB.
 - **This week:** FR-Silver's decision moved 130 days earlier because of the OpenShift migration entry.
-- **Contention:** FR-Silver says "Full now: VMs waiting" on FR-S-02 (score 22, the NOC's own number).
+- **The check overrides the forecast (D-094):** LD-Bronze says "Closed for new VMs: LD-B-01", read from the Periodic Cluster Check, the same verdict as L2's Capacity tab. "Full now: VMs waiting" is gone: placement sends new VMs elsewhere, nothing waits. FR-S-02's contention of the last 20 minutes is L2's and the NOC's, not this page's (no live data, Capacity design 3.16).
 - **Peak warning:** TK-Silver's March close week crosses usable memory; the 90-day trend sees no run-out. Amber chip, no purchase.
 - **Waste:** TK-Gold in dark grey. Reclaiming SG-Silver moves it out of the round: cost avoidance $3,588,000, the same number as the Executive cost card.
 - **Hardware refresh:** London, 90 old hosts to 75 new ones, covers next year's growth; licensed cores rise from 3,600 to 4,800.

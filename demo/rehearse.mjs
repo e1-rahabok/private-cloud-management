@@ -132,8 +132,8 @@ try {
   step('7 Capacity: FR-Silver 130 days earlier because of the OpenShift migration', /130 days earlier/.test(moved) && /dr-ocp-wave-2/.test(moved), moved);
   await shot('7-capacity-week');
   await go('/capacity/clusters');
-  const fr = await page.innerText('[data-row="FR-Silver"]');
-  step('7 Capacity: FR-Silver full now on FR-S-02 at 22', /Full now: VMs waiting/.test(fr) && /FR-S-02 \(score 22\)/.test(fr), fr.replace(/\s+/g, ' '));
+  const ldb = await page.innerText('[data-row="LD-Bronze"]');
+  step('7 Capacity: LD-Bronze closed for new VMs on LD-B-01', /Closed for new VMs/.test(ldb) && /LD-B-01/.test(ldb), ldb.replace(/\s+/g, ' '));
   await shot('7-capacity-clusters', true);
   await go('/capacity/waste');
   const avoid = await page.getAttribute('[data-avoid]', 'data-avoid');

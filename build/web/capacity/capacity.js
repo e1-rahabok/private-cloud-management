@@ -70,10 +70,10 @@ async function clusters() {
   const d = await getJSON('groups'); stamp(d.now);
   const rows = d.groups.map(g => `<tr data-row="${g.id}"><td>${groupLink(g.id)}</td><td>${RES[g.tightest]}</td><td class="num">${g.remaining_percent}%</td>
     <td>${fmtDate(g.run_out_date)}</td><td>${g.decision_days != null && g.decision_days < 0 ? 'Overdue since ' + fmtDate(g.decision_date) : fmtDate(g.decision_date)}</td><td>${quadChip(g)}</td>
-    <td>${g.full_now ? `<span class="full">Full now: VMs waiting</span> on ${g.full_now.map(c => `${esc(c.cluster)} (score ${Math.round(c.score)})`).join(', ')}` : ''}</td></tr>`).join('');
+    <td>${g.closed_for_new_vms.length ? `<span class="full">Closed for new VMs</span>: ${g.closed_for_new_vms.map(c => `${esc(c.cluster)} (since ${fmtDate(c.since)})`).join(', ')}` : ''}</td></tr>`).join('');
   main.innerHTML = `<h1>Cluster groups</h1><p class="lead">One dot per cluster group, read from its tightest resource. Never a location total.</p>
     ${block('Remaining capacity against time remaining', 'Which cluster groups need a decision, and by when?', scatter(d.groups, d.horizon_days))}
-    <section class="block"><table><thead><tr><th>Group</th><th>Tightest</th><th class="num">Remaining</th><th>Run-out</th><th>Decision by</th><th>Status</th><th>Now</th></tr></thead><tbody>${rows}</tbody></table></section>`;
+    <section class="block"><table><thead><tr><th>Group</th><th>Tightest</th><th class="num">Remaining</th><th>Run-out</th><th>Decision by</th><th>Status</th><th>At the latest check</th></tr></thead><tbody>${rows}</tbody></table></section>`;
 }
 
 // ---------------------------------------------------------------- /capacity/group/{id}
@@ -121,7 +121,7 @@ async function group() {
   const reg = d.register.length ? `<table><thead><tr><th>Entry</th><th>Kind</th><th>Source</th><th>Date</th><th class="num">Threads</th><th class="num">GB</th><th class="num">TB</th><th>Owner</th></tr></thead><tbody>${d.register.map(r => `<tr><td>${esc(r.id)}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc(r.source)}</td><td>${fmtDate(r.date)}</td><td class="num">${n0(r.compute_threads || 0)}</td><td class="num">${n0(r.memory_gb || 0)}</td><td class="num">${n0(r.storage_tb || 0)}</td><td>${esc(r.owner)}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">No register entry for this group.</p>';
   main.innerHTML = `<h1>${esc(d.id)} ${quadChip(d)}</h1><p class="lead">${esc(d.location_name)}, ${d.hosts} hosts in ${d.clusters} clusters. Tightest: ${RES[d.tightest].toLowerCase()}. Decision ${decideBy(d)} (${d.lead_time_days} days lead time).
-    ${d.full_now ? `<br><span class="full">Full now: VMs waiting</span> on ${d.full_now.map(c => esc(c.cluster)).join(', ')}, whatever the forecast says.` : ''}</p>
+    ${d.closed_for_new_vms.length ? `<br><span class="full">Closed for new VMs</span> at the latest check: ${d.closed_for_new_vms.map(c => `${esc(c.cluster)} (since ${fmtDate(c.since)})`).join(', ')}, whatever the forecast says.` : ''}</p>
     ${block('Usable capacity', 'How does total capacity become usable capacity?', `<div class="res3">${wf}</div>`)}
     ${block('Forecast', 'When does it run out, and what does a 90-day view miss?', `<div class="res3">${fc}</div>`)}
     ${block('Demand register', 'What demand is coming that the data cannot show?', reg)}`;

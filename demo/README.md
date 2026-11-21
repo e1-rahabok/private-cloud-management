@@ -148,9 +148,9 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 
 **Click:** "Cluster groups".
 
-**Point at:** FR-Silver says **Full now: VMs waiting on FR-S-02 (score 22)**. The same cluster, the same score as the NOC wall.
+**Point at:** LD-Bronze says **Closed for new VMs: LD-B-01**. The same verdict as L2's Capacity tab, read from the daily check.
 
-**Say:** "A forecast that says thirteen months left is wrong if VMs are waiting today. Contention overrides the forecast."
+**Say:** "A forecast that says months left is wrong if the cluster cannot take a new VM today. The check overrides the forecast. Placement already sends new VMs elsewhere."
 
 **Click:** "Waste". Reclaiming idle and oversized VMs in SG-Silver moves it out of the next purchase round: **cost avoidance $3,588,000**. The CIO page shows the same number, rounded: "Could still avoid in the next purchase round: $3.6M" (Value, Cost, See detail).
 

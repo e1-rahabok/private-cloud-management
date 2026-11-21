@@ -204,7 +204,7 @@ reads: [l2.findings, l2.slipped_alerts]
 - **Capacity findings** (l2.capacity_findings, D-094):
   - 24-hour window: a cluster closed at the latest check. Closed on Consumption alone: amber, "Improve this". Closed with Performance red, or by rule 2: red, "Troubleshoot this".
   - 7-day window: a cluster whose check Consumption drifts up, by the drift rule (l2.findings), while still open: amber, "Improve this".
-  - Every chip on the Capacity tab has a finding row under it, and every capacity finding has its chip. "Nothing needs you under this object" never shows beside a capacity chip.
+  - Every chip on the Capacity tab has a finding row under it, and every capacity finding has its chip. Outside the 24-hour window, a closed cluster's finding is the daily one: a line links to it, never a repeat. "Nothing needs you under this object" never shows beside a capacity chip.
 - **Explained by the calendar:** the entry is named, and the finding sorts last.
 - **24-hour window:** the daily check's findings. **7-day window:** what a day cannot show, never a repeat of a daily finding.
 - **Alerts that slipped through:** alerts no finding predicted, each with "What would have caught it" and a link to Rules.

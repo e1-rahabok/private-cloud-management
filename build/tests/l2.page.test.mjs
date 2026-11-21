@@ -1,4 +1,4 @@
-// Page tests LPG-2 to LPG-16 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
+// Page tests LPG-2 to LPG-19 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
 // GENERATED from spec/tests/l2.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/l2.page.test.mjs
 import { spawn } from 'node:child_process';
@@ -26,7 +26,11 @@ const PAGES = ['/l2', '/l2/monitor/compute/estate/performance', '/l2/monitor/com
   '/l2/monitor/compute/estate/security', '/l2/monitor/compute/estate/configuration', '/l2/monitor/compute/estate/inventory', '/l2/monitor/compute/estate/availability',
   '/l2/monitor/compute/estate/summary?window=1y', '/l2/monitor/compute/sg-app-117/performance', '/l2/monitor/storage/estate/performance',
   '/l2/troubleshoot/compute/estate', '/l2/troubleshoot/new', '/l2/troubleshoot/case/case-sg-app-117', '/l2/troubleshoot/case/case-inc-tk-s-03',
-  '/l2/improve/compute/estate/summary', '/l2/improve/compute/estate/configuration', '/l2/improve/compute/estate/capacity', '/l2/rules', '/l2/calendar'];
+  '/l2/improve/compute/estate/summary', '/l2/improve/compute/estate/configuration', '/l2/improve/compute/estate/capacity', '/l2/rules', '/l2/calendar',
+  '/l2/monitor/compute/LD-B-01/capacity?window=7d', '/l2/monitor/compute/wld-fr-gen/capacity?window=7d&class=bronze', '/l2/monitor/compute/FR-S-02/capacity'];
+const CAPACITY_PAGES = ['/l2/monitor/compute/LD-B-01/capacity?window=7d', '/l2/monitor/compute/LD-B-01/capacity', '/l2/monitor/compute/wld-fr-gen/capacity?window=7d&class=bronze',
+  '/l2/monitor/compute/wld-fr-gen/capacity', '/l2/monitor/compute/estate/capacity?class=all', '/l2/monitor/compute/FR-S-02/capacity', '/l2/monitor/compute/ld-esx-202/capacity?window=30d'];
+const capAvoided = readFileSync(ROOT + 'spec/catalog/vocabulary/l2.yaml', 'utf8').match(/^capacity_tab_avoided:\s*\[(.*)\]/m)[1].split(',').map(w => w.trim());
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on('request', r => hosts.add(new URL(r.url()).host));
@@ -123,6 +127,55 @@ try {
   const head = await page.getAttribute('h3[data-at]', 'data-at');
   check('LPG-14', sections.join() === 'vm,cluster' && gold === 'Gold' && !!atParam && head === atParam && (await page.innerText('h3[data-at]')).includes('the time you picked'), `${sections}; ${gold}; at=${atParam}`);
 
+  // LPG-17 a cluster's Capacity tab: the verdict, the three KPIs in the rule's order, the strip, statistics named
+  await go('/l2/monitor/compute/LD-B-01/capacity?window=7d');
+  const capOrder = await page.evaluate(() => [...document.querySelectorAll('[data-verdict], [data-kpi], [data-strip]')].map(e => e.dataset.verdict ? 'verdict' : e.dataset.kpi || 'strip'));
+  const verdictText = await page.innerText('[data-verdict]');
+  const kpiLabels = await page.$$eval('[data-kpi] dt', xs => xs.map(x => x.textContent.trim()));
+  const checkLabels = await page.$$eval('[data-check-label]', xs => xs.map(x => x.textContent.trim()));
+  const cells = await page.$$eval('[data-strip] .cell', xs => xs.map(x => x.className.replace('cell', '').trim()));
+  const refs = await page.$$eval('[data-kpi] .legend', xs => xs.map(x => x.textContent));
+  const capText = await page.innerText('main');
+  const chipsCap = await page.$$eval('[data-section="capacity-cluster"] .chip', xs => xs.map(x => x.textContent.trim()));
+  const capFindings = await page.$$eval('.finding', xs => xs.length) + await page.$$eval('[data-daily-finding] a', xs => xs.length);
+  check('LPG-17', capOrder.join() === 'verdict,consumption,performance,risk,strip' && /^Closed for new VMs since the check of .* Consumption 82% is above 80%\./.test(verdictText)
+    && checkLabels.length === 3 && checkLabels.every(l => /^95th percentile, 24 hours to /.test(l)) && !checkLabels.some(l => /Worst/.test(l))
+    && ['Now', 'Worst', '95th percentile'].every(k => kpiLabels.includes(k)) && cells.length === 7 && cells[6] === 'closed'
+    && refs.every(r => /Closes (above|below)/.test(r)) && !/average/i.test(capText) && chipsCap.includes('Closed for new VMs') && capFindings >= 1 && !/Nothing needs you under this object/.test(capText),
+    `${capOrder}; ${verdictText.slice(0, 80)}; cells ${cells.length}; findings ${capFindings}`);
+
+  // LPG-18 no forecast word on any Capacity tab; one link to the Capacity workspace
+  const capBad = [];
+  for (const p of CAPACITY_PAGES) {
+    await go(p);
+    const t = await page.innerText('#panel');
+    for (const w of capAvoided) {
+      const re = w === 'imbalance' ? /(?<!CPU )\bimbalance\b/i : new RegExp(`\\b${w}\\b`, 'i');
+      if (re.test(t)) capBad.push(`${p}: ${w}`);
+    }
+    const links = await page.$$('[data-months-ahead] a[href^="/capacity"]');
+    if (links.length !== 1) capBad.push(`${p}: ${links.length} links to the Capacity workspace`);
+  }
+  check('LPG-18', capBad.length === 0, capBad.slice(0, 4).join(' | ') || `${CAPACITY_PAGES.length} Capacity tabs, no forecast word`);
+
+  // LPG-19 the group page: Gold first, empty; Bronze one click away; a time and a cluster picked by click
+  await go('/l2/monitor/compute/wld-fr-gen/capacity?window=7d');
+  const goldSel = await page.innerText('nav[aria-label="Class of service"] a[aria-current="true"]');
+  const empty = await page.innerText('[data-empty]').catch(() => '');
+  await Promise.all([page.waitForURL(/class=bronze/), page.click('nav[aria-label="Class of service"] a[data-cls="bronze"]')]); await page.waitForSelector('body[data-ready="1"]');
+  const capU1 = new URL(page.url());
+  const capHit = page.locator('[data-chartbox="capspread"] rect.hit'); await capHit.scrollIntoViewIfNeeded();
+  const cb = await capHit.boundingBox();
+  await Promise.all([page.waitForURL(/[?&]at=/), capHit.click({ position: { x: cb.width * 0.6, y: 20 } })]); await page.waitForSelector('body[data-ready="1"]');
+  const capAt = new URL(page.url()).searchParams.get('at');
+  const capHead = await page.getAttribute('h3[data-at]', 'data-at');
+  const capHeadText = await page.innerText('h3[data-at]');
+  await Promise.all([page.waitForURL(/FR-B-04\/capacity/), page.click('tr[data-cluster-at="FR-B-04"] a')]); await page.waitForSelector('body[data-ready="1"]');
+  const capU2 = new URL(page.url());
+  check('LPG-19', goldSel === 'Gold' && empty === 'No Gold cluster under this object.' && capU1.pathname.endsWith('/wld-fr-gen/capacity') && capU1.searchParams.get('window') === '7d'
+    && !!capAt && capHead === capAt && capHeadText.includes('the time you picked') && capU2.searchParams.get('window') === '7d',
+    `${goldSel}; ${empty}; ${capU1.pathname}; at=${capAt}; ${capU2.pathname}${capU2.search}`);
+
   // LPG-15 a VM's Performance tab: two layers, statistics named, units after numbers
   await go('/l2/monitor/compute/fr-app-1272/performance?group=host_model');
   const tabsText = (await page.$$eval('nav.tabs a', xs => xs.map(x => x.textContent.trim()))).join();
@@ -173,7 +226,7 @@ try {
     return fails;
   });
   const fails = [];
-  for (const p of ['/l2', '/l2/monitor/compute/ld/performance?window=7d&group=host_model', '/l2/troubleshoot/compute/estate', '/l2/troubleshoot/case/case-inc-tk-s-03', '/l2/improve/compute/estate/summary', '/l2/rules', '/l2/calendar']) {
+  for (const p of ['/l2', '/l2/monitor/compute/ld/performance?window=7d&group=host_model', '/l2/monitor/compute/LD-B-01/capacity?window=7d', '/l2/monitor/compute/wld-fr-gen/capacity?window=7d&class=bronze', '/l2/troubleshoot/compute/estate', '/l2/troubleshoot/case/case-inc-tk-s-03', '/l2/improve/compute/estate/summary', '/l2/rules', '/l2/calendar']) {
     await go(p); fails.push(...(await contrast()).map(f => `${p}: ${f}`));
   }
   const foreign = [...hosts].filter(h => h !== `127.0.0.1:${PORT}`);
@@ -185,6 +238,7 @@ try {
   shot.on('dialog', d => d.accept('Reason given in the test'));
   for (const [p, name, full] of [['/l2', 'l2-monitor-estate', false], ['/l2/monitor/compute/ld/performance?window=7d&group=host_model', 'l2-monitor-group-by', false],
     ['/l2/monitor/compute/estate/performance', 'l2-monitor-performance', true],
+    ['/l2/monitor/compute/LD-B-01/capacity?window=7d', 'l2-monitor-capacity-cluster', true], ['/l2/monitor/compute/wld-fr-gen/capacity?window=7d&class=bronze', 'l2-monitor-capacity-group', true],
     ['/l2/troubleshoot/compute/estate', 'l2-troubleshoot-cases', false], ['/l2/troubleshoot/case/case-inc-tk-s-03', 'l2-case-escalation', true],
     ['/l2/troubleshoot/case/case-sg-app-117', 'l2-case-guest-os', true], ['/l2/improve/compute/estate/summary', 'l2-improve', false], ['/l2/rules', 'l2-rules', false]]) {
     await shot.goto(BASE + withNow(p)); await shot.waitForSelector('body[data-ready="1"]', { timeout: 60000 });

@@ -223,7 +223,7 @@ def daily(now: datetime, enable=()) -> dict:
         d = ds["locations"]["sg"]["decision"]
         f.append({"id": "f-sg-silver", "verdict": "risk", "pillar": "capacity", "severity": "amber",
                   "object": "SG-Silver", "object_type": "cluster_group", "parent_chain": ["Singapore", "SG-Silver"],
-                  "summary": f"Memory decision date in {d['days']} days; already in the next purchase round."})
+                  "summary": "Memory is the tightest resource, and the Capacity workspace already has it in the next purchase round."})
     if "L-6" in act:
         qe = next(c for c in cal if c["kind"] == "quarter_end_close")
         f.append({"id": "f-va-s-03", "verdict": "risk", "pillar": "capacity", "severity": "amber",

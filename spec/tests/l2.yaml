@@ -134,10 +134,10 @@ story:
       outcomes: { f-fr-s-02: problem, f-va-esx-142: improve, f-sg-silver-waste: improve, f-m2-other-wait: problem }
   - id: LST-4
     name: The 7-day window adds what a day cannot show, and never repeats a daily finding
-    stories: [L-5, L-8, L-9, L-10, M-1]
+    stories: [L-5, L-8, L-9, L-10, M-1, M-4]
     expect:
-      kinds: { SG-DS-11: slow_drift, sg-db-044: hidden_in_average, va-db-033: hidden_in_average, LD-B-01: configuration_drift, ld: slow_drift }
-      none_repeats_a_daily_finding: true
+      kinds: { SG-DS-11: slow_drift, sg-db-044: hidden_in_average, va-db-033: hidden_in_average, LD-B-01: configuration_drift, ld: slow_drift, FR-B-04: heading_to_closed }
+      none_repeats_a_daily_finding: "no object has the same pillar in both windows; LD-B-01 has configuration (7 days) and capacity (24 hours), two findings"
   - id: LST-5
     name: Group by host model finds the shared cause
     story: M-1
@@ -274,7 +274,7 @@ story:
     story: M-4
     given: { object: wld-fr-gen, window: 7d, class: bronze }
     expect:
-      without_class: { class: gold, empty: "No gold cluster under this object." }
+      without_class: { class: gold, empty: "No Gold cluster under this object." }
       closed_latest: 0
       near_closure: [FR-B-03, FR-B-04]
       near_closure_words: rising
@@ -353,8 +353,8 @@ page:
       On LD-B-01's Capacity tab (7 days) the verdict comes first in words, then three charts in the order Cluster Consumption,
       Cluster Performance, Cluster Risk on one time axis with the closure levels drawn, then the check strip with 7 cells, the
       last one closed. Each chart has Now, Worst and 95th percentile; the check value is labelled with its percentile and period,
-      never "Worst". No chart has an average line. Every capacity chip on the page has a finding row, and "Nothing needs you
-      under this object" is not shown.
+      never "Worst". No chart has an average line. Every capacity chip on the page has a finding row, or outside the 24-hour
+      window a link to its daily finding, and "Nothing needs you under this object" is not shown.
     decisions: [D-094, D-095]
   - id: LPG-18
     rule: >
