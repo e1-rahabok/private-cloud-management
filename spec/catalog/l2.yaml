@@ -84,12 +84,10 @@ entries:
 
   l2.consumer_hits:
     description: >
-      For the VMs in scope (under the node, of the selected class of service): at each point of the window, how many
-      VMs were below green, and how many different VMs were below green since the window started. A second line
-      climbing while the first stays low means different VMs took turns. A point holds the worst value inside it.
+      For the VMs in scope (under the node, of the selected class of service): how many different VMs were below
+      green in the window, and the most below green at once, with the time. Counts only; no series (D-091).
     kpi: "VM Performance (vCommunity|VM Performance|VM Performance Score), 20-second peaks"
     below_green: "VM Performance below 75"
-    points: { "1h": "5 minutes", "24h": "5 minutes", "7d": "1 hour", "30d": "4 hours", "1y": "1 day" }
     decisions: [D-091]
 
   l2.worst_vms:

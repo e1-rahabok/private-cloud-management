@@ -196,7 +196,7 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
 - **Two perspectives, consumer first:** VM, then Cluster. Cluster Performance is made of VM contention, so the VM section explains the cluster lines underneath.
 - **One class of service filter** scopes both sections. Gold by default. Silver, Bronze and All (the vSphere World view) are one click away.
 - **VM section:**
-  - **Hit over time:** one chart, one count axis, two lines. VMs below green at each time, and different VMs hit since the start of the window. The second line climbing while the first stays low means VMs took turns.
+  - **No VM chart.** A count-over-time chart does not scale to a large estate. The table below carries the detail.
   - **In words:** "412 different VMs were hit; never more than 37 at once."
   - **Worst VMs:** the VM, its worst VM Performance, the time, its cluster and location, and how many other VMs were hit in the same 5 minutes. The same time on many rows points to something common; the cluster lines should show it. Different times point to one cluster or one VM.
   - **Just above the line:** the iceberg (4.2).

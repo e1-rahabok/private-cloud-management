@@ -344,15 +344,10 @@ function perfTab(p, d) {
     ${sel.default ? '' : `<a class="link" href="${url({ at: '' })}">Back to the worst time</a>`}</div>
     ${p.stale_locations.length ? `<p class="why">No data from ${esc(p.stale_locations.join(', '))}. Left out, never counted as green.</p>` : ''}`;
   // VM
-  const vmChart = lineChart('vm', C.points, [
-    { key: 'below_green', label: 'VMs below green at that time', short: 'At that time', color: 'var(--series-1)' },
-    { key: 'different', label: 'Different VMs hit since the window started', short: 'Different', color: 'var(--series-2)', dash: true }],
-    { label: `${cls} VMs hit over the window`, minutes: m, selected: sel.default ? null : sel.index });
   const vmRows = C.worst_vms.map(v => `<tr data-vm="${esc(v.vm)}"><td>${objLink(v.vm)}</td><td class="num">${v.vm_performance}</td><td>${chip(v.status)}</td><td>${esc(fmtPoint(v.at, 5))}</td><td>${objLink(v.cluster)}</td><td>${esc(v.location)}</td><td class="num">${n0(v.together)}</td></tr>`).join('');
   let vm = `<section class="persp" data-section="vm"><h2>VM <span class="muted">consumer</span></h2>
     <p>${C.vms ? `${n0(C.different)} different ${esc(cls)} VMs were below green in the window, of ${n0(C.vms)}. Never more than ${n0(C.most_at_once)} at once, at ${esc(fmtPoint(C.most_at, m))}.` : `No ${esc(cls)} VM under this object.`}
     ${C.vms ? ` ${n0(C.near_line)} sit just above the line (75 to 80) over the window.` : ''}</p>
-    ${C.vms ? vmChart : ''}
     <h3>${sel.default ? 'Worst VMs in the window' : `VMs below green at ${esc(when)}`} <span class="muted">${n0(C.worst_vms_total)} in all${C.worst_vms_total > C.worst_vms.length ? `, the worst ${C.worst_vms.length} shown` : ''}</span></h3>
     ${C.worst_vms.length ? `<table class="data" data-worst-vms><thead><tr><th>VM</th><th class="num">VM Performance</th><th>Status</th><th>Time</th><th>Cluster</th><th>Location</th><th class="num">Other VMs hit in the same 5 minutes</th></tr></thead><tbody>${vmRows}</tbody></table>
     <p class="muted">The same time on many rows: something common hit them. Different times: one cluster, or one VM.</p>` : `<p class="muted">No ${esc(cls)} VM was below green${sel.default ? ' in the window' : ' at that time'}.</p>`}
