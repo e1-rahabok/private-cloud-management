@@ -127,7 +127,7 @@ On a VM, the tab shows detail. The Guest OS runs on top of the Virtual Motherboa
 question: "Can this cluster take more VMs now, what is driving it, and is it heading to closed?"
 role: l2
 cadence: [daily, weekly]
-reads: [l2.cluster_check, l2.contention_now, l2.cluster_kpi_series, l2.consumption_parts, l2.usable_capacity, l2.host_spread, l2.capacity_hosts]
+reads: [l2.cluster_check, l2.contention_now, noc.cluster_performance, l2.cluster_kpi_series, l2.consumption_parts, l2.usable_capacity, l2.host_spread, l2.capacity_hosts]
 api: /api/l2/monitor/{view}/{object}/capacity
 decisions: [D-094, D-095]
 ```
@@ -161,7 +161,7 @@ On a cluster. On a host, VM or Guest OS, the tab shows its cluster's page with t
 question: "How many clusters are closed or near closure, is that rising, and how wide is the pressure?"
 role: l2
 cadence: [daily, weekly]
-reads: [l2.closed_count, l2.consumption_spread, l2.near_closure, l2.capacity_clusters_at, l2.cluster_check]
+reads: [l2.closed_count, l2.consumption_spread, l2.near_closure, l2.capacity_clusters_at, l2.cluster_check, l2.contention_now, noc.cluster_performance]
 api: /api/l2/monitor/{view}/{object}/capacity
 decisions: [D-091, D-094, D-095]
 ```
