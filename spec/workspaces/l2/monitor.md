@@ -5,7 +5,7 @@ role: l2
 cadence: [daily, weekly, monthly]
 vocabulary: catalog/vocabulary/l2.yaml
 design: design/l2-workspace.md
-decisions: [D-039, D-042, D-083, D-086, D-088, D-091, D-092, D-093, D-094]
+decisions: [D-039, D-042, D-083, D-086, D-088, D-091, D-092, D-094, D-095]
 ---
 
 # L2 Monitor
@@ -48,7 +48,7 @@ api: /api/l2/monitor/{view}/{object}/{pillar}
 - **Pillar content:**
   - **Availability** (l2.availability_events): VMs down this month, counted or not; hosts not connected; HA restarts.
   - **Performance:** as above at the cluster and below. Above the cluster: the next section.
-  - **Capacity:** the next two sections (D-093). Never a snapshot table.
+  - **Capacity:** the next two sections (D-094). Never a snapshot table.
   - **Security** (l2.security_hygiene): hosts with SSH or ESXi Shell on outside a window, lockdown off, root logins, certificates near expiry.
   - **Configuration** (l2.configuration_variance): drift against the standard, and the variance across peers (ESXi builds, VMware Tools versions) with counts.
   - **Inventory** (provider objects only; l2.inventory_counts, l2.change_explanation): children by type with the change over the window; distribution across children; unexplained changes listed one by one, production and Gold first, with "This was expected" (reason required); explained changes counted by type.
@@ -129,7 +129,7 @@ role: l2
 cadence: [daily, weekly]
 reads: [l2.cluster_check, l2.waiting_now, l2.cluster_kpi_series, l2.consumption_parts, l2.usable_capacity, l2.host_spread, l2.capacity_hosts]
 api: /api/l2/monitor/{view}/{object}/capacity
-decisions: [D-093, D-094]
+decisions: [D-094, D-095]
 ```
 
 On a cluster. On a host, VM or Guest OS, the tab shows its cluster's page with the host marked. L2 design, 4.3.3 and 4.3.4.
@@ -163,7 +163,7 @@ role: l2
 cadence: [daily, weekly]
 reads: [l2.closed_count, l2.consumption_spread, l2.near_closure, l2.capacity_clusters_at, l2.cluster_check]
 api: /api/l2/monitor/{view}/{object}/capacity
-decisions: [D-091, D-093, D-094]
+decisions: [D-091, D-094, D-095]
 ```
 
 On every node above the cluster: estate, region, location, VCF instance, workload domain, class of service. L2 design, 4.3.5.
@@ -202,7 +202,7 @@ reads: [l2.findings, l2.slipped_alerts]
 - **Where it goes** (l2.findings outcomes):
   - a problem: **"Troubleshoot this"**, which opens a case with the finding as its trigger; once open, a link to the case;
   - an opportunity or a risk: **"Improve this"**, which opens Improve on the same object and pillar.
-- **Capacity findings** (l2.capacity_findings, D-093):
+- **Capacity findings** (l2.capacity_findings, D-094):
   - 24-hour window: a cluster closed at the latest check. Closed on Consumption alone: amber, "Improve this". Closed with Performance red, or by rule 2: red, "Troubleshoot this".
   - 7-day window: a cluster whose check Consumption drifts up, by the drift rule (l2.findings), while still open: amber, "Improve this".
   - Every chip on the Capacity tab has a finding row under it, and every capacity finding has its chip. "Nothing needs you under this object" never shows beside a capacity chip.

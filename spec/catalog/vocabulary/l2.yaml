@@ -21,6 +21,6 @@ labels:
   waiting_now: VMs waiting now
   near_closure: Near closure
   host_spread: Spread between hosts
-# Capacity tab only (D-093): no forecast words. Checked by LPG-17, not by the avoided list, because Improve
+# Capacity tab only (D-094): no forecast words. Checked by LPG-18, not by the avoided list, because Improve
 # legitimately reads the Capacity workspace's purchase decision.
 capacity_tab_avoided: [forecast, run-out, decision date, Capacity Remaining, Time Remaining, imbalance]

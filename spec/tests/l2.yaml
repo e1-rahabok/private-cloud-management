@@ -268,7 +268,7 @@ story:
       hosts_first: ld-esx-202
       finding: { kind: closed_consumption, window: "24h", severity: amber, outcome: improve }
       forbidden_fields: [run_out_date, decision_date, capacity_remaining, time_remaining, forecast]
-    decisions: [D-093, D-094]
+    decisions: [D-094, D-095]
   - id: LST-23
     name: The Frankfurt general workload domain opens on Bronze, with two clusters near closure
     story: M-4
@@ -284,13 +284,13 @@ story:
       FR-B-03_finding: null
       mixed_with_class_bronze: excluded
       mixed_with_class_all: included
-    decisions: [D-091, D-093]
+    decisions: [D-091, D-094]
   - id: LST-24
     name: FR-S-02 is open at the check and its VMs wait now
     story: N-1
     given: { object: FR-S-02, window: 24h }
     expect: { check_state: open, waiting_now: true, waiting_value: 22, status: red, close_for_business_recomputed: false }
-    decisions: [D-040, D-093]
+    decisions: [D-040, D-094]
   - id: LST-25
     name: A host's Capacity tab is its cluster's page, with the host marked
     story: M-4
@@ -302,7 +302,7 @@ story:
       highest_equals: "vCommunity|Highest Cluster Utilization"
       percentile_90_equals: "vCommunity|Highest 10 Percent Cluster Utilization"
       closed_and_opened_equal: ["vCommunity|Cluster Delta Close Count", "vCommunity|Cluster Delta Open Count"]
-    decisions: [D-093]
+    decisions: [D-094]
 
 page:
   - id: LPG-1
@@ -342,23 +342,23 @@ page:
       no Inventory, no Group by and no side-by-side cards. Guest OS comes first and Virtual Motherboard under it, one chart per metric,
       with Now, Worst and 95th percentile. Every figure has its unit after the number and no name holds its unit or starts in lower case.
     decisions: [D-092]
-  - id: LPG-16
+  - id: LPG-17
     rule: >
       On LD-B-01's Capacity tab (7 days) the verdict comes first in words, then three charts in the order Cluster Consumption,
       Cluster Performance, Cluster Risk on one time axis with the closure levels drawn, then the check strip with 7 cells, the
       last one closed. Each chart has Now, Worst and 95th percentile; the check value is labelled with its percentile and period,
       never "Worst". No chart has an average line. Every capacity chip on the page has a finding row, and "Nothing needs you
       under this object" is not shown.
-    decisions: [D-093, D-094]
-  - id: LPG-17
+    decisions: [D-094, D-095]
+  - id: LPG-18
     rule: >
       No /l2 Capacity tab, on any object or window, shows a word from capacity_tab_avoided (catalog/vocabulary/l2.yaml),
       except "imbalance" inside "CPU Imbalance". The tab has one sentence linking to the Capacity workspace, and no date or
       percentage read from it.
-    decisions: [D-093]
-  - id: LPG-18
+    decisions: [D-094]
+  - id: LPG-19
     rule: >
       On wld-fr-gen's Capacity tab, Bronze is selected; a click on the Consumption across clusters chart adds the time to the
       address and the clusters table is headed with that time; a click on FR-B-04 selects it in the tree and keeps the
       Capacity tab and the window.
-    decisions: [D-091, D-093]
+    decisions: [D-091, D-094]

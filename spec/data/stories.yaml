@@ -684,7 +684,7 @@ stories:
       FR-B-03: { state: open, near_closure: true, finding: null }
       wld-fr-gen: { class_default: bronze, near_closure: [FR-B-03, FR-B-04], closed: 0, mixed_counted_under: all }
       FR-S-02: { state: open, waiting_now: true, status: red, note: "N-1: the fall to 22 is 20 minutes old; the check ignores it" }
-    decisions: [D-093, D-094]
+    decisions: [D-094, D-095]
 
   # ---------------------------------------------------------------- Weekly, monthly and inventory stories
 

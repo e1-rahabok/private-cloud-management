@@ -122,7 +122,7 @@ A page is where four dimensions meet. The navigation shows each dimension in its
 |---|---|---|---|
 | Availability | Yes | Yes | Partial: restore and HA tests |
 | Performance | Yes | Yes | Yes |
-| Capacity (can a cluster take more VMs now, and is it heading to closed; the forecast and purchase are the Capacity workspace's, D-014, D-093) | Yes | No (SP5) | Yes: reclaim, rebalance |
+| Capacity (can a cluster take more VMs now, and is it heading to closed; the forecast and purchase are the Capacity workspace's, D-014, D-094) | Yes | No (SP5) | Yes: reclaim, rebalance |
 | Security (present: platform hygiene, D-049) | Yes | A breach goes to the security team (D-044) | No |
 | Configuration | Drift and variance against the standard | Evidence: the cause is often here | Correct, update, simplify, optimize |
 | Inventory | Count, distribution, churn, unexplained changes | Evidence: what changed over the weeks | Stock-take, orphaned objects |
@@ -149,7 +149,7 @@ A page is where four dimensions meet. The navigation shows each dimension in its
 
 - **Performance reads the 20-second peak** of each 5-minute interval, not the 5-minute average. A spike of a few seconds disappears in 300 seconds of average.
 - **Over a window, an object's score is its 95th percentile:** not the average (it hides problems), not the worst (too noisy). This is the rule of the author's sample dashboard (`sources/Cluster Performance v2.html`).
-- **Which statistic, on which axis** (D-094):
+- **Which statistic, on which axis** (D-095):
   - **Over time, on one object:** a point holds the worst value of its slot. The figures are Now, Worst (with its time) and 95th percentile. The status is the 95th percentile, and the worse of that and the last hour.
   - **Across objects, at one time:** the worst object, and the 10th or 90th percentile at the bad end.
   - **Never an average,** on either axis. Never a sum or average of percentages across clusters.
@@ -223,7 +223,7 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
 - **Group by, "Just above the line", "Children outside green" and Inventory are not on a VM.** They describe a group of objects.
 - **Names and units:** Title Case, capitals for abbreviations, the unit after the number, never inside the name ("CPU Ready 2.5%", "Disk Latency 5.6 ms").
 
-### 4.3.3 The Capacity tab: the model it reads (D-093)
+### 4.3.3 The Capacity tab: the model it reads (D-094)
 
 - **The question:** can this cluster take more VMs now, and is it heading to closed? Monitoring shows it over time, never as a snapshot.
 - **Three KPIs, one scale, one rule.** This is vCommunity's capacity model (`VCF-vCommunity-Adapter`, `docs/concepts/capacity-management.md`):
@@ -266,7 +266,7 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
   - Memory Zip Swap (swapped and compressed);
   - Memory Tiering, only where the hosts have a memory tier.
 - **Usable capacity:** total, minus HA, minus buffer, equals usable, for threads and DRAM; and the running hosts. The buffer is the Capacity team's setting (D-054); the page shows it and links to it.
-- **Spread between hosts:** two charts, CPU Thread Utilization and Memory Consumed. Each has two lines, the highest host and the lowest host at each point. No average line (D-094).
+- **Spread between hosts:** two charts, CPU Thread Utilization and Memory Consumed. Each has two lines, the highest host and the lowest host at each point. No average line (D-095).
   - A wide gap says DRS is not balancing. Why (a pinned VM, affinity, reservations, a monster VM) is the case's job.
 - **The hosts,** worst first, as the sample dashboard (`sources/Cluster Capacity v5.html`):
   - CPU Thread Utilization and Memory Consumed, each 95th percentile and Worst, with a sparkline;
@@ -588,12 +588,12 @@ The troubleshooting stories come from Agent E2's benchmark (`benchmark/questions
 
 1. **Who owns PCM's own configuration** (class-of-service definitions, action tiers)?
    - Proposal: L2 proposes changes; the Operations Manager approves them after 1.0. Until then, L2 owns them (D-045).
-2. **Should the Capacity workspace's "Full now" read the check?** (D-093)
+2. **Should the Capacity workspace's "Full now" read the check?** (D-094)
    - Today the Capacity workspace marks a group "Full now: VMs waiting" when one of its clusters is orange or red on Cluster Performance now (Capacity design, 3.19). That is L2's "VMs waiting now", not Close for Business.
    - Proposal: keep "Full now: VMs waiting" for contention now, and add "Closed for new VMs" from the check. One definition each, both shown, neither recomputed.
-3. **The closure levels are vCommunity's constants, not PCM settings.** (D-093)
+3. **The closure levels are vCommunity's constants, not PCM settings.** (D-094)
    - PCM reads the decision, so a PCM setting for 80, 60, 20 and 40 could disagree with what vCommunity decided.
    - Proposal: the catalog names them with their source and version; `/docs` shows them read-only. The check period and Worst Percent are read from the vCommunity adapter instance, so the labels follow them.
-4. **Should the Performance tab take the Capacity tab's class default?** (D-091, D-093)
+4. **Should the Performance tab take the Capacity tab's class default?** (D-091, D-094)
    - Gold by default opens an empty page on a workload domain with no Gold cluster.
    - Proposal: the first class present under the node, in the order Gold, Silver, Bronze, on both tabs.

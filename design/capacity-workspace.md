@@ -282,7 +282,7 @@ Path: `privatecloud.acme.com/capacity` (D-028).
   - Why: buyers usually size DRAM by habit (768 GB, 1 TB). The matching DRAM shows the class need: Silver 839 GB, Gold 520 GB, Bronze 660 GB on a 64-core host. Too little DRAM strands cores, which are licensed per core. Too much strands DRAM.
   - Planning values per class are settings with an owner (Capacity), not code.
 
-### 3.20 The boundary with L2's Capacity tab (D-093)
+### 3.20 The boundary with L2's Capacity tab (D-094)
 
 - **What:** two capacity views, two horizons. Neither shows the other's numbers.
 

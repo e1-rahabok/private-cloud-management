@@ -195,7 +195,7 @@ entries:
       hosts not connected, HA restarts.
     decisions: [D-077]
 
-  # ---------------------------------------------------------------- statistics (D-094)
+  # ---------------------------------------------------------------- statistics (D-095)
 
   l2.statistics:
     description: >
@@ -218,9 +218,9 @@ entries:
       percentile of the check period, so PCM labels them "{p}th percentile, {period} to {end time}". "Worst" on a PCM
       page is always the single worst point.
     never: [average, sum_across_clusters]
-    decisions: [D-088, D-091, D-092, D-094]
+    decisions: [D-088, D-091, D-092, D-095]
 
-  # ---------------------------------------------------------------- Capacity tab (D-093)
+  # ---------------------------------------------------------------- Capacity tab (D-094)
 
   l2.cluster_kpi_series:
     description: >
@@ -235,7 +235,7 @@ entries:
     bands:
       higher_is_worse: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100"
       higher_is_better: "green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
-    decisions: [D-093, D-094]
+    decisions: [D-094, D-095]
 
   l2.cluster_check:
     description: >
@@ -279,7 +279,7 @@ entries:
         - { performance: 22, risk: 10, consumption: 10, close: 0 }
         - { performance: 90, risk: 10, consumption: 78, close: 0 }
         - { performance: 90, risk: 10, consumption: 30, close: 0 }
-    decisions: [D-093, D-094]
+    decisions: [D-094, D-095]
 
   l2.waiting_now:
     description: >
@@ -288,7 +288,7 @@ entries:
       per period and ignores its worst samples, so a cluster can be open at the check while its VMs wait now.
     window: "last hour"
     below: "th-cluster-perf-red (50): the NOC's red line, the start of orange"
-    decisions: [D-040, D-093]
+    decisions: [D-040, D-094]
 
   l2.consumption_parts:
     description: >
@@ -301,7 +301,7 @@ entries:
       memory_zip_swap:        { label: "Memory Zip Swap",        unit: "%", note: "swapped and compressed" }
       memory_tiering:         { label: "Memory Tiering",         unit: "%", optional: true }
     figures: [now, worst, percentile_95]
-    decisions: [D-093]
+    decisions: [D-094]
 
   l2.usable_capacity:
     description: >
@@ -313,7 +313,7 @@ entries:
     units: { cpu: threads, memory: "GB of DRAM" }
     also: "running hosts of all hosts"
     buffer_owner: "capacity (D-054): shown and linked, not edited on this page"
-    decisions: [D-054, D-093]
+    decisions: [D-054, D-094]
 
   l2.host_spread:
     description: >
@@ -322,21 +322,21 @@ entries:
       Imbalance (running threads per running core), which is an input of Cluster Risk.
     lines: [highest_host, lowest_host]
     metrics: [cpu_thread_utilization, memory_consumed]
-    decisions: [D-093, D-094]
+    decisions: [D-094, D-095]
 
   l2.capacity_hosts:
     description: >
       The hosts of the cluster, worst first by the higher of their two 95th percentiles: CPU Thread Utilization and
       Memory Consumed, each 95th percentile and Worst with a sparkline; running VMs; CPU and Memory Overcommit; state.
     states: [running, maintenance_mode, disconnected, not_responding, powered_off]
-    decisions: [D-093]
+    decisions: [D-094]
 
   l2.capacity_class_default:
     description: >
       The class of service a Capacity tab above the cluster opens on: the first class with a cluster under the node,
       in the order Gold, Silver, Bronze; All when the node has only mixed clusters. Mixed clusters count under All only.
     order: [gold, silver, bronze, all]
-    decisions: [D-091, D-093]
+    decisions: [D-091, D-094]
 
   l2.closed_count:
     description: >
@@ -344,7 +344,7 @@ entries:
       check before. With class All under the estate, the changes equal vCommunity|Cluster Delta Close Count and Cluster
       Delta Open Count on vSphere World. A cluster with no check in either period is not a change.
     min_periods_for_chart: 7
-    decisions: [D-093]
+    decisions: [D-094]
 
   l2.consumption_spread:
     description: >
@@ -354,7 +354,7 @@ entries:
     vcommunity: >
       With class All under the estate, the two lines equal vSphere World's vCommunity|Highest Cluster Utilization and
       Highest 10 Percent Cluster Utilization. For one class or one node, PCM computes the same from each cluster's score.
-    decisions: [D-091, D-093, D-094]
+    decisions: [D-091, D-094, D-095]
 
   l2.near_closure:
     description: >
@@ -362,14 +362,14 @@ entries:
       closure level (60), and that count at each check over the window, in words: rising, steady or falling (the
       drift rule of l2.findings on the last seven counts; otherwise the sign of last minus first).
     above: 60
-    decisions: [D-088, D-093]
+    decisions: [D-088, D-094]
 
   l2.capacity_clusters_at:
     description: >
       Every cluster in scope at one selected time: closed first, then near closure, then highest Consumption. Verdict
       at the latest check and since when; Consumption, Performance and Risk at the time; a Consumption sparkline over
       the window; VMs waiting now. Before a click, the time is the highest point of the Consumption line.
-    decisions: [D-093]
+    decisions: [D-094]
 
   l2.capacity_findings:
     description: >
@@ -378,7 +378,7 @@ entries:
       closed_contention: { window: "24h", severity: red, outcome: problem, when: "closed at the latest check, with Performance red or by rule 2" }
       closed_consumption: { window: "24h", severity: amber, outcome: improve, when: "closed at the latest check by Consumption red, with Performance not red" }
       heading_to_closed: { window: "7d", severity: amber, outcome: improve, when: "open, and the last seven check values of Consumption pass the drift rule of l2.findings, rising" }
-    decisions: [D-083, D-093]
+    decisions: [D-083, D-094]
 
   # ---------------------------------------------------------------- Troubleshoot (L2 design, 5)
 
