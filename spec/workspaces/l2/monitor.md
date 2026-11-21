@@ -87,10 +87,10 @@ On every node above the cluster: estate, region, location, VCF instance, workloa
 ### Cluster
 
 - **Actual slowness** (l2.provider_spread): one chart, 0 to 100%.
-  - Solid: Worst Cluster Performance. Dashed: its 5th percentile across the clusters in scope.
+  - Solid: Worst Cluster Performance. Dashed: its 10th percentile across the clusters in scope, as vCommunity's Worst 10 Percent.
   - Each segment takes the band color of its value: green, yellow, orange, red.
-  - In words: the worst value, when, which cluster; and the 5th percentile at the same time.
-- **Potential slowness** (l2.provider_spread): the same, for Cluster Risk. Solid: the highest. Dashed: the 95th percentile.
+  - In words: the worst value, when, which cluster; and the 10th percentile at the same time.
+- **Potential slowness** (l2.provider_spread): the same, for Cluster Risk. Solid: the highest. Dashed: the 90th percentile.
 - **Clusters at {selected time}** (l2.clusters_at): every cluster in scope, worst Performance first.
   - Cluster, location, class, Performance at the time, Risk at the time, VMs below green at the time, different VMs hit over the window.
   - A click on a cluster selects it in the tree.

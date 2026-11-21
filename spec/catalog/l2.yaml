@@ -103,19 +103,19 @@ entries:
   l2.provider_spread:
     description: >
       Two lines per KPI over the window, across the clusters in scope. Actual slowness: the lowest Cluster
-      Performance, and its 5th percentile. Potential slowness: the highest Cluster Risk, and its 95th percentile.
+      Performance, and its 10th percentile. Potential slowness: the highest Cluster Risk, and its 90th percentile.
       The worst line says whether anything is wrong; the percentile line says whether it is narrow or wide.
     kpi:
       performance: "vCommunity|Cluster Performance|Cluster Performance Score, higher is better"
       risk: "vCommunity|Cluster Risk|Cluster Risk Score, higher is worse"
-    percentile: { performance: 5, risk: 95, method: "nearest rank, as vCommunity: the cluster at position p% of the count, rounded up" }
+    percentile: { performance: 10, risk: 90, method: "nearest rank, as vCommunity: the cluster at position p% of the count, rounded up" }
     bands:
       performance: "green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
       risk: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100"
     vcommunity: >
-      With class All, the worst lines equal vSphere World's vCommunity|Worst Cluster Performance and
-      vCommunity|Worst Cluster Risk. vCommunity's percentile metrics are the 10th and 90th across all clusters, so PCM
-      computes the 5th and 95th per class from each cluster's score.
+      With class All, the four lines equal vSphere World's vCommunity|Worst Cluster Performance, Worst 10 Percent
+      Cluster Performance, Worst Cluster Risk and Worst 10 Percent Cluster Risk. Those are across all clusters, so for
+      one class PCM computes the same metrics from each cluster's score.
     class_of_service: { options: [gold, silver, bronze, all], default: gold }
     decisions: [D-091]
 

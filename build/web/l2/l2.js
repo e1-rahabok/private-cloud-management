@@ -363,9 +363,9 @@ function perfTab(p, d) {
   const outW = minutesOut('worst'), outP = minutesOut('percentile');
   const perfLine = !P.clusters ? `No ${esc(cls)} cluster under this object.`
     : !outW ? `Every ${esc(cls)} cluster stayed green.`
-    : `Lowest: ${low.worst}% at ${esc(fmtPoint(low.t, m))}, ${esc(low.worst_cluster)}; the 5th percentile then ${low.percentile}%. The worst cluster was out of green for ${fmtDur(outW)}. ${outP ? `The 5th percentile was out of green for ${fmtDur(outP)}: wide at those times.` : 'The 5th percentile stayed green: narrow, a few clusters or one.'}`;
+    : `Lowest: ${low.worst}% at ${esc(fmtPoint(low.t, m))}, ${esc(low.worst_cluster)}; the ${P.percentile.performance}th percentile then ${low.percentile}%. The worst cluster was out of green for ${fmtDur(outW)}. ${outP ? `The ${P.percentile.performance}th percentile was out of green for ${fmtDur(outP)}: wide at those times.` : `The ${P.percentile.performance}th percentile stayed green: narrow, a few clusters or one.`}`;
   const rNow = P.risk[P.risk.length - 1];
-  const riskLine = !P.clusters ? '' : `Highest now: ${rNow.worst}% (${BAND_NAME[riskBand(rNow.worst)]}), ${esc(rNow.worst_cluster)}. The 95th percentile now: ${rNow.percentile}% (${BAND_NAME[riskBand(rNow.percentile)]}).`;
+  const riskLine = !P.clusters ? '' : `Highest now: ${rNow.worst}% (${BAND_NAME[riskBand(rNow.worst)]}), ${esc(rNow.worst_cluster)}. The ${P.percentile.risk}th percentile now: ${rNow.percentile}% (${BAND_NAME[riskBand(rNow.percentile)]}).`;
   const perfBands = [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']];
   const riskBands = [[0, 25, 'green'], [25, 50, 'yellow'], [50, 75, 'orange'], [75, 100, 'red']];
   const minOf = (a, b) => Math.min(a, b), maxOf = (a, b) => Math.max(a, b);

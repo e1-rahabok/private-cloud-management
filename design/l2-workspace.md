@@ -201,11 +201,11 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
   - **Worst VMs:** the VM, its worst VM Performance, the time, its cluster and location, and how many other VMs were hit in the same 5 minutes. The same time on many rows points to something common; the cluster lines should show it. Different times point to one cluster or one VM.
   - **Just above the line:** the iceberg (4.2).
 - **Cluster section:**
-  - **Actual slowness:** one chart, 0 to 100%, two lines. Worst Cluster Performance (solid) and the 5th percentile across clusters (dashed). Each line takes the band color of its value.
+  - **Actual slowness:** one chart, 0 to 100%, two lines. Worst Cluster Performance (solid) and the 10th percentile across clusters (dashed), as vCommunity's Worst 10 Percent. Each line takes the band color of its value.
     - The worst line is good: no issue.
-    - The worst line is bad and the 5th percentile is good: a narrow problem, a few clusters or one.
+    - The worst line is bad and the 10th percentile is good: a narrow problem, a few clusters or one.
     - Both are bad: a wide problem.
-  - **Potential slowness:** the same chart for Cluster Risk. The highest (solid) and the 95th percentile (dashed).
+  - **Potential slowness:** the same chart for Cluster Risk. The highest (solid) and the 90th percentile (dashed).
   - **Clusters at a time:** a click on either chart, or on the VM chart, picks a time. The table lists every cluster in scope at that time, worst first: Performance, Risk, VMs hit at that time, and different VMs hit over the window. Before any click, the time is the worst point of the window.
   - A click on a cluster opens it in the tree: its hosts, then vSAN, NSX and the switches underneath.
 - **What, not why:** the tab says what was hit, when, where and how wide. Causes, including a VM that slows itself (a limit, too many vCPUs), are the case's (D-084).

@@ -26,7 +26,7 @@ from . import catalog, generator, l2_estate as X, noc
 CLASSES = ("gold", "silver", "bronze", "all")
 DEFAULT_CLASS = "gold"
 GREEN = 75.0
-PERCENTILE = {"performance": 5, "risk": 95}
+PERCENTILE = {"performance": 10, "risk": 90}  # vCommunity's Worst 10 Percent (D-091)
 SLOT_MINUTES = {"1h": 5, "24h": 5, "7d": 60, "30d": 240, "1y": 1440}
 ABOVE_CLUSTER = {"estate", "region", "location", "vcf_instance", "workload_domain", "class_of_service"}
 BACKGROUND_PER_DAY = {"gold": 0.02, "silver": 0.04, "bronze": 0.06}

@@ -79,9 +79,10 @@ class Catalog(Base):
     def test_LCAT_10_worst_and_percentile(self):
         g, e = T["LCAT-10"]["given"], T["LCAT-10"]["expect"]
         self.assertEqual(min(g["performance"]), e["worst"])
-        self.assertEqual(P.nearest_rank(g["performance"], 5), e["percentile_5_of_three"])
-        self.assertEqual(P.nearest_rank(g["twenty"], 5), e["percentile_5_of_twenty"])
-        self.assertEqual(P.nearest_rank(g["twenty"], 95), e["percentile_95_of_twenty"])
+        self.assertEqual(P.nearest_rank(g["performance"], 10), e["percentile_10_of_three"])
+        self.assertEqual(P.nearest_rank(g["twenty"], 10), e["percentile_10_of_twenty"])
+        self.assertEqual(P.nearest_rank(g["twenty"], 90), e["percentile_90_of_twenty"])
+        self.assertEqual(P.PERCENTILE, {"performance": 10, "risk": 90})
         b = e["bands"]
         self.assertEqual((P.perf_band(74), P.risk_band(74), P.risk_band(20), P.perf_band(20)),
                          (b["performance_74"], b["risk_74"], b["risk_20"], b["performance_20"]))

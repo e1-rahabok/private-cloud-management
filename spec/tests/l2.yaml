@@ -54,11 +54,11 @@ catalog:
     given: { performance: [86.35, 98, 50], twenty: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] }
     expect:
       worst: 50
-      percentile_5_of_three: 50
-      percentile_5_of_twenty: 1
-      percentile_95_of_twenty: 19
+      percentile_10_of_three: 50
+      percentile_10_of_twenty: 2
+      percentile_90_of_twenty: 18
       bands: { performance_74: yellow, risk_74: orange, risk_20: green, performance_20: red }
-    note: "vCommunity's example: with fewer than 20 clusters the 5th percentile is the worst. Nearest rank, rounded up."
+    note: "vCommunity's example: with 10 clusters or fewer the 10th percentile is the worst; with 20 it is the 2nd lowest and the 90th the 18th lowest. Nearest rank, rounded up."
   - id: LCAT-11
     entry: l2.provider_spread
     given: { scores: [100, 100, 100, 100, 100, 100, 100, 100, 100, 18.75] }
