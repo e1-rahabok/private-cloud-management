@@ -350,7 +350,7 @@ const CHARTS = {};
 const seriesColor = (s, v) => s.band ? `var(--band-${s.band(v)})` : s.color;
 function chartSvg(id, W) {
   const { pts, series, o } = CHARTS[id];
-  const H = o.height ?? 240, L = o.left ?? 48, Rt = (o.nodirect || o.bands) ? 16 : 140, T = 12, B = 28, iw = W - L - Rt, ih = H - T - B, n = pts.length;
+  const H = o.height ?? 240, L = o.left ?? 56, Rt = (o.nodirect || o.bands) ? 16 : 140, T = 12, B = 28, iw = W - L - Rt, ih = H - T - B, n = pts.length;
   const fmt = o.fmt || ((v) => o.max === 100 ? v + '%' : n0(v));
   const max = o.max ?? Math.max(4, ...pts.flatMap(p => series.map(s => p[s.key] ?? 0))) * 1.1;
   const x = i => L + (n === 1 ? iw / 2 : i / (n - 1) * iw), y = v => T + ih - v / max * ih;
@@ -455,20 +455,22 @@ function groupBy(d, note = '') {
 // ---------------------------------------------------------------- a VM's two layers (monitor.md, Performance tab on a VM; l2.realms)
 // The unit follows the number: the data carries it with its own space (" ms", "%", "/s"). The name never holds it.
 const niceMax = v => { if (!(v > 0)) return 1; const p = 10 ** Math.floor(Math.log10(v)), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
-const withUnit = (v, m, tick) => v == null ? '–' : `${Number(v).toLocaleString('en-US', tick ? { maximumFractionDigits: 2 } : { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals })}${m.unit}`;
+const withUnit = (v, m, tick) => v == null ? '–' : `${Number(v).toLocaleString('en-US', tick ? { maximumFractionDigits: 2 } : { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals })}${tick && m.unit !== '%' ? '' : m.unit}`;
+// In the figures on the left a unit that is words ("per vCPU", "ms") is set small and light, so every metric reads alike.
+const figure = (v, m) => { if (v == null) return '–'; const t = withUnit(v, m); return m.unit && m.unit !== '%' && t.endsWith(m.unit) ? `${esc(t.slice(0, -m.unit.length))}<span class="u">${esc(m.unit)}</span>` : esc(t); };
 const LAYER_NOTE = { guest_os: 'Runs on top of the Virtual Motherboard.', virtual_motherboard: 'The VM\'s virtual hardware, under the Guest OS.' };
 function metricBlock(m, layer) {
-  const score = !!m.scale, lowest = m.better === 'higher';
+  const score = !!m.scale;
   const hiV = Math.max(...m.points.map(p => p.v));
   const top = score ? 100 : m.unit === '%' && hiV > 50 && hiV <= 100 ? 100 : niceMax(hiV * 1.1);  // a percentage near full reads on 0 to 100%, never 200%
   const fmt = (v, tick) => withUnit(v, m, tick);
   const series = [score ? { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
-    fmt, width: 760, height: 160, left: m.unit.length > 3 ? 104 : 72, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined });
+    fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined });
   const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, { p95: fmt(m.percentile_95), worst: fmtPoint(m.worst.t, m.minutes) }) : '';
-  return `<div class="metric" data-metric="${m.key}"><div class="mfig"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div><div class="muted">${lowest ? 'Higher is better' : 'Lower is better'}</div>
-    <dl><dt>Now</dt><dd>${fmt(m.now)}</dd><dt>Worst</dt><dd>${fmt(m.worst.v)}</dd><dt>95th percentile</dt><dd>${fmt(m.percentile_95)}</dd></dl></div>${chart}</div>`;
+  return `<div class="metric" data-metric="${m.key}"><div class="mfig"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div>
+    <dl><dt>Now</dt><dd>${figure(m.now, m)}</dd><dt>Worst</dt><dd>${figure(m.worst.v, m)}</dd><dt>95th percentile</dt><dd>${figure(m.percentile_95, m)}</dd></dl></div>${chart}</div>`;
 }
 function layersView(d) {
   return `<p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(d.layers[0].metrics[0].minutes)}. Each point shows the worst value in that interval. 95% of points were better than the 95th percentile.</p>`
@@ -533,7 +535,7 @@ function kpiBlock(k, c, m) {
     : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }],
     { label: `${k.label} over the window, 0 to 100%`, max: 100, width: 760, height: 250, left: 56, minutes: m, noclick: true, nodirect: true, nolegend: true, bands: hiw ? HIGH_BANDS : LOW_BANDS });
   const mark = e2mark({ kind: 'kpi', metric: k.key, pillar: 'capacity' }, k.label, { p95: pct(k.percentile_95), worst: k.worst ? fmtPoint(k.worst.t, m) : '' });
-  return `<div class="metric" data-kpi="${k.key}"><div class="mfig"><div class="mname"><h4>${esc(k.label)}</h4>${mark}</div><div class="muted">${hiw ? 'Higher is worse' : 'Higher is better'}</div>
+  return `<div class="metric" data-kpi="${k.key}"><div class="mfig"><div class="mname"><h4>${esc(k.label)}</h4>${mark}</div>
     <dl><dt>Now</dt><dd>${pct(k.now)}</dd><dt>Worst</dt><dd>${pct(k.worst && k.worst.v)}</dd>
     <dt>95th percentile</dt><dd>${pct(k.percentile_95)}</dd></dl></div>${chart}</div>`;
 }
