@@ -23,7 +23,7 @@ const stub = createServer((req, res) => {
     if (req.url === '/v1/health') return send({ ok: true, model: 'stub-model', files: 286 });
     const body = JSON.parse(b || '{}'); E2_SEEN.push(body);
     // A question about the villain gets an L2 word, twice: the panel must not show it.
-    const content = /villain/i.test(body.question.split('\n')[0]) ? 'The villain fr-bat-017 drives CPU Ready up.' : 'FR-S-02 scores 22 out of 100: its VMs wait. The SOP says to find the villain and escalate a production one.';
+    const content = /villain/i.test(body.question.split('\n')[0]) ? 'The villain fr-bat-017 drives CPU Ready up.' : 'FR-S-02 scores 22 out of 100: its VMs wait [sp5-framework/performance/cluster-performance]. The SOP says to find the villain and escalate a production one [vsphere/a/b, vsphere/c/d]. Keep [1] and [optional]. [arithmetic_calculator.py: 5 / 2 = 2.5]';
     send({ type: 'answer', content, questions: [], files_read: ['sp5-framework/performance/cluster-performance'], computed: [], model: 'stub-model', knowledge_commit: 'abc1234' });
   });
 });
@@ -130,6 +130,8 @@ try {
   const panelTexts = [await page.innerText('#e2')];
   await page.click('#e2 [data-sugg="0"]'); await page.waitForSelector('#e2 .e2src', { timeout: 30000 });
   panelTexts.push(await page.innerText('#e2'));
+  const noRefs = !/\[(?:sp5-framework|vsphere|arithmetic_calculator)/.test(panelTexts[1]) && /Keep \[1\] and \[optional\]\./.test(panelTexts[1]) && /wait\. The SOP/.test(panelTexts[1]);
+  check('NPG-E2-REF', noRefs, 'bracketed file references hidden, other brackets kept');
   const sent = E2_SEEN[E2_SEEN.length - 1];
   await page.fill('#e2q', 'Who is the villain?'); await page.press('#e2q', 'Enter'); await page.waitForSelector('#e2 [data-vocabulary]', { timeout: 30000 });
   const vocabText = await page.innerText('#e2 [data-vocabulary]');
