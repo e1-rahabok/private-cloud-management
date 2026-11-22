@@ -159,7 +159,7 @@ Third L2 build: the workspace is rebuilt around three activities, **Monitor, Tro
 - **Performance tab, VM:** Guest OS Performance and VM Performance first, in a section of their own; the layers keep their counters.
 - **Performance tab, cluster and below:** the four cards are gone. The object's KPI over the window comes first: Cluster Performance and Cluster Risk on a cluster (the same series as the Capacity tab: FR-B-04 shows 82.2, 80.2, 80.7 on both), ESXi Performance on a host. "Just above the line" is a 7-day chart.
 - **Band figures:** Now, Worst and 95th percentile of every 0 to 100% KPI are pills in the band of their value, with its name; text 6.2:1 or better (LPG-23 measures it in the browser).
-- **Capacity tab, VM, host, cluster:** a summary first, Capacity Remaining, Time Remaining and, on a host and a cluster, VM Remaining. Placeholder values, stable per object, labelled as such on the page. Never on a group (LST-30, LPG-18).
+- **Capacity tab, VM, host, cluster:** a summary first, Capacity Remaining, Time Remaining and, on a host and a cluster, VM Remaining. Placeholder values, stable per object, not labelled on the page. Never on a group (LST-30, LPG-18).
 - Screenshots: `screenshots/l2-monitor-vm-performance.png`, `l2-monitor-cluster-performance.png`, `l2-monitor-capacity-host.png`.
 - **Pre-existing, not from this change:** run in one `unittest` call together with the L2, Capacity and NOC tests, `test_executive` fails ST-2 and "stories hold on another day"; run alone, as listed under Test, it passes. The same happens on the commit before this change.
 
