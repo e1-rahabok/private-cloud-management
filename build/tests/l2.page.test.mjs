@@ -234,9 +234,10 @@ try {
   const capFirst = await page.evaluate(() => [...document.querySelectorAll('[data-section="capacity-summary"], [data-verdict]')].map(e => e.dataset.section ? 'summary' : 'verdict'));
   const rem = await page.$$eval('[data-remaining] h3', hs => hs.map(h => h.textContent));
   const placeholder = await page.innerText('[data-section="capacity-summary"]');
-  const capPillOk = pillsOk(await pills(), k => k !== 'performance');
+  const PART_KEYS = ['cpu_thread_utilization', 'memory_consumed', 'memory_ballooned', 'memory_zip_swap'];
+  const capPillOk = pillsOk((await pills()).filter(m => !PART_KEYS.includes(m.key)), k => k !== 'performance');
   // the parts of Consumption carry the band of their value from the catalog's band ends (D-104), and no band word
-  await go('/l2/monitor/compute/wld-fr-gen/capacity');
+  await go('/l2/monitor/compute/FR-B-04/capacity?class=bronze');
   const END = { cpu_thread_utilization: [55, 70, 85], memory_consumed: [70, 80, 90], memory_ballooned: [1, 2, 4], memory_zip_swap: [0.25, 0.5, 1] };
   const partBand = (k, v) => ['green', 'yellow', 'orange'].find((_, i) => v <= END[k][i]) || 'red';
   const partPills = (await pills()).filter(m => END[m.key]);
