@@ -147,6 +147,9 @@ def clusters(ds: dict, seed: int) -> list:
 
 
 def cluster_score(c: dict, t: datetime, story: dict | None, now: datetime, seed: int) -> float:
+    from . import l2_story_m5
+    if c["id"] == l2_story_m5.CLUSTER and l2_story_m5.enabled():  # story M-5: the cluster's own 24 hours
+        return round(l2_story_m5.value_at("cluster_performance", t.timestamp(), now.timestamp()), 1)
     if story and c["id"] == story["objects"]["cluster"]:
         p = story["plant"]["cluster_performance"]
         start = generator.rel(p["before"]["until"], now)

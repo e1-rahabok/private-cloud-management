@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
-from . import catalog, generator, l2_estate as X, noc
+from . import catalog, generator, l2_estate as X, l2_story_m5 as S5, noc
 
 CLASSES = ("gold", "silver", "bronze", "all")
 DEFAULT_CLASS = "gold"
@@ -97,6 +97,12 @@ def _hits(enable: tuple, now_iso: str) -> dict:
                 hs.append((s, e, round(58 + 16 * X._h(vid, "v", d), 1)))
         if hs:
             out[vid] = hs
+    if act.get("M-5"):  # story M-5: the VM is below green wherever its score is
+        sv = S5.story()["vm_performance"]
+        for j, v in enumerate(sv):
+            if v < GREEN:
+                e5 = end - (len(sv) - 1 - j) * S5.POINT_SECONDS
+                out.setdefault(S5.VM, []).append((e5 - S5.POINT_SECONDS, e5, round(v, 1)))
     m3 = act.get("M-3")
     if m3:
         o, pl = m3["objects"], m3["plant"]
@@ -207,6 +213,10 @@ def _cluster_series(enable: tuple, now_iso: str, window: str) -> dict:
                 frac = min(1.0, max(0.0, 1 - (_ts(now) - t) / (7 * 86400)))
                 r = a + (b - a) * frac + random.Random(f"risk-{c['id']}-{int(t // 300)}").uniform(-1.5, 1.5)
             risk.append(round(min(100.0, max(0.0, r)), 1))
+        if act.get("M-5") and c["id"] == S5.CLUSTER:  # story M-5: the cluster's own series, rebuilt from its rows
+            sv = S5.story()
+            perf = [round(v, 1) for v in S5.slot_values(sv["cluster_performance"], _ts(now), start, L, n, "higher")]
+            risk = [round(v, 1) for v in S5.slot_values(sv["cluster_risk"], _ts(now), start, L, n, "lower")]
         out[c["id"]] = {"performance": perf, "risk": risk, "hit": hit, "different": different}
     return out
 
