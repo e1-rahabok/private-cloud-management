@@ -222,10 +222,10 @@ try {
   const vmKpis = await page.$$eval('[data-section="performance-kpis"] .metric', ms => ms.map(m => m.dataset.metric));
   const vmLayerKpis = await page.$$eval('section.layer .metric', ms => ms.map(m => m.dataset.metric).filter(k => /performance/.test(k)));
   const vmPills = await pills();
-  const VM_END = { paging_per_s: [1000, 2000, 4000], cpu_ready_percent: [2, 4, 8], co_stop_percent: [1, 2, 4], memory_wait_percent: [0.5, 1, 2], disk_latency_ms: [10, 20, 40] };
+  const VM_END = { run_queue_per_vcpu: [2, 4, 8], paging_per_s: [1000, 2000, 4000], cpu_ready_percent: [2, 4, 8], co_stop_percent: [1, 2, 4], memory_wait_percent: [0.5, 1, 2], disk_latency_ms: [10, 20, 40] };
   const endOf = (v, e) => ['green', 'yellow', 'orange'].find((_, i) => v <= e[i]) || 'red';
   const counterPlain = vmPills.filter(m => !/performance/.test(m.key) && !VM_END[m.key]).every(m => m.pills.every(p => p === null))
-    && vmPills.filter(m => VM_END[m.key]).length === 5 && vmPills.filter(m => VM_END[m.key]).every(m => m.pills.every(p => p !== null && p.band === endOf(p.v, VM_END[m.key])));
+    && vmPills.filter(m => VM_END[m.key]).length === 6 && vmPills.filter(m => VM_END[m.key]).every(m => m.pills.every(p => p !== null && p.band === endOf(p.v, VM_END[m.key])));
   const vmPillOk = pillsOk(vmPills.filter(m => /performance/.test(m.key)), () => false) && vmPills.filter(m => /performance/.test(m.key)).every(m => m.pills.every(p => p !== null));
   await go('/l2/monitor/compute/FR-B-04/performance');
   const clKpis = await page.$$eval('[data-section="performance-kpis"] .metric:not(.kpi-details .metric) h4', hs => hs.map(h => h.textContent));
