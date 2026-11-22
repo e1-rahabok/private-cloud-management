@@ -35,9 +35,9 @@ Path: `privatecloud.acme.com/noc` (D-028).
 
 ## 3. Design considerations
 
-### 3.1 The wall has six screens, in a fixed order (D-035, D-036, D-106)
+### 3.1 The wall has six screens, in a fixed order (D-035, D-036, D-107)
 
-D-106 names the screens by what they watch. The questions in the table remain the test of each screen.
+D-107 names the screens by what they watch. The questions in the table remain the test of each screen.
 
 | Screen | Question | What it shows | Why this content |
 |---|---|---|---|
@@ -46,7 +46,7 @@ D-106 names the screens by what they watch. The questions in the table remain th
 | 3 | **Security** (is it safe?) | Platform hygiene only (D-049): root logins, ESXi Shell or SSH on, lockdown mode off, certificates near expiry | Security operations is after 1.0 (D-044). These are the safety items L1 can act on, or escalate, the same day. |
 | 4 | **Volatility** (what changed?) | VM changes in the last hour against what is expected: created, deleted, powered off, moved, resized. Planned work from the business calendar is excluded. | SP5: many VMs deleted while no deletion is planned means something is wrong. Inventory gets no alert (SP5), so the wall is where unexpected change is seen. |
 | 5 | **Configuration** (is it set right?) | Configuration changes in the last hour that break the standard; high-risk settings only | SP5: configuration alerts are for high-risk settings only. A live drift is caught on the day it happens, not the next morning. |
-| 6 | **Capacity** (how full, and how long?) | Per location: the share of usable capacity in use for compute, memory and storage, and the days remaining of the tightest cluster group. Read from the capacity engine; no purchase decision on the wall. | A full location is tomorrow's outage. L1 sees it before L2 and Capacity planning act (D-106). |
+| 6 | **Capacity** (how full, and how long?) | Per location: the share of usable capacity in use for compute, memory and storage, and the days remaining of the tightest cluster group. Read from the capacity engine; no purchase decision on the wall. | A full location is tomorrow's outage. L1 sees it before L2 and Capacity planning act (D-107). |
 
 - The order follows SP5: first what exists, then up, fast, safe, and finally what may cause tomorrow's problem.
 

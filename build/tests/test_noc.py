@@ -206,7 +206,7 @@ class AgentE2(unittest.TestCase):
 
 
 class WallSixScreens(unittest.TestCase):
-    """NST-14 to NST-16 (D-106): banner counts, the one-hour trend, the capacity screen and the tab order."""
+    """NST-14 to NST-16 (D-107): banner counts, the one-hour trend, the capacity screen and the tab order."""
     T = tests("story")
 
     def setUp(self):

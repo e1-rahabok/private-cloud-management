@@ -447,6 +447,10 @@ function mountChart(box) {
 let chartResize = null;
 function wireCharts() {
   const all = () => main.querySelectorAll('[data-chartbox]');
+  main.querySelectorAll('details.kpi-details').forEach(el => el.addEventListener('toggle', () => {
+    el.open ? OPEN_DETAILS.add(el.dataset.detailsId) : OPEN_DETAILS.delete(el.dataset.detailsId);
+    if (el.open) el.querySelectorAll('[data-chartbox]').forEach(b => mountChart(b));  // a chart in a closed fold has no width
+  }));
   all().forEach(mountChart);
   if (chartResize) return;
   let last = window.innerWidth, timer;
@@ -503,11 +507,20 @@ function layersView(d) {
     + `<section class="persp kpis" data-section="performance-kpis"><h2>Performance <span class="muted">0 to 100%, higher is better. The Guest OS runs on top of the Virtual Motherboard.</span></h2>${kpis.join('')}</section>`
     + d.layers.map(l => `<section class="persp layer" data-layer="${l.key}"><h2>${esc(l.title)} ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span>${e2mark({ kind: 'vm_layer', layer: l.key, pillar: 'performance' }, `the ${l.title} layer`, { name: `${l.title} layer`, layer: l.title })}</h2>${l.metrics.filter(m => !m.scale).map(m => metricBlock(m, l.key)).join('')}</section>`).join('');
 }
+// "Details" under a cluster KPI: the parts it is made of, one chart each (D-106). Closed by default: a good KPI needs no
+// explanation. A fold the person opened stays open when the page redraws (window, time, tab back).
+const OPEN_DETAILS = new Set();
+function kpiDetails(k) {
+  if (!k.details || !k.details.length) return '';
+  const id = `${R.object}|${k.key}`;
+  return `<details class="kpi-details" data-details="${k.key}"${OPEN_DETAILS.has(id) ? ' open' : ''} data-details-id="${esc(id)}"><summary>Details <span class="muted">What ${esc(k.label)} is made of. Lower is better for every part.</span></summary>
+    ${k.details.map(p => metricBlock({ ...p, better: 'lower', scale: null }, 'object')).join('')}</details>`;
+}
 // A cluster and anything under it, but not a VM: its Performance KPI over the window first, then its children (D-100).
 function objectKpis(d) {
   const win = esc(WINDOWS.find(w => w[0] === R.window)[1]).toLowerCase();
   const kpis = d.kpis && d.kpis.length
-    ? pointsNote(d.kpis[0].minutes) + d.kpis.map(m => metricBlock(m, 'object')).join('')
+    ? pointsNote(d.kpis[0].minutes) + d.kpis.map(m => metricBlock(m, 'object') + kpiDetails(m)).join('')
     : '<p class="muted">No data for this object in the window.</p>';
   const outside = d.children_total ? `<p data-outside-green>${n0(d.outside_green)} of ${n0(d.children_total)} children outside green: over the ${win}, or in the last hour. They are first in the list below.</p>` : '';
   return `<section class="persp kpis" data-section="performance-kpis"><h2>Performance <span class="muted">0 to 100%</span></h2>${kpis}</section>${outside}`;

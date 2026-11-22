@@ -11,7 +11,7 @@ paths:
 
   /api/noc/wall:
     get:
-      summary: The six screens with their tiles, the tab row and the banner counts (D-106). Read every noc.refresh_seconds.
+      summary: The six screens with their tiles, the tab row and the banner counts (D-107). Read every noc.refresh_seconds.
       responses:
         "200":
           description: Wall

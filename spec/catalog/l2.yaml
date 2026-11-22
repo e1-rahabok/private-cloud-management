@@ -104,6 +104,17 @@ entries:
       higher_is_worse: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100 (Cluster Risk)"
     decisions: [D-095, D-100]
 
+  l2.kpi_details:
+    description: >
+      The parts of Cluster Performance and Cluster Risk, over the window, the same points as the KPI, each with Now, Worst
+      (with its time) and 95th percentile. Under the KPI's chart, in a fold named Details, closed when the page opens (D-106).
+      Release 1.0: placeholder values derived from the KPI's series.
+    parts:
+      cluster_performance: "9: worst and 90th percentile of vCPU Ready, vCPU Co-stop, memory wait, disk latency; highest ESXi network packets (error + dropped)"
+      cluster_risk: "11: highest ESXi CPU thread utilization, worst CPU imbalance, highest memory consumed, worst ballooned, worst swapped + zipped, highest CPU and memory reservation, highest CPU and memory overcommit, highest CPU and memory monster VM : host ratio"
+    bands: "Risk parts: the band ends of the Agent E2 catalog (thresholds-capacity.yaml, cluster-risk rows). Performance parts: none, the catalog has 20-second levels only; packets: 5-minute levels"
+    decisions: [D-106]
+
   l2.consumer_hits:
     description: >
       For the VMs in scope (under the node, of the selected class of service): how many different VMs were below

@@ -147,7 +147,7 @@ story:
 
   - id: NST-14
     story: E-7
-    reason: With Europe's VCF Operations stale, the banner counts leave out Frankfurt and London and name them; no stale location shows a number (D-106).
+    reason: With Europe's VCF Operations stale, the banner counts leave out Frankfurt and London and name them; no stale location shows a number (D-107).
     expect:
       wall.scale.locations_without_data: [Frankfurt, London]
       wall.screens.capacity.tiles[location=fr].status: no_data
@@ -155,14 +155,14 @@ story:
 
   - id: NST-15
     story: N-1
-    reason: The one-hour chart has 13 points (every 5 minutes). The lowest line ends at FR-S-02 with 22; the average stays above 85, so the average alone would hide it (D-106).
+    reason: The one-hour chart has 13 points (every 5 minutes). The lowest line ends at FR-S-02 with 22; the average stays above 85, so the average alone would hide it (D-107).
     expect:
       wall.screens.fast.trend.points: 13
       wall.screens.fast.trend.lowest_now: [FR-S-02, 22.0]
 
   - id: NST-16
     story: none
-    reason: Capacity has one tile per location with compute, memory and storage in use and days remaining; the tab order is up, fast, safe, changed, set_right, capacity (D-106).
+    reason: Capacity has one tile per location with compute, memory and storage in use and days remaining; the tab order is up, fast, safe, changed, set_right, capacity (D-107).
     expect:
       wall.strip: [up, fast, safe, changed, set_right, capacity]
 
@@ -201,17 +201,17 @@ page:
     rule: >
       The wall has the banner "ACME Corp Private Cloud" with Running VMs and Running ESXi hosts, six tabs in the order Availability,
       Performance, Security, Volatility, Configuration, Capacity, one active, and no screen title. No tab carries "Good", "Watch" or "Act now".
-    decisions: [D-106]
+    decisions: [D-107]
   - id: NPG-13
     rule: >
       Performance shows a chart with two lines (average and lowest cluster) of 13 points; with E-7 on, the chart leaves out the clusters of the
       locations with no data and still draws.
-    decisions: [D-106]
+    decisions: [D-107]
   - id: NPG-14
     rule: >
       Capacity shows five tiles with compute, memory and storage in use and the days remaining; with E-7 on the Frankfurt and London tiles are grey
       with "No data" and no number, and the banner counts exclude them and say so.
-    decisions: [D-106]
+    decisions: [D-107]
   - id: NPG-8
     rule: No request leaves the PCM host; text contrast is at least 4.5:1 on the desktop pages and the wall.
 

@@ -224,3 +224,12 @@ body.desk.l2.e2-open main { margin-right: 0; }
 section.kpis { margin-bottom: 18px; }
 .cards.remaining .card { min-height: 0; }
 .cards.remaining .big2 .u { font-size: 16px; font-weight: 600; color: var(--text-muted); margin-left: 4px; }
+
+/* Details: the parts of a cluster KPI, closed by default (D-106) */
+details.kpi-details { margin: -4px 0 14px; }
+details.kpi-details > summary { cursor: pointer; font-weight: 700; font-size: 15px; padding: 6px 4px; list-style: none; display: flex; gap: 8px; align-items: baseline; }
+details.kpi-details > summary::-webkit-details-marker { display: none; }
+details.kpi-details > summary::before { content: "\25B8"; display: inline-block; width: 1em; transition: transform .12s; }
+details.kpi-details[open] > summary::before { transform: rotate(90deg); }
+details.kpi-details > summary .muted { font-weight: 400; font-size: 13px; }
+details.kpi-details > summary:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }

@@ -190,6 +190,56 @@ def _kpi(key: str, label: str, better: str, vals: list, times: list, minutes: in
             "bands": "lower_is_better" if better == "higher" else "higher_is_worse"}
 
 
+# What a cluster KPI is made of (D-106). Performance: the contention of its VMs, worst VM (Depth) and 90th percentile
+# (Breadth), and the worst host's bad packets. Risk: the worst host's utilization, saturation, reservation, allocation
+# and monster VMs. Names and band ends are the Agent E2 catalog's (knowledge/catalog/thresholds-performance.yaml,
+# thresholds-capacity.yaml, rows of cluster-performance and cluster-risk). Release 1.0: values derived from the KPI's
+# own series, until PCM reads the parts from VCF Operations. A performance part has no band at 5 minutes in the
+# catalog (its levels are for 20-second points), so it shows none. Memory tiering parts: only where hosts have a tier.
+# (key, label, unit, decimals, value from the KPI value v: contention is 100 - v for Performance, v for Risk, band_ends)
+PERFORMANCE_PARTS = (
+    ("worst_vcpu_ready", "Worst peak vCPU Ready among all VMs", "%", 1, lambda c: c * 0.18, None),
+    ("worst_vcpu_costop", "Worst peak vCPU Co-stop among all VMs", "%", 1, lambda c: c * 0.08, None),
+    ("worst_memory_wait", "Worst memory wait among all VMs", "%", 1, lambda c: c * 0.04, None),
+    ("worst_disk_latency", "Worst peak read/write disk latency, all VM vDisks", " ms", 1, lambda c: c * 3.2, None),
+    ("p90_vcpu_ready", "90th percentile peak vCPU Ready among VMs", "%", 1, lambda c: c * 0.05, None),
+    ("p90_vcpu_costop", "90th percentile peak vCPU Co-stop among VMs", "%", 1, lambda c: c * 0.02, None),
+    ("p90_memory_wait", "90th percentile memory wait among VMs", "%", 1, lambda c: c * 0.01, None),
+    ("p90_disk_latency", "90th percentile read/write latency among VM virtual disks", " ms", 1, lambda c: c * 1.0, None),
+    ("highest_esxi_packets", "Highest ESXi (error + dropped) network packets", "%", 2, lambda c: c * 0.004, [0.2, 0.4, 0.8]),
+)
+RISK_PARTS = (
+    ("highest_esxi_cpu_thread_utilization", "Highest ESXi CPU thread utilization", "%", 1, lambda r: min(100.0, 28 + 0.75 * r), [60, 80, 90]),
+    ("worst_esxi_cpu_imbalance", "Worst ESXi CPU imbalance", "", 2, lambda r: 1 + 0.004 * r, [1, 1.3, 1.6]),
+    ("highest_esxi_memory_consumed", "Highest ESXi DRAM Memory Consumed", "%", 1, lambda r: min(100.0, 55 + 0.5 * r), [80, 90, 95]),
+    ("worst_esxi_memory_ballooned", "Worst ESXi memory ballooned", "%", 2, lambda r: max(0.0, (r - 45) * 0.12), [1, 2, 4]),
+    ("worst_esxi_swapped_zipped_memory", "Worst ESXi swapped + zipped memory", "%", 2, lambda r: max(0.0, (r - 55) * 0.05), [0.25, 0.5, 1]),
+    ("highest_esxi_cpu_reservation", "Highest ESXi CPU reservation", "%", 1, lambda r: 0.4 * r, [40, 60, 80]),
+    ("highest_esxi_memory_reservation", "Highest ESXi memory reservation", "%", 1, lambda r: 0.5 * r, [40, 60, 80]),
+    ("highest_esxi_cpu_overcommit", "Highest ESXi CPU overcommit ratio", "", 1, lambda r: 0.9 + 0.025 * r, [2, 3, 4]),
+    ("highest_esxi_memory_overcommit", "Highest ESXi memory overcommit ratio", "", 2, lambda r: 0.8 + 0.012 * r, [1.4, 1.8, 2.2]),
+    ("highest_cpu_monster_vm_host_ratio", "Highest CPU monster VM : host ratio", "", 1, lambda r: 0.3 + 0.012 * r, [2, 3, 4]),
+    ("highest_memory_monster_vm_host_ratio", "Highest memory monster VM : host ratio", "", 1, lambda r: 0.25 + 0.01 * r, [2, 3, 4]),
+)
+
+
+def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int) -> list:
+    """l2.kpi_details: the parts of Cluster Performance or Cluster Risk over the window, same points as the KPI.
+    Each part: points, Now, Worst with its time, 95th percentile (never an average). Lower is better for every part."""
+    perf = kpi_key == "cluster_performance"
+    out = []
+    for key, label, unit, dec, f, ends in PERFORMANCE_PARTS if perf else RISK_PARTS:
+        pts = [None if v is None else round(max(0.0, f(100 - v if perf else v) * (0.92 + 0.16 * X._h(cid, key, i))), dec) for i, v in enumerate(vals)]
+        if pts and pts[-1] is not None and vals[-1] is not None:
+            pts[-1] = round(max(0.0, f(100 - vals[-1] if perf else vals[-1])), dec)
+        part = {"key": key, "label": label, "unit": unit, "decimals": dec, "better": "lower", "scale": None, "minutes": minutes,
+                "points": [{"t": t, "v": v} for t, v in zip(times, pts)], **CAP.figures(pts, times, True, dec)}
+        if ends:
+            part["band_ends"] = ends
+        out.append(part)
+    return out
+
+
 def object_kpis(E, n: dict, now: datetime, window: str, enable=()) -> list:
     """l2.object_kpis: the Performance KPI of a cluster or anything under it, over the window, one point per slot
     (l2.statistics). First on its Performance tab. A cluster adds Cluster Risk: potential slowness (D-091)."""
@@ -202,8 +252,12 @@ def object_kpis(E, n: dict, now: datetime, window: str, enable=()) -> list:
             cap = CAP.cluster_view(now, cid, window, enable)
             perf = {k["key"]: k for k in cap.get("kpis", [])}.get("performance")
             pv = [p["v"] for p in perf["points"]] if perf else [None if v is None else round(v, 1) for v in series["performance"]]
-            return [_kpi("cluster_performance", "Cluster Performance", "higher", pv, times, L // 60),
-                    _kpi("cluster_risk", "Cluster Risk", "lower", [None if v is None else round(v, 1) for v in series["risk"]], times, L // 60)]
+            rv = [None if v is None else round(v, 1) for v in series["risk"]]
+            ks = [_kpi("cluster_performance", "Cluster Performance", "higher", pv, times, L // 60),
+                  _kpi("cluster_risk", "Cluster Risk", "lower", rv, times, L // 60)]
+            for k, vals in zip(ks, (pv, rv)):
+                k["details"] = kpi_details(cid, k["key"], vals, times, L // 60)
+            return ks
     s = perf_score(E, n, now, window, enable)
     if s is None:
         return []

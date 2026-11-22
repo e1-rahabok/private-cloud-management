@@ -5,7 +5,7 @@ role: l1
 cadence: [live]
 vocabulary: catalog/vocabulary/noc.yaml
 design: design/noc-workspace.md
-decisions: [D-032, D-035, D-036, D-041, D-049, D-068, D-106]
+decisions: [D-032, D-035, D-036, D-041, D-049, D-068, D-107]
 ---
 
 # NOC wall
@@ -26,11 +26,11 @@ From top to bottom:
 - Reads `/api/noc/wall` every `noc.refresh_seconds`.
 - **Rotation:** six screens in the fixed order, each for `noc.rotation_seconds`.
 - **Tabs:**
-  - Names only: Availability, Performance, Security, Volatility, Configuration, Capacity. No question, no summary word, no status colour (D-106).
+  - Names only: Availability, Performance, Security, Volatility, Configuration, Capacity. No question, no summary word, no status colour (D-107).
   - The active tab is filled, with a bar under it. The others are plain.
   - A tab shows at most one small label: "In hand" (a red whose incidents are all acknowledged), "No data" (stale), or "<n> open" (open incidents on that screen). Nothing when none.
 - **There is no screen title.** The active tab names the screen.
-- **Colour only on what is wrong.** A normal tile, row or cell is neutral. An amber or red one is coloured and also carries its number or text (D-106).
+- **Colour only on what is wrong.** A normal tile, row or cell is neutral. An amber or red one is coloured and also carries its number or text (D-107).
 - **Red interrupts the rotation:**
   - When `pin` is set, the wall shows that screen and stays on it.
   - With several entries in `pins`, it cycles through those screens only.
