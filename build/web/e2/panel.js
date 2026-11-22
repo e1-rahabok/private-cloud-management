@@ -39,6 +39,7 @@ const E2Panel = (() => {
       return `<div class="e2a" data-draft>${note}<p>${esc(a.text)}</p>${foot}</div>`;
     }
     if (a.source === 'vocabulary') return `<div class="e2a" data-vocabulary><p class="why">Agent E2's answer used words that are not used on this screen. Escalate if you need the detail.</p>${foot}</div>`;
+    if (a.source === 'model_unavailable') return '<div class="e2a" data-model-down><p class="why">Agent E2 is running, but its model cannot be reached.</p></div>';
     if (a.source !== 'service') return '<div class="e2a"><p class="why">The Agent E2 service is not available.</p></div>';
     const comp = a.computed && a.computed.length ? `<div class="e2computed"><div class="lbl">Computed, not written by the model</div>${a.computed.map(x => `<span class="box">${esc(x)}</span>`).join('')}</div>` : '';
     const asks = a.type === 'clarify' && a.questions && a.questions.length ? `<div class="e2asks"><div class="lbl">Agent E2 asks</div><ul>${a.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul><p class="muted">Your next question is the reply.</p></div>` : '';

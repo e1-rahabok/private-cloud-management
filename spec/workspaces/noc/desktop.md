@@ -55,4 +55,4 @@ decisions: [D-097, D-098]
   - an answer with an avoided word is asked for once more, naming the words;
   - if it fails again: "Agent E2's answer used words that are not used on this screen. Escalate if you need the detail." and no answer.
 - **No action button in the panel.** Agent E2 does not acknowledge, act, escalate or close.
-- **Not available:** the mark is grey and the panel says "The Agent E2 service is not available."
+- **Not available:** the mark is grey and the panel says "The Agent E2 service is not available." When the service answers but its model does not: "Agent E2 is running, but its model cannot be reached."

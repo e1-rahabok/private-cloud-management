@@ -317,6 +317,7 @@ story:
       unknown_context: 400
       unknown_metric: 404
       service_down: { status: 200, source: unavailable, content: "" }
+      model_down: { service_status: 502, source: model_unavailable, content: "" }
     decisions: [D-050, D-078, D-097]
   - id: LST-28
     name: A whole-page question carries what the page shows

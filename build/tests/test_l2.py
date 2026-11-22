@@ -336,6 +336,12 @@ class Troubleshoot(Base):
             code, out = A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}})
             self.assertFalse(A.health(SETTINGS)["available"])
         self.assertEqual((code, out["source"], out["content"]), (e["service_down"]["status"], e["service_down"]["source"], e["service_down"]["content"]))
+        import io, urllib.error
+        def model_down(url, body, timeout):
+            raise urllib.error.HTTPError(url, e["model_down"]["service_status"], "Bad Gateway", {}, io.BytesIO(b'{"error": "model unavailable"}'))
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", model_down):
+            code, out = A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}})
+        self.assertEqual((code, out["source"], out["content"]), (200, e["model_down"]["source"], e["model_down"]["content"]))
 
 
     def test_LST_28_whole_page_question_carries_the_page(self):
