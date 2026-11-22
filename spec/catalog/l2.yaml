@@ -479,7 +479,7 @@ entries:
       guest_os:
         title: Guest OS
         metrics:
-          run_queue_per_vcpu:     { label: "Run Queue",              unit: " per vCPU", better: lower,  decimals: 2 }
+          run_queue_per_vcpu:     { label: "Run Queue",              unit: " per vCPU", better: lower,  decimals: 2, band_ends: [2, 4, 8] }
           context_switches_per_s: { label: "Context Switches",       unit: "/s",        better: lower,  decimals: 0 }
           paging_per_s:           { label: "Paging",                 unit: " pages/s",  better: lower,  decimals: 0, band_ends: [1000, 2000, 4000] }
           guest_os_performance:   { label: "Guest OS Performance",   unit: "%",         better: higher, decimals: 1, scale: [0, 100] }

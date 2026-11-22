@@ -501,7 +501,7 @@ function metricBlock(m, layer) {
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
     fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? (hiw ? HIGH_BANDS : LOW_BANDS) : zones });
   const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, { p95: fmt(m.percentile_95), worst: fmtPoint(m.worst.t, m.minutes) }) : '';
-  return `<div class="metric" data-metric="${m.key}"><div class="mfig"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div>
+  return `<div class="metric" data-metric="${m.key}"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div><div class="mfig">
     <dl><dt>Now</dt><dd>${bandFig(m.now, m, figure(m.now, m))}</dd><dt>Worst</dt><dd>${m.worst ? bandFig(m.worst.v, m, figure(m.worst.v, m)) : '–'}</dd><dt>95th percentile</dt><dd>${bandFig(m.percentile_95, m, figure(m.percentile_95, m))}</dd></dl></div>${chart}</div>`;
 }
 const pointsNote = minutes => `<p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(minutes)}. Each point shows the worst value in that interval. 95% of points were better than the 95th percentile.</p>`;
@@ -594,7 +594,7 @@ function kpiBlock(k, c, m) {
     : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }],
     { label: `${k.label} over the window, 0 to 100%`, max: 100, width: 760, height: 250, left: 56, minutes: m, noclick: true, nodirect: true, nolegend: true, bands: hiw ? HIGH_BANDS : LOW_BANDS });
   const mark = e2mark({ kind: 'kpi', metric: k.key, pillar: 'capacity' }, k.label, { p95: pct(k.percentile_95), worst: k.worst ? fmtPoint(k.worst.t, m) : '' });
-  return `<div class="metric" data-kpi="${k.key}"><div class="mfig"><div class="mname"><h4>${esc(k.label)}</h4>${mark}</div>
+  return `<div class="metric" data-kpi="${k.key}"><div class="mname"><h4>${esc(k.label)}</h4>${mark}</div><div class="mfig">
     <dl><dt>Now</dt><dd>${bandFig(k.now, km, pct(k.now))}</dd><dt>Worst</dt><dd>${k.worst ? bandFig(k.worst.v, km, pct(k.worst.v)) : '–'}</dd>
     <dt>95th percentile</dt><dd>${bandFig(k.percentile_95, km, pct(k.percentile_95))}</dd></dl></div>${chart}</div>`;
 }

@@ -470,7 +470,7 @@ page:
       The KPI comes first (D-100). On fr-bat-6839's Performance tab the first section is "Performance" with Guest OS Performance
       then VM Performance, and neither layer repeats them. On FR-B-04's Performance tab the first charts are Cluster Performance and
       Cluster Risk, and no card "This object", "Trend" or "Children outside green" remains. Every figure of a 0 to 100% KPI is a band
-      pill whose band matches its value and names it; its text is at least 4.5:1 on its background. A counter's figure has a pill only where the catalog has band ends (D-108): on a VM, Paging, CPU Ready, CPU Co-Stop, Memory Wait and Disk Latency; Run Queue and Context Switches have none.
+      pill whose band matches its value and names it; its text is at least 4.5:1 on its background. A counter's figure has a pill only where the catalog has band ends (D-108): on a VM, Run Queue, Paging, CPU Ready, CPU Co-Stop, Memory Wait and Disk Latency; Context Switches has none. A metric title is on one line, in a row above the figures and chart; the Guest OS Performance and VM Performance cards have the same height.
       On fr-esx-244's Capacity tab the first section is the summary with Capacity Remaining, Time Remaining and VM Remaining, and
       says the values are placeholders from VCF Operations; then the verdict.
     decisions: [D-100, D-108]

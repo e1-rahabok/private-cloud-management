@@ -120,10 +120,10 @@ def vm_values(vm: dict, score: float, act: dict) -> dict:
 
 # (key, label, unit, better, decimals, scale, band_ends). The label never holds the unit; the unit follows the number.
 # band_ends: upper end of green, yellow, orange, from the Agent E2 catalog (thresholds-performance.yaml, VirtualMachine and
-# Guest OS rows). None where the catalog has no row in the same unit (Run Queue is a count there, here per vCPU; Context Switches).
+# Guest OS rows; Run Queue per vCPU from the adapter's Guest OS Performance table: 2, 4, 8). None where there is no row (Context Switches).
 LAYER_METRICS = (
     ("guest_os", "Guest OS", (
-        ("run_queue_per_vcpu", "Run Queue", " per vCPU", "lower", 2, None, None),
+        ("run_queue_per_vcpu", "Run Queue", " per vCPU", "lower", 2, None, [2, 4, 8]),
         ("context_switches_per_s", "Context Switches", "/s", "lower", 0, None, None),
         ("paging_per_s", "Paging", " pages/s", "lower", 0, None, [1000, 2000, 4000]),
         ("guest_os_performance", "Guest OS Performance", "%", "higher", 1, (0, 100), None))),
