@@ -213,14 +213,13 @@ body.desk.l2.e2-open main { margin-right: 0; }
 }
 
 /* Band figures (tokens.md, Band figures; D-100): a KPI's Now, Worst and 95th percentile in the band of their value.
-   Tinted pill, dark text of the same hue (6.2:1 to 7.5:1), a bar in the band color, and the band's name. */
+   Tinted pill, dark text of the same hue (6.2:1 to 7.5:1) and a bar in the band color. No band name (D-104). */
 .metric dd { margin: 2px 0 0; }
 .bv { display: inline-flex; align-items: baseline; gap: 8px; padding: 1px 10px 1px 8px; border-radius: 8px; border-left: 4px solid; }
 .bv.green { background: #D2ECE5; color: #0A5E54; border-color: var(--band-green); }
 .bv.yellow { background: #F7EBB5; color: #5C4700; border-color: var(--band-yellow); }
 .bv.orange { background: #F9DCC8; color: #7A2A05; border-color: var(--band-orange); }
 .bv.red { background: #F6D6D1; color: #8F1D13; border-color: var(--band-red); }
-.bv .bn { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 .bv .u { color: inherit; }
 section.kpis { margin-bottom: 18px; }
 .cards.remaining .card { min-height: 0; }

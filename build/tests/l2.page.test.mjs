@@ -215,8 +215,8 @@ try {
   const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
   const band = v => v >= 75 ? 'green' : v >= 50 ? 'yellow' : v >= 25 ? 'orange' : 'red';
   const pills = async () => page.$$eval('.metric', ms => ms.map(m => ({ key: m.dataset.metric || m.dataset.kpi, pills: [...m.querySelectorAll('dd')].map(d => { const p = d.querySelector('.bv'); if (!p) return null; const cs = getComputedStyle(p);
-    return { band: p.dataset.band, name: p.querySelector('.bn').textContent, v: parseFloat(p.textContent), fg: cs.color, bg: cs.backgroundColor }; }) })));
-  const pillsOk = (ms, hiw) => ms.every(m => m.pills.every(p => p === null || (p.band === band(hiw(m.key) ? 100 - p.v : p.v) && p.name.toLowerCase() === p.band && ratio(p.fg, p.bg) >= 4.5)));
+    return { band: p.dataset.band, text: p.textContent.trim(), v: parseFloat(p.textContent), fg: cs.color, bg: cs.backgroundColor }; }) })));
+  const pillsOk = (ms, hiw) => ms.every(m => m.pills.every(p => p === null || (p.band === band(hiw(m.key) ? 100 - p.v : p.v) && !/green|yellow|orange|red/i.test(p.text) && ratio(p.fg, p.bg) >= 4.5)));
   await go('/l2/monitor/compute/fr-bat-6839/performance');
   const vmFirst = await page.$eval('section.persp', s => s.dataset.section);
   const vmKpis = await page.$$eval('[data-section="performance-kpis"] .metric', ms => ms.map(m => m.dataset.metric));
@@ -235,10 +235,16 @@ try {
   const rem = await page.$$eval('[data-remaining] h3', hs => hs.map(h => h.textContent));
   const placeholder = await page.innerText('[data-section="capacity-summary"]');
   const capPillOk = pillsOk(await pills(), k => k !== 'performance');
+  // the parts of Consumption carry the band of their value from the catalog's band ends (D-104), and no band word
+  await go('/l2/monitor/compute/wld-fr-gen/capacity');
+  const END = { cpu_thread_utilization: [55, 70, 85], memory_consumed: [70, 80, 90], memory_ballooned: [1, 2, 4], memory_zip_swap: [0.25, 0.5, 1] };
+  const partBand = (k, v) => ['green', 'yellow', 'orange'].find((_, i) => v <= END[k][i]) || 'red';
+  const partPills = (await pills()).filter(m => END[m.key]);
+  const partsOk = partPills.length === 4 && partPills.every(m => m.pills.every(p => p !== null && p.band === partBand(m.key, p.v) && !/green|yellow|orange|red/i.test(p.text) && ratio(p.fg, p.bg) >= 4.5));
   check('LPG-23', vmFirst === 'performance-kpis' && vmKpis.join() === 'guest_os_performance,vm_performance' && vmLayerKpis.length === 0 && counterPlain && vmPillOk
     && clKpis.join() === 'Cluster Performance,Cluster Risk' && clPillOk && noCards
-    && capFirst.join() === 'summary,verdict' && rem.join() === 'Capacity Remaining,Time Remaining,VM Remaining' && !/Placeholder values/.test(placeholder) && capPillOk,
-    `VM ${vmKpis}; cluster ${clKpis}; capacity ${capFirst} ${rem}; pills ${vmPillOk}/${clPillOk}/${capPillOk}`);
+    && capFirst.join() === 'summary,verdict' && rem.join() === 'Capacity Remaining,Time Remaining,VM Remaining' && !/Placeholder values/.test(placeholder) && capPillOk && partsOk,
+    `VM ${vmKpis}; cluster ${clKpis}; capacity ${capFirst} ${rem}; pills ${vmPillOk}/${clPillOk}/${capPillOk}/${partsOk}`);
 
   // LPG-16 moving between pages does not load the page; the window is a drop-down; tabs are tabs with a dot each
   await go('/l2/monitor/compute/estate/summary');

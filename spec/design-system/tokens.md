@@ -39,7 +39,7 @@ Taken from the Executive Dashboard mockup (D-015), which is already accessible. 
 | `in_plan` | `accent.soft` | `accent.ink` | In the plan |
 | `no_data` | `#E7E5DD` | `text.muted` | No data |
 
-- **Colour is never the only signal.** Every colour comes with a text label (mockup rule, WCAG).
+- **Colour is never the only signal.** Every colour comes with a text label (mockup rule, WCAG). One exception, by the author (D-104): a band figure does not write the band's name; its pill and bar carry it.
 - `in_plan` uses the accent, not amber. A short date already covered by the next purchase round is not an alarm (Executive design, 4.4).
 
 ## Band figures
@@ -53,7 +53,8 @@ A KPI on the 0 to 100% scale has four bands: green, yellow, orange, red (catalog
 | `orange` | `#C9480C` | `#F9DCC8` | `#7A2A05` | 7.5:1 |
 | `red` | `#8F1D13` | `#F6D6D1` | `#8F1D13` | 6.6:1 |
 
-- A 4 px bar on the left of the pill in the band's line colour, and the band's name in small capitals after the number. Colour is never the only signal.
+- A 4 px bar on the left of the pill in the band's line colour. The band's name is not written: the colour already says it (D-104).
+- A metric that is not a 0 to 100% KPI takes its band from the catalog's band ends (upper end of green, yellow and orange; above the last is red). The parts of Cluster Consumption do (l2.consumption_parts, band_ends).
 - Only figures of a metric with bands. A counter without bands (CPU Ready, Disk Latency) stays in `text`: no band is invented for it.
 
 ## Type

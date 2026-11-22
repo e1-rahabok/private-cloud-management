@@ -40,6 +40,10 @@ KPI_LABEL = {"consumption": "Cluster Consumption", "performance": "Cluster Perfo
 HIGHER_IS_WORSE = {"consumption": True, "performance": False, "risk": True}
 PARTS = (("cpu_thread_utilization", "CPU Thread Utilization"), ("memory_consumed", "Memory Consumed"),
          ("memory_ballooned", "Memory Ballooned"), ("memory_zip_swap", "Memory Zip Swap"))
+# Upper end of green, yellow and orange per part; above the last is red (l2.consumption_parts, band_ends). From the
+# Agent E2 knowledge base, knowledge/catalog/thresholds-capacity.yaml, rows of cluster-consumption. A value on an end stays below it.
+PART_BAND_ENDS = {"cpu_thread_utilization": [55, 70, 85], "memory_consumed": [70, 80, 90],
+                  "memory_ballooned": [1, 2, 4], "memory_zip_swap": [0.25, 0.5, 1], "memory_tiering": [25, 50, 75]}
 
 
 # ---------------------------------------------------------------- settings set in the PCM adapter (D-096)
@@ -342,7 +346,7 @@ def cluster_view(now: datetime, cid: str, window: str, enable=(), marked_host: s
     parts = []
     for key, label in PARTS:
         vals = [round(_part(key, v, cid, i), 2 if key in ("memory_ballooned", "memory_zip_swap") else 1) for i, v in enumerate(cons)]
-        parts.append({"key": key, "label": label, "unit": "%", "points": [{"t": t, "v": v} for t, v in zip(times, vals)],
+        parts.append({"key": key, "label": label, "unit": "%", "band_ends": PART_BAND_ENDS[key], "points": [{"t": t, "v": v} for t, v in zip(times, vals)],
                       **figures(vals, times, True, 2 if key in ("memory_ballooned", "memory_zip_swap") else 1)})
     uc = usable_capacity(E, c)
     off = _host_offsets(E, c, rows, uc, X.active_stories(enable))

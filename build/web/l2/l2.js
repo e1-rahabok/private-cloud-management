@@ -331,7 +331,6 @@ async function monitor(msg = '') {
 }
 // ---------------------------------------------------------------- Performance above the cluster: VM, then Cluster (monitor.md)
 const CLASS_NAME = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze', all: 'All classes' };
-const BAND_NAME = { green: 'Green', yellow: 'Yellow', orange: 'Orange', red: 'Red' };
 const perfBand = v => v == null ? 'no_data' : v >= 75 ? 'green' : v >= 50 ? 'yellow' : v >= 25 ? 'orange' : 'red';
 const riskBand = v => v == null ? 'no_data' : perfBand(100 - v);
 const statusOfBand = b => ({ green: 'green', yellow: 'amber', orange: 'red', red: 'red' }[b] || 'no_data');
@@ -441,7 +440,7 @@ function mountChart(box) {
     const i = idx(ev), sr = svg.getBoundingClientRect(), xv = x(i);
     cross.setAttribute('x1', xv); cross.setAttribute('x2', xv); cross.setAttribute('visibility', 'visible');
     series.forEach((s, k) => { const v = pts[i][s.key]; if (v == null) return dots[k].setAttribute('visibility', 'hidden'); dots[k].setAttribute('cx', xv); dots[k].setAttribute('cy', y(v)); dots[k].setAttribute('stroke', seriesColor(s, v)); dots[k].setAttribute('visibility', 'visible'); });
-    tip.innerHTML = `<div class="when">${esc(humanPoint(pts[i].t, o.minutes))}</div>${series.map(s => { const v = pts[i][s.key]; return `<div class="row"><i style="background:${v == null ? 'var(--text-muted)' : seriesColor(s, v)}"></i><span>${esc(s.label)}</span><strong>${v == null ? '–' : vf(v)}</strong>${s.who && pts[i][s.who] ? `<span class="who">${esc(pts[i][s.who])}</span>` : ''}${s.band && v != null ? `<span class="who">${BAND_NAME[s.band(v)]}</span>` : ''}</div>`; }).join('')}`;
+    tip.innerHTML = `<div class="when">${esc(humanPoint(pts[i].t, o.minutes))}</div>${series.map(s => { const v = pts[i][s.key]; return `<div class="row"><i style="background:${v == null ? 'var(--text-muted)' : seriesColor(s, v)}"></i><span>${esc(s.label)}</span><strong>${v == null ? '–' : vf(v)}</strong>${s.who && pts[i][s.who] ? `<span class="who">${esc(pts[i][s.who])}</span>` : ''}</div>`; }).join('')}`;
     tip.hidden = false;
     const left = ev.clientX - sr.left + 14;
     tip.style.left = `${left + tip.offsetWidth > sr.width ? Math.max(0, ev.clientX - sr.left - tip.offsetWidth - 14) : left}px`; tip.style.top = `${Math.max(0, ev.clientY - sr.top - tip.offsetHeight - 10)}px`;
@@ -478,10 +477,12 @@ const withUnit = (v, m, tick) => {
 };
 // In the figures on the left a unit that is words ("per vCPU", "ms") is set small and light, so every metric reads alike.
 const figure = (v, m) => { if (v == null) return '–'; const t = withUnit(v, m); return m.unit && m.unit !== '%' && t.endsWith(m.unit) ? `${esc(t.slice(0, -m.unit.length))}<span class="u">${esc(m.unit)}</span>` : esc(t); };
-// A KPI's figures carry the band of their value: a tinted pill with dark text (6.2:1 or better), a bar in the band
-// color, and the band's name, so color is never the only signal (tokens.md, Band figures; D-100).
-const bandOf = (v, m) => v == null || !m.scale ? null : m.better === 'lower' ? riskBand(v) : perfBand(v);
-const bandFig = (v, m, text) => { const b = bandOf(v, m); return b && b !== 'no_data' ? `<span class="bv ${b}" data-band="${b}">${text}<span class="bn">${BAND_NAME[b]}</span></span>` : text; };
+// A figure with bands carries the band of its value: a tinted pill with dark text (6.2:1 or better) and a bar in the band
+// color. The band's name is not written: the color already says it (tokens.md, Band figures; D-100, D-104).
+// A KPI on the 0 to 100% scale uses the SP5 bands; a metric with band_ends (upper end of green, yellow, orange) uses those. A value on an end stays in the lower band.
+const endBand = (v, ends) => v == null ? 'no_data' : ['green', 'yellow', 'orange'].find((_, i) => v <= ends[i]) || 'red';
+const bandOf = (v, m) => v == null ? null : m.band_ends ? endBand(v, m.band_ends) : !m.scale ? null : m.better === 'lower' ? riskBand(v) : perfBand(v);
+const bandFig = (v, m, text) => { const b = bandOf(v, m); return b && b !== 'no_data' ? `<span class="bv ${b}" data-band="${b}">${text}</span>` : text; };
 const LAYER_NOTE = { guest_os: 'Runs on top of the Virtual Motherboard.', virtual_motherboard: 'The VM\'s virtual hardware, under the Guest OS.' };
 function metricBlock(m, layer) {
   const score = !!m.scale;
@@ -543,7 +544,7 @@ function perfTab(p, d) {
     : !outW ? `Every ${esc(cls)} cluster stayed green.`
     : `Lowest: ${low.worst}% at ${esc(fmtPoint(low.t, m))}, ${esc(low.worst_cluster)}; the ${P.percentile.performance}th percentile then ${low.percentile}%. The worst cluster was out of green for ${fmtDur(outW)}. ${outP ? `The ${P.percentile.performance}th percentile was out of green for ${fmtDur(outP)}: wide at those times.` : `The ${P.percentile.performance}th percentile stayed green: narrow, a few clusters or one.`}`;
   const rNow = P.risk[P.risk.length - 1];
-  const riskLine = !P.clusters ? '' : `Highest now: ${rNow.worst}% (${BAND_NAME[riskBand(rNow.worst)]}), ${esc(rNow.worst_cluster)}. The ${P.percentile.risk}th percentile now: ${rNow.percentile}% (${BAND_NAME[riskBand(rNow.percentile)]}).`;
+  const riskLine = !P.clusters ? '' : `Highest now: ${rNow.worst}%, ${esc(rNow.worst_cluster)}. The ${P.percentile.risk}th percentile now: ${rNow.percentile}%.`;
   const perfBands = [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']];
   const riskBands = [[0, 25, 'green'], [25, 50, 'yellow'], [50, 75, 'orange'], [75, 100, 'red']];
   const minOf = (a, b) => Math.min(a, b), maxOf = (a, b) => Math.max(a, b);
