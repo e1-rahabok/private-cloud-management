@@ -341,7 +341,24 @@ const perfBand = v => v == null ? 'no_data' : v >= 75 ? 'green' : v >= 50 ? 'yel
 const riskBand = v => v == null ? 'no_data' : perfBand(100 - v);
 const statusOfBand = b => ({ green: 'green', yellow: 'amber', orange: 'red', red: 'red' }[b] || 'no_data');
 const fmtPoint = (iso, minutes) => new Date(iso).toLocaleString('en-GB', minutes >= 1440 ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-const fmtTick = (iso, minutes, span) => new Date(iso).toLocaleString('en-GB', span > 2 * 86400000 ? { day: 'numeric', month: 'short' } : { hour: '2-digit', minute: '2-digit' });
+// Axis times people say aloud: "2 pm", "6 pm", "19 Oct". Ticks sit on round hours or days, never on 2:10.
+const clock = d => `${d.getHours() % 12 || 12}${d.getMinutes() ? ':' + String(d.getMinutes()).padStart(2, '0') : ''} ${d.getHours() < 12 ? 'am' : 'pm'}`;
+const dayName = d => d.toLocaleString('en-GB', { day: 'numeric', month: 'short' });
+const humanPoint = (iso, minutes) => { const d = new Date(iso); return minutes >= 1440 ? dayName(d) : `${dayName(d)}, ${clock(d)}`; };
+function niceTicks(t0, tn, max) {
+  const MIN = 60000, H = 3600000, D = 86400000, span = tn - t0;
+  const steps = span > 2 * D ? [D, 2 * D, 3 * D, 7 * D, 14 * D, 30 * D] : [5 * MIN, 10 * MIN, 15 * MIN, 30 * MIN, H, 2 * H, 3 * H, 4 * H, 6 * H, 12 * H];
+  const step = steps.find(x => span / x <= max) || steps[steps.length - 1];
+  const d = new Date(t0), out = [];
+  if (step >= D) { d.setHours(0, 0, 0, 0); if (d.getTime() < t0) d.setDate(d.getDate() + 1); }
+  else if (step >= H) { d.setMinutes(0, 0, 0); while (d.getTime() < t0 || d.getHours() % (step / H)) d.setHours(d.getHours() + 1); }
+  else { d.setSeconds(0, 0); while (d.getTime() < t0 || d.getMinutes() % (step / MIN)) d.setMinutes(d.getMinutes() + 1); }
+  while (d.getTime() <= tn && out.length < 40) {
+    out.push({ t: d.getTime(), label: step >= D || (!d.getHours() && !d.getMinutes()) ? dayName(d) : clock(d) });
+    if (step >= D) d.setDate(d.getDate() + step / D); else if (step >= H) d.setHours(d.getHours() + step / H); else d.setMinutes(d.getMinutes() + step / MIN);
+  }
+  return out;
+}
 const fmtDur = m => m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`;
 const CHARTS = {};
 
@@ -350,13 +367,13 @@ const CHARTS = {};
 const seriesColor = (s, v) => s.band ? `var(--band-${s.band(v)})` : s.color;
 function chartSvg(id, W) {
   const { pts, series, o } = CHARTS[id];
-  const H = o.height ?? 240, L = o.left ?? 56, Rt = (o.nodirect || o.bands) ? 16 : 140, T = 12, B = 28, iw = W - L - Rt, ih = H - T - B, n = pts.length;
+  const H = o.height ?? 240, L = o.left ?? 56, Rt = (o.nodirect || o.bands) ? 16 : 140, T = 12, B = 32, iw = W - L - Rt, ih = H - T - B, n = pts.length;
   const fmt = o.fmt || ((v) => o.max === 100 ? v + '%' : n0(v));
   const max = o.max ?? Math.max(4, ...pts.flatMap(p => series.map(s => p[s.key] ?? 0))) * 1.1;
   const x = i => L + (n === 1 ? iw / 2 : i / (n - 1) * iw), y = v => T + ih - v / max * ih;
   const ticks = o.ticks ?? (o.max === 100 ? [0, 25, 50, 75, 100] : [0, Math.round(max / 2), Math.round(max)]);
-  const span = new Date(pts[n - 1].t) - new Date(pts[0].t);
-  const nx = Math.max(2, Math.min(6, Math.floor(iw / 110))), xt = [...new Set(Array.from({ length: nx + 1 }, (_, k) => Math.round(k * (n - 1) / nx)))];
+  const t0 = new Date(pts[0].t).getTime(), tn = new Date(pts[n - 1].t).getTime();
+  const xt = niceTicks(t0, tn, Math.max(3, Math.floor(iw / 85))), xAt = t => L + (tn === t0 ? iw / 2 : (t - t0) / (tn - t0) * iw);
   CHARTS[id].g = { x, y, L, T, iw, ih };
   const f = v => v.toFixed(1);
   let svg = `<svg class="lc" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(o.label)}" data-chart="${id}">`;
@@ -365,8 +382,10 @@ function chartSvg(id, W) {
     <mask id="fm-${id}" maskUnits="userSpaceOnUse" x="${L}" y="${T}" width="${iw}" height="${ih}"><rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="url(#fg-${id})"/></mask></defs>`;
   // The four bands are tinted zones behind the line, so no band names are written on the chart.
   if (o.bands) svg += `<g class="zones">${o.bands.map(([lo, hi, b]) => `<rect x="${L}" y="${f(y(hi))}" width="${iw}" height="${f(y(lo) - y(hi))}" fill="var(--band-${b})"/>`).join('')}</g>`;
-  svg += ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rt}" y1="${f(y(v))}" y2="${f(y(v))}"/><text class="axis" x="${L - 10}" y="${f(y(v) + 4)}" text-anchor="end">${fmt(v, true)}</text>`).join('');
-  svg += xt.map((i, k) => `<text class="axis" x="${f(x(i))}" y="${H - 6}" text-anchor="${k === 0 ? 'start' : k === xt.length - 1 ? 'end' : 'middle'}">${esc(fmtTick(pts[i].t, o.minutes, span))}</text>`).join('');
+  svg += xt.map(k => `<line class="vgrid" x1="${f(xAt(k.t))}" x2="${f(xAt(k.t))}" y1="${T}" y2="${T + ih}"/>`).join('');
+  svg += ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rt}" y1="${f(y(v))}" y2="${f(y(v))}"/><line class="tick" x1="${L - 5}" x2="${L}" y1="${f(y(v))}" y2="${f(y(v))}"/><text class="axis" x="${L - 10}" y="${f(y(v) + 4)}" text-anchor="end">${fmt(v, true)}</text>`).join('');
+  svg += `<line class="axisline" x1="${L}" x2="${L}" y1="${T}" y2="${T + ih}"/><line class="axisline" x1="${L}" x2="${W - Rt}" y1="${T + ih}" y2="${T + ih}"/>`;
+  svg += xt.map(k => `<line class="tick" x1="${f(xAt(k.t))}" x2="${f(xAt(k.t))}" y1="${T + ih}" y2="${T + ih + 5}"/><text class="axis" x="${f(xAt(k.t))}" y="${H - 6}" text-anchor="middle">${esc(k.label)}</text>`).join('');
   const base = y(0);
   for (const s of series) {
     // Each point holds the worst value inside its interval, so the line steps: flat across the interval, then a rise or fall.
@@ -427,7 +446,7 @@ function mountChart(box) {
     const i = idx(ev), sr = svg.getBoundingClientRect(), xv = x(i);
     cross.setAttribute('x1', xv); cross.setAttribute('x2', xv); cross.setAttribute('visibility', 'visible');
     series.forEach((s, k) => { const v = pts[i][s.key]; if (v == null) return dots[k].setAttribute('visibility', 'hidden'); dots[k].setAttribute('cx', xv); dots[k].setAttribute('cy', y(v)); dots[k].setAttribute('stroke', seriesColor(s, v)); dots[k].setAttribute('visibility', 'visible'); });
-    tip.innerHTML = `<div class="when">${esc(fmtPoint(pts[i].t, o.minutes))}</div>${series.map(s => { const v = pts[i][s.key]; return `<div class="row"><i style="background:${v == null ? 'var(--text-muted)' : seriesColor(s, v)}"></i><span>${esc(s.label)}</span><strong>${v == null ? '–' : vf(v)}</strong>${s.who && pts[i][s.who] ? `<span class="who">${esc(pts[i][s.who])}</span>` : ''}${s.band && v != null ? `<span class="who">${BAND_NAME[s.band(v)]}</span>` : ''}</div>`; }).join('')}`;
+    tip.innerHTML = `<div class="when">${esc(humanPoint(pts[i].t, o.minutes))}</div>${series.map(s => { const v = pts[i][s.key]; return `<div class="row"><i style="background:${v == null ? 'var(--text-muted)' : seriesColor(s, v)}"></i><span>${esc(s.label)}</span><strong>${v == null ? '–' : vf(v)}</strong>${s.who && pts[i][s.who] ? `<span class="who">${esc(pts[i][s.who])}</span>` : ''}${s.band && v != null ? `<span class="who">${BAND_NAME[s.band(v)]}</span>` : ''}</div>`; }).join('')}`;
     tip.hidden = false;
     const left = ev.clientX - sr.left + 14;
     tip.style.left = `${left + tip.offsetWidth > sr.width ? Math.max(0, ev.clientX - sr.left - tip.offsetWidth - 14) : left}px`; tip.style.top = `${Math.max(0, ev.clientY - sr.top - tip.offsetHeight - 10)}px`;
