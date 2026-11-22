@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import api, capacity, docs, generator, l2, l2_agent, l2_cases, l2_estate, l2_improve, l2_monitor, noc
+from . import api, capacity, docs, generator, l2, l2_agent, l2_cases, l2_estate, l2_improve, l2_monitor, noc, noc_agent
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 
@@ -58,6 +58,8 @@ def route(path: str, query: dict):
 
 
 def noc_get(rest, now, enable):
+    if rest == ["agent", "health"]:
+        return l2_agent.health(generator.load_spec()["settings"])
     nd = noc.build(now, enable)
     if rest == ["wall"]:
         return noc.wall(nd)
@@ -236,6 +238,8 @@ class Handler(BaseHTTPRequestHandler):
             code, data = l2.act(now, ["monthly", *parts[2:]], body, enable)
         elif parts[1] == "l2":
             code, data = l2.act(now, parts[2:], body, enable)
+        elif parts[1] == "noc" and parts[2:] == ["agent", "ask"]:
+            code, data = noc_agent.ask(noc.build(now, enable), body)
         else:
             code, data = noc.act(noc.build(now, enable), parts[2:], body)
         return self.send(code, json.dumps(data).encode(), "application/json")

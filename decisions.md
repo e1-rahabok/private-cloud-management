@@ -102,6 +102,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-095 | 2026-11-21 | Which statistic, on which axis. **Over time, on one object:** a point holds the worst value of its slot (D-091); the figures are Now, Worst (with its time) and 95th percentile (D-092); the object's status over the window is its 95th percentile (D-088), and the worse of that and its last hour. **Across objects, at one time:** the worst object, and the 10th or 90th percentile at the bad end (D-091). **Never an average** on either axis, and never a sum or average of percentages across clusters. vCommunity's "Worst" check values are a percentile of the check period; PCM names them by what they are ("95th percentile, 24 hours to 08:00"), never "Worst". | The two axes answer different questions. Over time, one bad 5 minutes is too noisy to decide on, but it must stay visible: the chart shows every point and Worst names the peak. Across objects, the worst one is a real cluster with real VMs, and the percentile says how wide. One word for two statistics (vCommunity's Worst is a percentile, PCM's Worst is a peak) makes the same cluster read two ways. Rationale: D-095. |
 | D-096 | 2026-11-21 | vCommunity is part of PCM, not a third-party source. PCM requires it, and it will be renamed the **PCM adapter**. Its metrics are PCM's definitions; its settings and thresholds are PCM settings, set in the adapter and listed in the catalog with their owner. PCM still reads them through VCF Operations (D-064), where the adapter runs. | The capacity model, the KPIs and the Periodic Cluster Check are already built in vCommunity. A second copy in PCM would give two answers for one cluster. Spec rule 6 holds: every threshold is a named setting; it is set in one place, the adapter. Rationale: D-096. |
 | D-097 | 2026-11-21 | Agent E2 is on every L2 page, in one place. An **E2 mark** in the top bar says whether it is available; the same mark sits on each metric, KPI, finding, chain link and layer, where the question comes up. A click opens the **Agent E2 panel**, docked on the right: it pushes the content, never covers it, and the inventory tree folds to a narrow strip while it is open. PCM sends the facts of what was clicked; Agent E2 answers with its sources. The panel stays open across pages. Revises the L2 frame rule "no other item in the top bar". | The screen is full, and a panel on top would hide the chart being asked about. While L2 talks to Agent E2 they are not browsing the tree. An avatar mark, not a sparkle: Agent E2 is a team member who explains with sources (D-047), not magic. See Rationale. |
+| D-098 | 2026-11-22 | The NOC desk has the same Agent E2 mark and panel as L2 (D-097): the mark in the top bar, on each tile, on the cluster drill-down, on each incident row, on the incident header and on each SOP step. PCM sends L1's facts (scores from 0 to 100, the SOP and its results) with the role l1. Every answer is checked against the NOC vocabulary; one that still uses an L2 word after one rewrite is not shown. "Explain this incident" and "Draft the escalation note" become the panel's first suggestions on an incident. The wall has no mark. | One mark and one panel for every workspace: an operator who moves to L2 already knows them. L1 must never get raw counters (NOC vocabulary), and must never be told to act outside the SOP (NOC design, 3.8). The wall has no mouse or keyboard (D-032). |
 
 ## Rationale
 
@@ -719,3 +720,20 @@ Source: Cost n Price n Value (in `sources/`).
 **Not changed**
 - Agent E2 explains, proposes and drafts. It never confirms a link, sets a severity, approves an action or closes a case (L2 design, 8).
 - Every question is recorded with Agent E2 as the actor and the person who asked (D-050).
+
+### D-098 Agent E2 at the NOC desk
+
+**Same mark, same panel**
+- One mark and one panel in every workspace (D-097). Shared code; each workspace says only what its pages send and suggest.
+- On the desk the content has no tree to fold. The panel pushes the content: the page gives up 400 px on the right.
+
+**L1's words, not L2's**
+- Agent E2's knowledge base speaks Level 400: CPU Ready, latency in ms. The NOC vocabulary bans those words on L1 screens.
+- PCM sends the role l1 and adds the rule to the question: scores from 0 to 100, plain words, follow the SOP, never these words.
+- PCM checks the answer. One that uses an avoided word is asked for once more, naming the words. If it fails again, the panel says so and shows no answer, and points to escalation. A wrong word on an L1 screen is worse than no answer: L1 cannot check it.
+
+**The drafts stay drafts**
+- "Explain this incident" and "Draft the escalation note" keep their own path (D-076): the direct model call with the fixed template behind it. In the panel they are the first two suggestions on an incident.
+
+**Not changed**
+- Agent E2 does not set severity, choose an action outside the SOP or close an alert (NOC design, 3.8). The panel has no action button.

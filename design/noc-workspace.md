@@ -134,6 +134,7 @@ Path: `privatecloud.acme.com/noc` (D-028).
   - choose an action outside the SOP;
   - close an alert.
 - **Why:** L1 is junior and follows the SOP. An assistant that goes beyond the SOP would make L1 depend on judgement that L1 cannot check.
+- **Where it is on the desk (D-098):** the same E2 mark and panel as L2 (L2 design, 8.1). The mark sits in the top bar and on each tile, cluster, incident and SOP step; the panel docks on the right and pushes the page. Its answers use L1's words only: an answer that keeps an L2 word is not shown. The wall has no mark.
 
 ### 3.9 The shift page: handover, not the daily check
 

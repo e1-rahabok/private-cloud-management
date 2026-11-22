@@ -119,8 +119,8 @@ Third build: the three gaps from the first review are fixed in the specification
 | Level | Tests | Result |
 |---|---|---|
 | Catalog | NCAT-1 to NCAT-6 | 6 passed |
-| Story | NST-1 to NST-12 | 12 passed |
-| Page | NPG-1 to NPG-10 | 10 passed |
+| Story | NST-1 to NST-13 | 13 passed |
+| Page | NPG-1 to NPG-11 | 11 passed |
 
 **Found while reviewing the screenshots, and fixed in the specification first:**
 - The SOP step "is the villain non-production?" showed "fail". It is a branch, not a failure. Branch steps now show their answer.
@@ -233,6 +233,7 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 - **Where L2 meets it (D-097):** the E2 mark in the top bar (dark with a green dot when the service answers, grey when not; it asks about the whole page) and on each layer heading and each metric of a VM's Performance tab, each KPI of a cluster's Capacity tab, each finding row, the case header, each chain link and each layer row. A click opens the Agent E2 panel on the right: it pushes the content, and the tree folds to a strip.
 - **One endpoint:** `POST /api/l2/agent/ask` with the question and what was clicked. PCM rebuilds the facts on the server (`build/pcm_proto/l2_agent.py`) and calls the Agent E2 service (`harness/answer_service.py` in the Agent E2 repository). `GET /api/l2/agent/health` asks the service's `/v1/health`.
 - **Run it next to PCM:** `python3 harness/answer_service.py --port 8090` from the Agent E2 repository. It takes about 50 s to start. The URL is the setting `agent_e2.service_url`; `PCM_AGENT_E2_URL` replaces it.
+- **The NOC desk has the same mark and panel (D-098):** top bar, each tile, the cluster drill-down, each alert row, the incident title and each SOP step. `POST /api/noc/agent/ask` sends L1's facts with the role l1 (`build/pcm_proto/noc_agent.py`); an answer that keeps a word from the NOC vocabulary's avoided list is asked for once more, then not shown. "Explain this incident" and "Draft the escalation note" are the panel's first suggestions on an incident. One shared module: `web/e2/panel.js` and `web/e2/panel.css`. Screenshot: `screenshots/noc-agent-e2-panel.png`.
 - **Page tests** run a stub service: no model and no network. A live check of the panel against the real service has not run yet.
 - **Live check, 2026-11-20:**
   - sg-app-117 answered in 32 s: "the issue is inside the Guest OS".

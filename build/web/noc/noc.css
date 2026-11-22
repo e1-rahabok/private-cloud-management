@@ -97,3 +97,16 @@ button.act:disabled { background: var(--stale-chip); color: var(--text-muted); b
 select, textarea { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); }
 textarea { width: 100%; min-height: 80px; }
 .msg { margin-top: 8px; font-weight: 700; }
+
+/* ---------- Agent E2 on the desk (desktop.md, Agent E2 mark and panel; D-098). The mark and the panel are /e2/panel.css. */
+.top .e2mark.e2-top { margin-left: auto; }
+.top .e2mark.e2-top + .time { margin-left: 0; }
+.card h3 .e2mark, .panel h2 .e2mark { margin-left: auto; }
+.card h3, .panel h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+h1 .e2mark { vertical-align: middle; }
+td.e2cell { width: 44px; text-align: right; }
+ol.steps li .e2mark { grid-column: 4; align-self: start; }
+body.desk .e2panel { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; z-index: 30; }
+body.desk.e2-open header.top, body.desk.e2-open main { margin-right: 400px; }
+body.desk.e2-open main { margin-left: 0; }
+@media (max-width: 900px) { body.desk.e2-open header.top, body.desk.e2-open main { margin-right: 0; } body.desk .e2panel { width: auto; left: 0; } }

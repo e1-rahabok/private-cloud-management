@@ -128,11 +128,38 @@ story:
     reason: "Found in the first live call: the model reported an available SOP action as done. The facts now keep the two apart."
     decisions: [D-076]
 
+  - id: NST-13
+    name: Agent E2 at the NOC desk gets L1's facts and L1's words
+    given:
+      cluster: { kind: cluster, cluster: FR-S-02 }
+      step: { kind: step, incident: inc-fr-s-02, step: 0 }
+      model_answers: ["Cluster FR-S-02 scores 22 out of 100.", "CPU Ready is high.", "Latency is high."]
+    expect:
+      role: l1
+      cluster_facts: [score_now, villains, victims]
+      step_facts: [sop_steps, actions_already_done, asked_about_step]
+      clean_answer: { source: service }
+      avoided_twice: { source: vocabulary, content: "", calls: 2 }
+      recorded: { action: agent_ask, actor_agent: agent-e2 }
+      unknown_context: 400
+      unknown_incident: 404
+    decisions: [D-050, D-098]
+
 page:
 
   - id: NPG-9
-    rule: Pressing "Explain this incident" shows a draft starting "Draft by Agent E2, to review", with the model and the person who asked.
-    decisions: [D-076]
+    rule: >
+      The incident page has no Agent E2 section; the mark on its title opens the panel, whose first suggestion is "Explain this incident".
+      Pressing it shows a draft starting "Draft by Agent E2, to review", with the model and the person who asked.
+    decisions: [D-076, D-098]
+
+  - id: NPG-11
+    rule: >
+      Every desk page shows the Agent E2 mark in the top bar; the wall has none. Each "Is it fast?" tile, the cluster drill-down, each
+      alert row and each SOP step has a mark. A mark opens the panel on the right: the content is pushed, not covered. With the service
+      running, an answer shows its sources; an answer that keeps an avoided word shows "Agent E2's answer used words that are not used on
+      this screen" and no answer text. No avoided word appears in the panel in any state.
+    decisions: [D-098]
 
   - id: NPG-1
     rule: Every NOC page and section names question, role and cadence.
