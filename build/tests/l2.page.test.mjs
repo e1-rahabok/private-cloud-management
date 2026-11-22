@@ -157,7 +157,7 @@ try {
   const chipsCap = await page.$$eval('[data-section="capacity-cluster"] .chip', xs => xs.map(x => x.textContent.trim()));
   const capFindings = await page.$$eval('.finding', xs => xs.length) + await page.$$eval('[data-daily-finding] a', xs => xs.length);
   check('LPG-17', capOrder.join() === 'verdict,consumption,performance,risk,strip' && /^Closed for new VMs since the check of .* Consumption 82% is above 80%\./.test(verdictText)
-    && checkLabels.length === 3 && checkLabels.every(l => /^95th percentile, 24 hours to /.test(l)) && !checkLabels.some(l => /Worst/.test(l))
+    && checkLabels.length === 0
     && ['Now', 'Worst', '95th percentile'].every(k => kpiLabels.includes(k)) && cells.length === 7 && cells[6] === 'closed'
     && refs.every(r => /Closes (above|below)/.test(r)) && !/average/i.test(capText) && chipsCap.includes('Closed for new VMs') && capFindings >= 1 && !/Nothing needs you under this object/.test(capText),
     `${capOrder}; ${verdictText.slice(0, 80)}; cells ${cells.length}; findings ${capFindings}`);
