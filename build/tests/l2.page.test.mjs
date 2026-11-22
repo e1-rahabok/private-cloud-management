@@ -152,14 +152,15 @@ try {
   const kpiLabels = await page.$$eval('[data-kpi] dt', xs => xs.map(x => x.textContent.trim()));
   const checkLabels = await page.$$eval('[data-check-label]', xs => xs.map(x => x.textContent.trim()));
   const cells = await page.$$eval('[data-strip] .cell', xs => xs.map(x => x.className.replace('cell', '').trim()));
-  const refs = await page.$$eval('[data-kpi] .legend', xs => xs.map(x => x.textContent));
+  const refs = await page.$$eval('[data-kpi] .legend, [data-kpi] .ref', xs => xs.length);
+  const whyText = await page.innerText('[data-why]');
   const capText = await page.innerText('main');
   const chipsCap = await page.$$eval('[data-section="capacity-cluster"] .chip', xs => xs.map(x => x.textContent.trim()));
   const capFindings = await page.$$eval('.finding', xs => xs.length) + await page.$$eval('[data-daily-finding] a', xs => xs.length);
-  check('LPG-17', capOrder.join() === 'verdict,consumption,performance,risk,strip' && /^Closed for new VMs since the check of .* Consumption 82% is above 80%\./.test(verdictText)
+  check('LPG-17', capOrder.join() === 'verdict,consumption,performance,risk,strip' && /^Closed for new VMs/.test(verdictText) && /Consumption 82% is above 80%\./.test(whyText)
     && checkLabels.length === 0
     && ['Now', 'Worst', '95th percentile'].every(k => kpiLabels.includes(k)) && cells.length === 7 && cells[6] === 'closed'
-    && refs.every(r => /Closes (above|below)/.test(r)) && !/average/i.test(capText) && chipsCap.includes('Closed for new VMs') && capFindings >= 1 && !/Nothing needs you under this object/.test(capText),
+    && refs === 0 && !/average/i.test(capText) && chipsCap.includes('Closed for new VMs') && capFindings >= 1 && !/Nothing needs you under this object/.test(capText),
     `${capOrder}; ${verdictText.slice(0, 80)}; cells ${cells.length}; findings ${capFindings}`);
 
   // LPG-18 no forecast word on any Capacity tab; one link to the Capacity workspace
