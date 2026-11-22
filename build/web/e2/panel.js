@@ -43,9 +43,7 @@ const E2Panel = (() => {
     if (a.source !== 'service') return '<div class="e2a"><p class="why">The Agent E2 service is not available.</p></div>';
     const comp = a.computed && a.computed.length ? `<div class="e2computed"><div class="lbl">Computed, not written by the model</div>${a.computed.map(x => `<span class="box">${esc(x)}</span>`).join('')}</div>` : '';
     const asks = a.type === 'clarify' && a.questions && a.questions.length ? `<div class="e2asks"><div class="lbl">Agent E2 asks</div><ul>${a.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul><p class="muted">Your next question is the reply.</p></div>` : '';
-    // Sources (D-099): a closed control with the number of files; one click opens the chips.
-    const src = a.files_read && a.files_read.length ? `<div class="e2src"><details><summary>Sources (${a.files_read.length})</summary><div class="srcchips">${a.files_read.map(f => `<span class="srcchip" title="Knowledge file">${esc(f)}</span>`).join('')}</div></details></div>` : '';
-    return `<div class="e2a">${a.content ? linkify(a.content, a.links) : ''}${asks}${comp}${src}${H.answerExtra ? H.answerExtra(a) : ''}${foot}</div>`;
+    return `<div class="e2a">${a.content ? linkify(a.content, a.links) : ''}${asks}${comp}${H.answerExtra ? H.answerExtra(a) : ''}${foot}</div>`;
   }
   function render() {
     const box = $('e2'), c = S.ctx;
