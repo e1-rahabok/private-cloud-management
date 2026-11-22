@@ -4,7 +4,7 @@
 'use strict';
 const E2Panel = (() => {
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const S = { up: null, model: null, open: false, ctx: null, opener: null, busy: false, timer: null, pending: null, waiting: null };
+  const S = { up: null, model: null, open: false, ctx: null, opener: null, busy: false, timer: null, pending: null, waiting: null, tog: {} };
   let H = null;
   const $ = id => document.getElementById(id);
   const convs = () => { try { return JSON.parse(sessionStorage.getItem(H.store) || '{}'); } catch (e) { return {}; } };
@@ -74,7 +74,13 @@ const E2Panel = (() => {
     const box = $('e2'), c = S.ctx;
     if (!box || !c) return;
     const k = H.convKey(c), list = convs()[k] || [];
-    const thread = list.map(m => `<div class="e2q"><div class="lbl">${esc(m.label)}</div>${esc(m.q)}</div>${answer(m.a)}`).join('');
+    // One turn is one fold: the newest is open, older ones show just the question. The context label shows only when it changes.
+    const waitingHere = S.busy && S.waiting && S.waiting.key === k;
+    const thread = list.map((m, i) => {
+      const open = S.tog[k + ':' + i] !== undefined ? S.tog[k + ':' + i] : (i === list.length - 1 && !waitingHere);
+      const lbl = i === 0 || list[i - 1].label !== m.label ? `<div class="lbl">${esc(m.label)}</div>` : '';
+      return `<details class="e2turn" data-turn="${esc(k + ':' + i)}"${open ? ' open' : ''}><summary class="e2q">${lbl}<span class="qt">${esc(m.q)}</span></summary>${answer(m.a)}</details>`;
+    }).join('');
     const sugg = !S.busy && !S.pending && (!list.length || list[list.length - 1].label !== H.label(c))
       ? `<div class="e2sugg" role="group" aria-label="Suggested questions">${H.suggestions(c).map((x, i) => `<button type="button" class="sugg" data-sugg="${i}">${esc(sText(x))}</button>`).join('')}</div>` : '';
     const kept = !S.busy && box.querySelector('#e2q') ? box.querySelector('#e2q').value : '';
@@ -82,7 +88,7 @@ const E2Panel = (() => {
         <button type="button" class="e2close" aria-label="Close Agent E2" title="Close (Esc)">×</button></div>
       ${S.up === false ? '<p class="why e2down">The Agent E2 service is not available.</p>' : ''}
       <div class="e2body" aria-live="polite">${thread || (H.intro ? `<p class="muted">${esc(H.intro(c))}</p>` : '')}
-        ${S.busy && S.waiting && S.waiting.key === k ? `<div class="e2q"><div class="lbl">${esc(S.waiting.label)}</div>${esc(S.waiting.q)}</div><div class="e2wait" role="status">${esc(S.waiting.note)} <span data-secs>0</span> s</div>` : ''}${sugg}</div>
+        ${waitingHere ? `<div class="e2q">${list.length && list[list.length - 1].label === S.waiting.label ? '' : `<div class="lbl">${esc(S.waiting.label)}</div>`}${esc(S.waiting.q)}</div><div class="e2wait" role="status">${esc(S.waiting.note)} <span data-secs>0</span> s</div>` : ''}${sugg}</div>
       <form class="e2form" id="e2form"><label class="sr" for="e2q">Question for Agent E2</label><textarea id="e2q" rows="2" placeholder="${S.pending ? 'Your reply to Agent E2…' : 'Ask Agent E2…'}">${esc(kept)}</textarea>
         <button type="submit" class="act"${S.busy ? ' disabled' : ''}>Ask</button></form>`;
     const body = box.querySelector('.e2body'); body.scrollTop = body.scrollHeight;
@@ -159,6 +165,8 @@ const E2Panel = (() => {
       const m = e.target.closest('.e2mark[data-e2], #e2top');
       if (m) { e.preventDefault(); return open(m.id === 'e2top' ? H.pageCtx() : JSON.parse(m.dataset.e2), m); }
       if (e.target.closest('#e2 .e2close')) return close();
+      const fold = e.target.closest('#e2 .e2turn > summary');
+      if (fold) { const d = fold.parentElement; S.tog[d.dataset.turn] = !d.open; return; } // a person's choice; the browser does the toggle
       const s = e.target.closest('#e2 [data-sugg]');
       if (s) { const x = H.suggestions(S.ctx)[Number(s.dataset.sugg)]; return typeof x === 'string' ? ask(x) : ask(x.q, x.draft); }
       const a = e.target.closest('#e2 [data-e2act]');
