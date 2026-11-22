@@ -41,7 +41,7 @@ api: /api/l2/monitor/{view}/{object}/{pillar}
 - **Summary, Performance tab, cluster and below (not a VM)** (l2.object_kpis, D-100): the object's KPI over the window, first on the tab, one chart per KPI with its three figures, as on the VM tab. Never a card with one number.
   - Cluster: Cluster Performance, then Cluster Risk. ESXi host: ESXi Performance. Datastore, resource pool: Worst VM Performance. Port group: its cluster's Cluster Performance and Cluster Risk. Guest OS: Guest OS Performance. Virtual disk, vNIC: VM Performance.
   - Under the charts, one sentence: "{n} of {m} children outside green: over the {window}, or in the last hour."
-- **The iceberg** (Performance): "Just above the line", VMs between 75 and 80 under the object: a chart, one point a day for 7 days; in words, the count now, "rising", "steady" or "falling", and how many are below green of how many VMs.
+- **No "Just above the line" section** on the Performance tab (D-105): the chart of VMs between 75 and 80 and its sentence are removed. l2.iceberg is still read for the headline and the Group by counts.
 - **Children, worst first:** one row per child with its score over the window (l2.node_score), its score over the last hour, its status chip (the worse of the two), and its red and orange alerts. A click selects the child in the tree.
   - Host rows add: host model, ESXi build, running VMs.
   - VM rows add: vCPU, memory, class, environment, Guest OS.
