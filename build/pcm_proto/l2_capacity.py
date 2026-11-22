@@ -43,7 +43,8 @@ PARTS = (("cpu_thread_utilization", "CPU Thread Utilization"), ("memory_consumed
 # Upper end of green, yellow and orange per part; above the last is red (l2.consumption_parts, band_ends). From the
 # Agent E2 knowledge base, knowledge/catalog/thresholds-capacity.yaml, rows of cluster-consumption. A value on an end stays below it.
 PART_BAND_ENDS = {"cpu_thread_utilization": [55, 70, 85], "memory_consumed": [70, 80, 90],
-                  "memory_ballooned": [1, 2, 4], "memory_zip_swap": [0.25, 0.5, 1], "memory_tiering": [25, 50, 75]}
+                  "memory_ballooned": [1, 2, 4], "memory_zip_swap": [0.25, 0.5, 1], "dram_consumed": [80, 85, 90],
+                  "memory_tiering": [15, 30, 45]}
 
 
 # ---------------------------------------------------------------- settings set in the PCM adapter (D-096)

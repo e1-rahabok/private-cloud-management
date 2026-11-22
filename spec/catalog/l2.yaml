@@ -338,13 +338,14 @@ entries:
   l2.consumption_parts:
     description: >
       The parts of Cluster Consumption, each in % of usable capacity, cluster-wide (the hosts added up), as vCommunity
-      publishes them under vCommunity|Cluster Consumption. Memory Tiering only where the hosts have a tier.
+      publishes them under vCommunity|Cluster Consumption. DRAM Consumed and Memory Tiering Consumption only where the hosts have a tier.
     parts:
       cpu_thread_utilization: { label: "CPU Thread Utilization", unit: "%", band_ends: [55, 70, 85] }
       memory_consumed:        { label: "Memory Consumed",        unit: "%", band_ends: [70, 80, 90] }
       memory_ballooned:       { label: "Memory Ballooned",       unit: "%", band_ends: [1, 2, 4] }
       memory_zip_swap:        { label: "Memory Zip Swap",        unit: "%", band_ends: [0.25, 0.5, 1], note: "swapped and compressed" }
-      memory_tiering:         { label: "Memory Tiering",         unit: "%", band_ends: [25, 50, 75], optional: true }
+      dram_consumed:          { label: "DRAM Consumed",          unit: "%", band_ends: [80, 85, 90], optional: true, note: "tiered hosts: DRAM in use (Memory Consumed minus the NVMe tier in use) against their usable DRAM" }
+      memory_tiering:         { label: "Memory Tiering Consumption", unit: "%", band_ends: [15, 30, 45], optional: true, note: "NVMe tier in use against usable DRAM, not against the tier" }
     band_ends:
       note: "Upper end of green, yellow and orange; above the last is red. Higher is worse. A value on an end stays in the lower band. From the Agent E2 knowledge base, knowledge/catalog/thresholds-capacity.yaml (models, rows of vsphere/object-types/cluster/models/cluster-consumption): the figures Now, Worst and 95th percentile are colored by it. The band's name is not written (D-104)."
     figures: [now, worst, percentile_95]
