@@ -361,6 +361,25 @@ story:
       stable: true
       group: none
     decisions: [D-100]
+  - id: LST-31
+    name: Every question to Agent E2 carries the screen the person sees
+    given:
+      kpi: { kind: kpi, object: fr-bat-6839, pillar: capacity, metric: performance, window: 24h }
+      metric: { kind: metric, object: fr-svc-5526, layer: guest_os, metric: run_queue_per_vcpu, window: 24h }
+      page: { kind: page, object: fr-svc-5526, pillar: performance, window: 24h }
+    expect:
+      first_key: screen
+      asked_by: "an L2 platform engineer, who typed only the question"
+      kpi_page: "fr-bat-6839 (vm) · Capacity tab · Last 24 hours"
+      kpi_clicked: "the E2 mark on the Cluster Performance chart"
+      kpi_point_minutes: 5
+      kpi_belongs_to: FR-B-04
+      kpi_drill_down_page: "FR-B-04 (cluster) · Performance tab · Last 24 hours"
+      kpi_not_shown_yet: "the 9 sub-metrics of Cluster Performance"
+      metric_clicked: "the E2 mark on the Run Queue chart, in the Guest OS layer"
+      page_clicked: "the E2 mark in the top bar: a question about the whole page"
+      no_drop_verdict_from_pcm: true
+    decisions: [D-078, D-103]
 
 page:
   - id: LPG-1

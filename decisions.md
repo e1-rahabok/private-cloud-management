@@ -107,6 +107,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-100 | 2026-11-22 | The L2 Performance and Capacity tabs lead with the object's KPI over time. **Performance:** on a VM the two Performance (%) scores (Guest OS Performance, VM Performance) come first, above the layers; on a cluster and anything under it, the object's own KPI as a trend chart (Cluster Performance and Cluster Risk, ESXi Performance), in place of the four summary cards. **Capacity:** on a VM, ESXi host and cluster, a summary first: Capacity Remaining (%) and Time Remaining (days), plus VM Remaining on a host and a cluster, read from VCF Operations, placeholder values in release 1.0. **KPI figures** (Now, Worst, 95th percentile) carry the band of their value. Revises D-092 (order of the VM tab) and D-094 (no Capacity Remaining or Time Remaining on L2), for VM, host and cluster only. | The author: the trend chart on the Capacity tab says more than four cards with one number each; the Performance (%) KPI is the main counter, so it goes first; L2 wants the remaining figures before the detail. |
 | D-101 | 2026-11-22 | L2 percentages: Consumption, Performance and Risk (%) show whole numbers (63%, not 63.1%), because the decimal is not significant. A value above 0 that shows as 0 reads 0.0+% (0.00+% at two decimals), never a plain 0%. The Capacity tab's placeholder line under the summary is removed. | The author: a decimal on a KPI that moves by a fraction a day is noise; a tiny value must not read as exactly zero; the placeholder line added nothing the page did not already show. |
 | D-102 | 2026-11-22 | Agent E2 panel: it is fixed to the window (below the demo bar when shown) and its answers scroll inside it. Each question with its answer is a fold: the newest open, older ones one line. The context label shows on a question only when it differs from the one above. | The author: a long answer pushed the panel off screen and could not scroll; the same context line repeated on every question. Cause of the first: `align-self: start` in l2.css shrank the fixed panel to its content. |
+| D-103 | 2026-11-22 | Every question to Agent E2 carries the **screen**: who asks, the page (object, tab, window), what was clicked, what that card shows, the object a KPI belongs to when it is not the page's, and for a KPI where to look next (drill_down) with what PCM does not show yet. Whether a KPI moved enough to be a drop is Agent E2's to decide, from its knowledge base (a KPI change level per KPI) and its calculator, not PCM's. | Agent E2 answered "Why the worst at 18 Oct, 10:10?" on a steady Cluster Performance chart (80.2% to 82.2% all day) by explaining a "dip", spoke of "the provided JSON" to an engineer who had typed one line, and pointed at knowledge-base flows instead of a PCM tab. The model saw data, not a screen; and no rule said what size of move is a drop. PCM owns the screens (D-078), so it describes them; Agent E2 owns the domain knowledge. See Rationale. |
 
 ## Rationale
 
@@ -777,4 +778,20 @@ Source: Cost n Price n Value (in `sources/`).
 **Not changed**
 - The cluster's verdict, the three KPI charts, the check strip, the parts, usable capacity, the host spread and the hosts table (D-094).
 - No average anywhere (D-095).
+
+### D-103 Agent E2 sees the screen, not the data
+
+**What went wrong (2026-11-22, VM fr-bat-6839, Capacity tab, Cluster Performance of FR-B-04, last 24 hours)**
+- The question: "Why the worst at 18 Oct, 10:10?". The answer: "The cause of the performance dip cannot be identified with the provided data", then three steps from the knowledge base.
+- Three errors. There was no dip: the line held 80.2% to 82.2% all day, all green, and the check the day before read 80.4%. The answer named the 9 sub-metrics but not where L2 can look in PCM. And it spoke of "the provided JSON" to a person who typed one line.
+
+**Where each fix lives**
+- **The screen: PCM.** Only PCM knows the page, the tab, what was clicked and what the card shows. It sends a `screen` block with every question (frame.md, Agent E2 panel).
+- **Where to look next: PCM.** A KPI's drill_down names the page and tab and what PCM does not show yet. Today the sub-metrics of Cluster Performance are on no PCM page; the cluster's Performance tab shows the KPI and the hosts worst first.
+- **What counts as a drop: Agent E2.** A KPI change level per KPI in its catalog (Cluster Performance: 5 points from the median of the window), the rule in its knowledge base, and a calculator that reads the points PCM already sends and boxes the verdict under "Computed, not written by the model". PCM computes no verdict: one owner for domain knowledge (D-078).
+- **How Agent E2 speaks to a screen: Agent E2.** Its service tells the model the person sees the page, not the data, and rewrites once an answer that still says JSON, payload or "the data provided".
+
+**Not done**
+- No sub-metric chart for Cluster Performance on any PCM page. If L2 needs it to answer "which resource moved", it is a page change, decided separately.
+- PCM's red and orange levels for the cluster KPIs stay in PCM's settings. If a PCM page ever marks a drop on a chart, it reads the change level from Agent E2, not a copy.
 
