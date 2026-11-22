@@ -531,11 +531,11 @@ function kpiBlock(k, c, m) {
   const hiw = k.better === 'lower';
   const chart = lineChart(`cap-${k.key}`, k.points, [hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: riskBand, worse: Math.max }
     : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }],
-    { label: `${k.label} over the window, 0 to 100%`, max: 100, width: 760, height: 170, left: 56, minutes: m, noclick: true, nodirect: true, bands: hiw ? HIGH_BANDS : LOW_BANDS, refs: closureRefs(k) });
+    { label: `${k.label} over the window, 0 to 100%`, max: 100, width: 760, height: 230, left: 56, minutes: m, noclick: true, nodirect: true, bands: hiw ? HIGH_BANDS : LOW_BANDS, refs: closureRefs(k) });
   const mark = e2mark({ kind: 'kpi', metric: k.key, pillar: 'capacity' }, k.label, { p95: pct(k.percentile_95), worst: k.worst ? fmtPoint(k.worst.t, m) : '' });
   return `<div class="metric" data-kpi="${k.key}"><div class="mfig"><div class="mname"><h4>${esc(k.label)}</h4>${mark}</div><div class="muted">${hiw ? 'Higher is worse' : 'Higher is better'}</div>
     <dl><dt>Now</dt><dd>${pct(k.now)}</dd><dt>Worst</dt><dd>${pct(k.worst && k.worst.v)}</dd>
-    <dt>95th percentile</dt><dd>${pct(k.percentile_95)}</dd><dt data-check-label>${esc(c.label)} ${esc(fmtTime(c.window_end))}</dt><dd>${pct(k.check_value)}</dd></dl></div>${chart}</div>`;
+    <dt>95th percentile</dt><dd>${pct(k.percentile_95)}</dd></dl></div>${chart}</div>`;
 }
 function capCluster(c, d) {
   if (!c.applies) return '<p class="muted">Management and edge clusters run the platform\'s own appliances. Capacity is read on workload clusters.</p>';

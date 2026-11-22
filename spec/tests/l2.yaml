@@ -385,8 +385,7 @@ page:
     rule: >
       On LD-B-01's Capacity tab (7 days) the verdict comes first in words, then three charts in the order Cluster Consumption,
       Cluster Performance, Cluster Risk on one time axis with the closure levels drawn, then the check strip with 7 cells, the
-      last one closed. Each chart has Now, Worst and 95th percentile; the check value is labelled with its percentile and period,
-      never "Worst". No chart has an average line. Every capacity chip on the page has a finding row, or outside the 24-hour
+      last one closed. Each chart has Now, Worst and 95th percentile, once each: the check value is not repeated beside the chart. No chart has an average line. Every capacity chip on the page has a finding row, or outside the 24-hour
       window a link to its daily finding, and "Nothing needs you under this object" is not shown.
     decisions: [D-094, D-095]
   - id: LPG-18

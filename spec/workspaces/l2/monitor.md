@@ -146,7 +146,7 @@ On a cluster. On a host, VM or Guest OS, the tab shows its cluster's page with t
 - **Three charts, one per KPI** (l2.cluster_kpi_series): Cluster Consumption, Cluster Performance, Cluster Risk, in that order, one above the other, one time axis.
   - 0 to 100%. Display bands as background. The two closure levels as dashed lines, labelled "Closes above 80%" and "Orange for closure above 60%" (Performance: below 20% and below 40%).
   - Points as on the Performance tab: 5 minutes for 1 hour and 24 hours, 1 hour for 7 days, 4 hours for 30 days, 1 day for 1 year. A point holds the worst value inside it.
-  - Beside each chart: **Now**, **Worst** (with its time), **95th percentile**, and the check's value labelled by its percentile and period: "95th percentile, 24 hours to 08:00 GMT+8: 84%". Never "Worst" for a check value. Never an average.
+  - Beside each chart: **Now**, **Worst** (with its time), **95th percentile**. The check's value is not repeated here: on the 24-hour window it equals the 95th percentile. Never an average. The chart fills the height of its card.
   - **Agent E2 mark** at the right of each KPI's name: "Ask Agent E2 about {KPI}". PCM sends the KPI's points, Now, Worst, 95th percentile, the check's value and its closure levels, the verdict and its reason (D-097).
 - **Check strip** under the three charts (l2.cluster_check): one cell per check period in the window, closed (labelled) or open, aligned with the time axis; a cell with no check is grey "No data".
   - Fewer than 7 check periods in the window (1 hour, 24 hours): words instead of the strip: the latest check and the one before it.
