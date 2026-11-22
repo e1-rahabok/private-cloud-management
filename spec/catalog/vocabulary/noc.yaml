@@ -38,10 +38,11 @@ avoided:
   - forecast
 
 labels:
-  changed: What changed?
-  up: Is it up?
-  fast: Is it fast?
-  safe: Is it safe?
-  set_right: Is it set right?
+  up: Availability
+  fast: Performance
+  safe: Security
+  changed: Volatility
+  set_right: Configuration
+  capacity: Capacity
   no_data: No data
   in_hand: In hand

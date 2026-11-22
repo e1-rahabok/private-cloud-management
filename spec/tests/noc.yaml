@@ -145,6 +145,28 @@ story:
       unknown_incident: 404
     decisions: [D-050, D-098]
 
+  - id: NST-14
+    story: E-7
+    reason: With Europe's VCF Operations stale, the banner counts leave out Frankfurt and London and name them; no stale location shows a number (D-106).
+    expect:
+      wall.scale.locations_without_data: [Frankfurt, London]
+      wall.screens.capacity.tiles[location=fr].status: no_data
+      wall.screens.capacity.tiles[location=ld].status: no_data
+
+  - id: NST-15
+    story: N-1
+    reason: The one-hour chart has 13 points (every 5 minutes). The lowest line ends at FR-S-02 with 22; the average stays above 85, so the average alone would hide it (D-106).
+    expect:
+      wall.screens.fast.trend.points: 13
+      wall.screens.fast.trend.lowest_now: [FR-S-02, 22.0]
+
+  - id: NST-16
+    story: none
+    reason: Capacity has one tile per location with compute, memory and storage in use and days remaining; the tab order is up, fast, safe, changed, set_right, capacity (D-106).
+    expect:
+      wall.strip: [up, fast, safe, changed, set_right, capacity]
+
+
 page:
 
   - id: NPG-9
@@ -155,7 +177,7 @@ page:
 
   - id: NPG-11
     rule: >
-      Every desk page shows the Agent E2 mark in the top bar; the wall has none. Each "Is it fast?" tile, the cluster drill-down, each
+      Every desk page shows the Agent E2 mark in the top bar; the wall has none. Each Performance tile, the cluster drill-down, each
       alert row and each SOP step has a mark. A mark opens the panel on the right: the content is pushed, not covered. With the service
       running, an answer has a closed "Sources (n)" control; an answer that keeps an avoided word shows "Agent E2's answer used words that are not used on
       this screen" and no answer text. No avoided word appears in the panel in any state.
@@ -168,13 +190,28 @@ page:
   - id: NPG-3
     rule: /noc/wall has no button, link, input or select element.
   - id: NPG-4
-    rule: With N-1 red and not acknowledged, the wall stays on "Is it fast?" across several rotation periods.
+    rule: With N-1 red and not acknowledged, the wall stays on Performance across several rotation periods.
   - id: NPG-5
-    rule: After acknowledging on the desktop, the wall rotates again, and the fast chip shows "In hand".
+    rule: After acknowledging on the desktop, the wall rotates again, and the Performance tab shows "In hand".
   - id: NPG-6
     rule: With E-7 on, the Frankfurt and London tiles are grey with "No data" and show no number.
   - id: NPG-7
     rule: "The incident page disables the limit button for the production villain and says: Production VM, escalate instead."
+  - id: NPG-12
+    rule: >
+      The wall has the banner "ACME Corp Private Cloud" with Running VMs and Running ESXi hosts, six tabs in the order Availability,
+      Performance, Security, Volatility, Configuration, Capacity, one active, and no screen title. No tab carries "Good", "Watch" or "Act now".
+    decisions: [D-106]
+  - id: NPG-13
+    rule: >
+      Performance shows a chart with two lines (average and lowest cluster) of 13 points; with E-7 on, the chart leaves out the clusters of the
+      locations with no data and still draws.
+    decisions: [D-106]
+  - id: NPG-14
+    rule: >
+      Capacity shows five tiles with compute, memory and storage in use and the days remaining; with E-7 on the Frankfurt and London tiles are grey
+      with "No data" and no number, and the banner counts exclude them and say so.
+    decisions: [D-106]
   - id: NPG-8
     rule: No request leaves the PCM host; text contrast is at least 4.5:1 on the desktop pages and the wall.
 

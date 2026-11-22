@@ -205,6 +205,51 @@ class AgentE2(unittest.TestCase):
         self.assertFalse(any("allowed" in st for st in facts["sop_steps"]))
 
 
+class WallSixScreens(unittest.TestCase):
+    """NST-14 to NST-16 (D-106): banner counts, the one-hour trend, the capacity screen and the tab order."""
+    T = tests("story")
+
+    def setUp(self):
+        noc.STATE.reset()
+
+    def wall(self, enable=()):
+        return noc.wall(noc.build(NOW, enable))
+
+    def test_NST_14_stale_locations_leave_the_banner_counts(self):
+        w = self.wall(("E-7",))
+        self.assertEqual(w["scale"]["locations_without_data"], self.T["NST-14"]["expect"]["wall.scale.locations_without_data"])
+        full = self.wall()["scale"]
+        self.assertLess(w["scale"]["vms_running"], full["vms_running"])
+        self.assertLess(w["scale"]["hosts_running"], full["hosts_running"])
+        tiles = w["screens"]["capacity"]["tiles"]
+        for loc in ("fr", "ld"):
+            t = next(t for t in tiles if t["location"] == loc)
+            self.assertEqual(t["status"], "no_data")
+            self.assertNotIn("in_use", t)
+        trend = w["screens"]["fast"]["trend"]
+        self.assertGreater(trend["clusters_left_out"], 0)
+        self.assertTrue(trend["points"])
+
+    def test_NST_15_trend_keeps_the_lowest_cluster_visible(self):
+        tr = self.wall()["screens"]["fast"]["trend"]
+        self.assertEqual(len(tr["points"]), 13)
+        last = tr["points"][-1]
+        self.assertEqual((last["lowest_cluster"], last["lowest"]), ("FR-S-02", 22.0))
+        self.assertGreater(last["average"], 85)
+        self.assertTrue(all(p["lowest"] <= p["average"] for p in tr["points"]))
+
+    def test_NST_16_tab_order_and_capacity_tiles(self):
+        w = self.wall()
+        self.assertEqual([c["screen"] for c in w["strip"]], self.T["NST-16"]["expect"]["wall.strip"])
+        self.assertEqual(noc.SCREENS, tuple(self.T["NST-16"]["expect"]["wall.strip"]))
+        tiles = w["screens"]["capacity"]["tiles"]
+        self.assertEqual(len(tiles), 5)
+        for t in tiles:
+            self.assertEqual(set(t["in_use"]), {"compute", "memory", "storage"})
+            self.assertTrue(t["days_remaining"] is None or t["days_remaining"] > 0)
+        self.assertTrue(all("open_incidents" in c for c in w["strip"]))
+
+
 class SpecRules(unittest.TestCase):
     def test_NPG_1_every_page_and_section_names_question_role_cadence(self):
         for f in (ROOT / "spec/workspaces/noc").glob("*.md"):

@@ -20,8 +20,8 @@ reads: [noc.screen_status]
 api: /api/noc/wall
 ```
 
-- **The same data and colours as the wall** (NOC design, 3.3), shown as five tabs. There is no rotation.
-- **A tile in "Is it fast?" opens the cluster:**
+- **The same data and colours as the wall** (NOC design, 3.3), shown as six tabs, named as on the wall (D-106). There is no rotation.
+- **A tile in Performance opens the cluster:**
   - top villains and victims, with their scores from 0 to 100;
   - their environment: production or non-production;
   - their class.

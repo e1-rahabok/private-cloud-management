@@ -7,7 +7,7 @@ const href = p => `${p}${PASS ? '?' + PASS : ''}`;
 document.getElementById('nav').innerHTML = navBar(page === 'index' ? '/noc' : page === 'alert' ? '/noc/alerts' : `/noc/${page}`);
 let SCREEN = 'fast';  // the screen on show, for a question about the page
 
-// ---------------------------------------------------------------- /noc: five screens with drill-down
+// ---------------------------------------------------------------- /noc: six screens with drill-down
 async function screens(selected = 'fast') {
   SCREEN = selected;
   const [w, inc] = await Promise.all([getJSON('wall'), getJSON('incidents')]);
@@ -25,6 +25,8 @@ async function screens(selected = 'fast') {
     + (s.no_data_sources || []).map(n => { const i = inc.find(x => x.root_object_type === 'vcf_operations_instance'); return `<p>${chip('red')} No data from ${esc(n.region)}'s VCF Operations since ${fmtTime(n.last_good)}. ${i ? `<a class="link" href="${href('/noc/alert/' + i.id)}">Open incident</a>` : ''}</p>`; }).join('');
   if (selected === 'safe') body = `<div class="grid5">${s.tiles.map(t => card(t, Object.entries(t.findings || {}).map(([k, v]) => `<div class="row"><span>${SAFE[k]}</span><span>${v}</span></div>`).join(''))).join('')}</div><p class="muted">Certificates expiring within 30 days: ${s.risk_certificates}. Escalate them to Platform by SOP.</p>`;
   if (selected === 'set_right') body = `<div class="grid5">${s.tiles.map(t => card(t, `<div class="row"><span>Risky changes, last hour</span><span>${t.count}</span></div>`)).join('')}</div>`;
+  if (selected === 'capacity') body = `<div class="grid5">${s.tiles.map(t => card(t, ['compute', 'memory', 'storage'].map(r => `<div class="row"><span>${RES[r]} in use</span><span>${Math.round(t.in_use[r])}%</span></div>`).join('')
+    + `<div class="row"><span>Time remaining</span><span>${t.days_remaining === null ? 'Beyond 13 months' : `${num(t.days_remaining)} days`}</span></div>`)).join('')}</div>`;
   if (selected === 'fast') {
     const g = {};
     s.tiles.forEach(t => { (g[t.location] = g[t.location] || { loc: t.location, name: t.name, cells: [] }).cells.push(t); });

@@ -49,7 +49,7 @@ try {
   const texts = [];
   for (const extra of ['', '&enable=E-7']) {
     await go('/noc', extra);
-    for (const s of ['changed', 'up', 'fast', 'safe', 'set_right']) {
+    for (const s of ['up', 'fast', 'safe', 'changed', 'set_right', 'capacity']) {
       await page.click(`.tabs button[data-s="${s}"]`); await page.waitForTimeout(150); texts.push(await page.innerText('body'));
     }
     await page.click(`.tabs button[data-s="fast"]`); await page.waitForTimeout(150);
@@ -58,7 +58,7 @@ try {
     await go('/noc/alerts', extra); texts.push(await page.innerText('body'));
     for (const id of ['inc-fr-s-02', 'inc-tk', 'inc-ld-ds-07']) { await go('/noc/alert/' + id, extra); texts.push(await page.innerText('body')); }
     await go('/noc/shift', extra); texts.push(await page.innerText('body'));
-    for (const s of ['changed', 'up', 'fast', 'safe', 'set_right']) { await go('/noc/wall', `${extra}&screen=${s}`); texts.push(await page.innerText('body')); }
+    for (const s of ['up', 'fast', 'safe', 'changed', 'set_right', 'capacity']) { await go('/noc/wall', `${extra}&screen=${s}`); texts.push(await page.innerText('body')); }
   }
   const all = texts.join('\n');
   const bad = avoided.filter(w => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(all));
@@ -87,13 +87,42 @@ try {
   const seen2 = new Set();
   for (let i = 0; i < 12; i++) { seen2.add(await page.getAttribute('body', 'data-screen')); await page.waitForTimeout(500); }
   const fastChip = await page.innerText('.strip .s[data-screen="fast"]');
-  check('NPG-5', seen2.size === 5 && /In hand/.test(fastChip), `screens shown: ${[...seen2].join(', ')}; fast chip: ${fastChip.replace(/\s+/g, ' ')}`);
+  check('NPG-5', seen2.size === 6 && /In hand/.test(fastChip), `screens shown: ${[...seen2].join(', ')}; fast chip: ${fastChip.replace(/\s+/g, ' ')}`);
 
   // NPG-6 stale tiles are grey with No data and no number
   await reset();
   await go('/noc/wall', '&enable=E-7&screen=up');
   const stale = await page.$$eval('.tile.no_data', els => els.map(e => ({ t: e.innerText, num: /\b\d+\b/.test(e.querySelector('h3').nextElementSibling.innerText) })));
   check('NPG-6', stale.length === 2 && stale.every(s => s.t.includes('No data') && !s.num), JSON.stringify(stale.map(s => s.t.split('\n')[0])));
+
+  // NPG-12 banner, six tabs in order, one active, no title, no summary word
+  await reset();
+  await go('/noc/wall', '&screen=fast');
+  const banner = await page.innerText('.wall-head');
+  const tabNames = await page.$$eval('#strip .s > span', els => els.map(e => e.innerText));
+  const activeTabs = await page.$$eval('#strip .s.current', els => els.length);
+  const wallText = await page.innerText('body');
+  const noTitle = (await page.$$('#title')).length === 0;
+  const tabColour = await page.$$eval('#strip .s', els => els.every(e => !['red', 'amber', 'green', 'no_data'].some(c => e.classList.contains(c))));
+  check('NPG-12', /ACME Corp Private Cloud/.test(banner) && /Running VMs/.test(banner) && /Running ESXi hosts/.test(banner) && /\d/.test(banner)
+    && tabNames.join() === 'Availability,Performance,Security,Volatility,Configuration,Capacity' && activeTabs === 1 && noTitle && tabColour
+    && !/\b(Good|Watch|Act now)\b/.test(wallText), `${tabNames.join(', ')}; active ${activeTabs}`);
+
+  // NPG-13 trend chart with two lines; stale clusters left out and the chart still draws
+  const lines = await page.$$eval('#chart polyline', els => els.map(e => e.getAttribute('points').trim().split(' ').length));
+  await go('/noc/wall', '&enable=E-7&screen=fast');
+  const lines7 = await page.$$eval('#chart polyline', els => els.length);
+  const api7 = await (await fetch(`${BASE}/api/noc/wall${q('&enable=E-7')}`)).json();
+  check('NPG-13', lines.length === 2 && lines.every(n => n === 13) && lines7 === 2 && api7.screens.fast.trend.clusters_left_out > 0, `${lines.join('/')} points; left out with E-7: ${api7.screens.fast.trend.clusters_left_out}`);
+
+  // NPG-14 capacity tiles; stale tiles grey with no number; banner excludes them
+  await go('/noc/wall', '&screen=capacity');
+  const capTiles = await page.$$eval('.tile', els => els.map(e => e.innerText));
+  const capOk = capTiles.length === 5 && capTiles.every(t => /Compute/.test(t) && /Memory/.test(t) && /Storage/.test(t) && /Time remaining/.test(t));
+  await go('/noc/wall', '&enable=E-7&screen=capacity');
+  const capStale = await page.$$eval('.tile.no_data', els => els.map(e => /\d/.test(e.querySelector('h3').nextElementSibling.innerText)));
+  const note = await page.innerText('.wall-head');
+  check('NPG-14', capOk && capStale.length === 2 && capStale.every(x => !x) && /Excludes .*Frankfurt.*London|Excludes .*London.*Frankfurt/.test(note), `${capTiles.length} tiles; stale ${capStale.length}; ${note.replace(/\s+/g, ' ').slice(-60)}`);
 
   // NPG-7 limit disabled for the production villain
   await go('/noc/alert/inc-fr-s-02');
@@ -169,7 +198,7 @@ try {
   mkdirSync(ROOT + 'build/screenshots', { recursive: true });
   await reset();
   const tv = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
-  for (const s of ['fast', 'changed', 'safe']) {
+  for (const s of ['fast', 'changed', 'safe', 'capacity']) {
     await tv.goto(BASE + '/noc/wall' + q(`&screen=${s}`)); await tv.waitForSelector('body[data-ready="1"]');
     await tv.screenshot({ path: ROOT + `build/screenshots/noc-wall-${s}.png` });
   }

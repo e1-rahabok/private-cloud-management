@@ -9,7 +9,7 @@ entries:
   # ---------------------------------------------------------------- Screen status (D-041, D-036)
 
   noc.screen_status:
-    description: The colour of one wall screen, and of its chip in the status strip.
+    description: The state of one wall screen. The tab does not show it as a colour (D-106); it drives the pin, "In hand" and the colour of tiles.
     formula: >
       The worst status of the screen's tiles, among green, amber, red. If every tile's data is stale, the
       screen is no_data (grey). If some tiles are stale, those tiles are grey and the screen takes the
@@ -145,6 +145,39 @@ entries:
       The end of the shift, not a fixed number of hours: the next shift should not inherit a limit it did
       not set. Forgotten limits cause contention months later (D-040).
     decisions: [D-040]
+
+  # ---------------------------------------------------------------- Banner, trend and capacity (D-106)
+
+  noc.running_counts:
+    description: >
+      Running VMs and running ESXi hosts in the locations that have data. A location with no data
+      (stale) is left out and named; if none has data the numbers are "No data".
+    parts:
+      noc.vms_running: "VMs per location from the estate model (hosts x share of class x VMs per host)"
+      noc.hosts_running: "ESXi hosts per location, all generations, not counting hosts not responding (noc.up_items)"
+    unit: count
+    decisions: [D-106]
+
+  noc.performance_trend:
+    description: >
+      Overall performance over the last hour, one point every 5 minutes: the average of the Cluster
+      Performance (%) of all clusters, and the lowest cluster with its name.
+    note: >
+      The average alone hides one failed cluster (22 among 96 moves the average by under 1 point), so the
+      lowest is always drawn with it. Clusters of a location with no data are left out and counted.
+    inputs: [noc.cluster_performance]
+    decisions: [D-106]
+
+  noc.capacity_status:
+    description: Status of one location on the Capacity screen.
+    status:
+      red: "any cluster group of the location has capacity.quadrant red"
+      green: "otherwise"
+    note: >
+      Reads the capacity engine (capacity.quadrant); the wall adds no threshold. Over-provisioned groups
+      (waste) are not a NOC matter and stay green here. In use: scale.in_use_percent. Time remaining: the
+      smallest capacity.time_remaining_days among the location's groups, at their tightest resource.
+    decisions: [D-054, D-106]
 
   noc.wall_finding:
     description: >

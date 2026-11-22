@@ -62,12 +62,12 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 ### 2. The NOC wall (1 minute) — tab 2
 
 **Point at:**
-- The strip: two red screens, "What changed?" and "Is it fast?". They are pinned, so the wall keeps coming back to them.
-- On "Is it fast?": FR-S-02 at 22 out of 100, "was 94 an hour ago". The wall shows the change, not only the state.
+- The tabs: two screens have open incidents, Volatility and Performance. They are pinned, so the wall keeps coming back to them.
+- On Performance: FR-S-02 at 22 out of 100, "was 94 an hour ago". The one-hour chart shows the lowest cluster falling while the average barely moves. The wall shows the change, not only the state.
 
-**Say:** "The five-second test. Anyone walking into the NOC knows what is wrong, and nobody touches the screen."
+**Say:** "The five-second test. The banner says whose cloud it is and how big. Anyone walking into the NOC knows what is wrong, and nobody touches the screen."
 
-**Why it matters:** the wall answers the same five questions every time, in the same order. Green is quiet.
+**Why it matters:** the wall shows the same six screens every time, in the same order. Green is quiet.
 
 ### 3. The NOC incident (3 minutes) — tab 3
 
