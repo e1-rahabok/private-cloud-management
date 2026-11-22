@@ -89,14 +89,14 @@ def _layer(x: dict) -> dict:
 
 
 def facts_for(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
-    """Returns (status, {facts, label, finding?}) or (status, {error}). The facts open with the screen (D-101)."""
+    """Returns (status, {facts, label, finding?}) or (status, {error}). The facts open with the screen (D-102)."""
     code, got = _facts(now, ctx, enable)
     if code == 200:
         got["facts"] = {"screen": screen(ctx, got), **got["facts"]}
     return code, got
 
 
-# ---------------------------------------------------------------- the screen (D-101): what the person sees, not the data
+# ---------------------------------------------------------------- the screen (D-102): what the person sees, not the data
 
 CLICKED = {"page": "the E2 mark in the top bar: a question about the whole page",
            "finding": "the E2 mark on a finding row", "case": "the E2 mark on the case",

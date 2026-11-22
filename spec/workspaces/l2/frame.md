@@ -99,7 +99,7 @@ api: /api/l2/agent/ask
   - on the Summary tab: every pillar with its status and headline;
   - on a VM's Performance tab: both layers, each with its status and, per metric, Now, Worst with its time, 95th percentile and which way is better. No points: those go with a question about one metric.
 - **What PCM sends for a layer of a VM:** that layer's status and every metric with its points, Now, Worst, 95th percentile; the other layer's status and figures without points.
-- **What PCM sends with every question: the screen** (D-101), so Agent E2 speaks of what the person sees, never of the data behind it ("the provided JSON"):
+- **What PCM sends with every question: the screen** (D-102), so Agent E2 speaks of what the person sees, never of the data behind it ("the provided JSON"):
   - who asks (an L2 platform engineer) and that they typed only the question;
   - the page: the object, its kind, the tab and the window, as in the panel's context line;
   - what was clicked: the top bar mark (the whole page), or the mark on a chart, layer, finding or case, by its name;

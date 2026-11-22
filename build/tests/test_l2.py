@@ -364,7 +364,7 @@ class Troubleshoot(Base):
         self.assertEqual(A.facts_for(NOW, {**g["vm_layer"], "layer": "no_such_layer"})[0], e["unknown_layer"])
 
     def test_LST_31_every_question_carries_the_screen(self):
-        """LST-31 (D-101): Agent E2 is told what the person sees, not only the data; whether a move is a drop is Agent E2's."""
+        """LST-31 (D-102): Agent E2 is told what the person sees, not only the data; whether a move is a drop is Agent E2's."""
         t = T["LST-31"]; g, e = t["given"], t["expect"]
         code, got = A.facts_for(NOW, g["kpi"])
         self.assertEqual(code, 200)

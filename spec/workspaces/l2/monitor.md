@@ -143,7 +143,7 @@ On a cluster. On a host, VM or Guest OS, the tab shows its cluster's page with t
 - **Summary first** (l2.capacity_remaining, D-100), on a VM, ESXi host and cluster, headed "Summary" and the kind of object:
   - VM: Capacity Remaining (%), Time Remaining (days).
   - ESXi host, cluster: Capacity Remaining (%), Time Remaining (days), VM Remaining.
-  - One card each, the unit after the number. Under them: "Placeholder values. They will come from VCF Operations once PCM reads it." Once real: "From VCF Operations, {time}."
+  - One card each, the unit after the number. Under them, nothing while the values are placeholders. Once real: "From VCF Operations, {time}."
   - No band colors: VCF Operations' capacity bands are not in the catalog, and none is invented here.
   - On a VM or host page, the cluster's page follows under "Its cluster, {cluster}".
 

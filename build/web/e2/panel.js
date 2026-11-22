@@ -28,6 +28,13 @@ const E2Panel = (() => {
   function linkify(text, links) {
     // Inline file citations, e.g. (`vsphere/object-types/.../x`), are not shown in the answer; the Sources control lists them.
     text = text.replace(/\s*\(\s*`[^`\s]*\/[^`\s]*`(?:\s*[,;]\s*`[^`\s]*\/[^`\s]*`)*\s*\)/g, '');
+    // Bracketed references too: [vsphere/.../x], [a/x, b/y] and harness notes such as [arithmetic_calculator.py: ...].
+    // Other brackets ([1], [optional]) stay.
+    const KB_REF = /^`?[a-z0-9][\w.-]*(?:\/[\w.-]+)+`?$/, HARNESS_REF = /^[\w-]+\.(?:py|js|md|ya?ml|json)\b/;
+    text = text.replace(/[ \t]*\[([^\[\]\n]+)\]/g, (m, inner) => {
+      const parts = inner.split(/\s*[,;]\s*/).map(s => s.trim());
+      return parts.every(p => KB_REF.test(p)) || HARNESS_REF.test(inner.trim()) ? '' : m;
+    }).replace(/[ \t]+([.,;:!?])/g, '$1');
     let h = esc(text).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*(?=\S)([^*\n]+?)\*\*/g, '<strong>$1</strong>');
     for (const l of links || []) h = h.replace(new RegExp(`(^|[^\\w-])(${l.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?![\\w-])`, 'g'), `$1<a class="link" data-obj="${esc(l.id)}" data-view="${esc(l.view)}" href="${H.linkHref(l)}">$2</a>`);
     // Blocks: lists (1. / - / *) become real lists; other lines keep their line breaks.

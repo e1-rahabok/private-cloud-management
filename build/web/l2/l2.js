@@ -469,7 +469,13 @@ function groupBy(d, note = '') {
 // ---------------------------------------------------------------- a VM's two layers (monitor.md, Performance tab on a VM; l2.realms)
 // The unit follows the number: the data carries it with its own space (" ms", "%", "/s"). The name never holds it.
 const niceMax = v => { if (!(v > 0)) return 1; const p = 10 ** Math.floor(Math.log10(v)), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
-const withUnit = (v, m, tick) => v == null ? '–' : `${Number(v).toLocaleString('en-US', tick ? { maximumFractionDigits: 2 } : { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals })}${tick && m.unit !== '%' ? '' : m.unit}`;
+// A percentage above 0 that shows as 0 is not exactly 0: it shows 0.0+% (0.00+% at two decimals), never a plain 0%.
+const tinyPct = decimals => `0.${'0'.repeat(decimals)}+%`;
+const withUnit = (v, m, tick) => {
+  if (v == null) return '–';
+  if (!tick && m.unit === '%' && m.decimals > 0 && Number(v) > 0 && Number(v).toFixed(m.decimals) === (0).toFixed(m.decimals)) return tinyPct(m.decimals);
+  return `${Number(v).toLocaleString('en-US', tick ? { maximumFractionDigits: 2 } : { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals })}${tick && m.unit !== '%' ? '' : m.unit}`;
+};
 // In the figures on the left a unit that is words ("per vCPU", "ms") is set small and light, so every metric reads alike.
 const figure = (v, m) => { if (v == null) return '–'; const t = withUnit(v, m); return m.unit && m.unit !== '%' && t.endsWith(m.unit) ? `${esc(t.slice(0, -m.unit.length))}<span class="u">${esc(m.unit)}</span>` : esc(t); };
 // A KPI's figures carry the band of their value: a tinted pill with dark text (6.2:1 or better), a bar in the band
@@ -563,7 +569,12 @@ function perfTab(p, d) {
 // No forecast here: months ahead belong to the Capacity workspace (L2 design, 4.3.6).
 const HIGH_BANDS = [[0, 25, 'green'], [25, 50, 'yellow'], [50, 75, 'orange'], [75, 100, 'red']];
 const LOW_BANDS = [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']];
-const pct = v => v == null ? '–' : `${Number(v).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`;
+// Consumption, Performance and Risk show whole percent: the decimal is not significant. Tiny values show 0.0+%.
+const pct = v => {
+  if (v == null) return '–';
+  const x = Number(v);
+  return x > 0 && Math.round(x) === 0 ? tinyPct(1) : `${Math.round(x).toLocaleString('en-US')}%`;
+};
 const checkPeriod = c => `${c.period_hours} hours to ${fmtTime(c.window_end)}`;
 const capGroupURL = (loc, cls) => `/capacity/group/${enc(loc.toUpperCase())}-${enc(cls.charAt(0).toUpperCase() + cls.slice(1))}${PASS ? '?' + PASS : ''}`;
 const monthsAhead = href => `<p class="muted" data-months-ahead>To plan ahead and decide when to buy, open the <a class="link" href="${href}">Capacity workspace</a>.</p>`;
@@ -585,7 +596,7 @@ function remainingSummary(r, kind) {
   const val = x => `${n0(x.value)}${x.unit === '%' ? '%' : `<span class="u">${esc(x.unit)}</span>`}`;
   return `<section class="persp" data-section="capacity-summary"><h2>Summary <span class="muted">this ${esc(KIND_WORD[kind] || kind)}</span></h2>
     <div class="cards remaining">${r.values.map(x => `<div class="card" data-remaining="${x.key}"><h3>${esc(x.label)}</h3><div class="big2">${val(x)}</div></div>`).join('')}</div>
-    <p class="muted" data-placeholder>${r.placeholder ? `Placeholder values. They will come from ${esc(r.source)} once PCM reads it.` : `From ${esc(r.source)}, ${esc(fmtTime(r.time))}.`}</p></section>`;
+    ${r.placeholder ? '' : `<p class="muted">From ${esc(r.source)}, ${esc(fmtTime(r.time))}.</p>`}</section>`;
 }
 function capCluster(c, d) {
   if (!c.applies) return '<p class="muted">Capacity is tracked on workload clusters. Management and edge clusters run the platform\'s own appliances.</p>';
