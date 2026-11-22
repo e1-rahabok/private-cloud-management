@@ -332,7 +332,7 @@ story:
       vm_performance_metrics: 16
       vm_performance_points: none
       vm_summary_pillars: [availability, performance, capacity, security, configuration]
-      vm_layer_metrics_with_points: 4
+      vm_layer_metrics_with_points: 6
       vm_layer_other_layer_points: none
       unknown_layer: 404
     decisions: [D-097]
