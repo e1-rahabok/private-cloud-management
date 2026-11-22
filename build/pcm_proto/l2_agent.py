@@ -101,16 +101,50 @@ def facts_for(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
 CLICKED = {"page": "the E2 mark in the top bar: a question about the whole page",
            "finding": "the E2 mark on a finding row", "case": "the E2 mark on the case",
            "link": "the E2 mark on a link of the case's chain", "layer": "the E2 mark on a layer of the case"}
-# Where a KPI goes further, and what PCM does not show yet (frame.md, Agent E2 panel).
+# Where a KPI goes further, and what PCM does not show yet (frame.md, Agent E2 panel). The parts of Cluster Performance
+# and Cluster Risk are in the Details fold under each KPI on the cluster's Performance tab (D-106, D-111).
 DRILL = {
-    "performance": ("Performance", "Cluster Performance and Cluster Risk over the window, then the cluster's hosts worst first, "
-                    "each with its score over the window and over the last hour",
-                    "the 9 sub-metrics of Cluster Performance: no PCM page shows them yet"),
-    "risk": ("Performance", "Cluster Performance and Cluster Risk over the window, then the cluster's hosts worst first, "
-             "each with its score over the window and over the last hour",
-             "the parts of Cluster Risk: no PCM page shows them yet"),
+    "performance": ("Performance", "Cluster Performance and Cluster Risk over the window; under Cluster Performance the fold "
+                    "Details (closed until opened): one chart per part, the 9 parts with Now, Worst and 95th percentile; "
+                    "then the cluster's hosts worst first, each with its score over the window and over the last hour", None),
+    "risk": ("Performance", "Cluster Performance and Cluster Risk over the window; under Cluster Risk the fold Details (closed "
+             "until opened): one chart per part, with Now, Worst and 95th percentile; then the cluster's hosts worst first, "
+             "each with its score over the window and over the last hour", None),
     "consumption": ("Capacity", "What makes up Consumption: each part as % of usable capacity, over the window", None),
 }
+KPI_KEY = {"performance": "cluster_performance", "risk": "cluster_risk"}
+
+
+def _median(xs: list):
+    xs = sorted(x for x in xs if x is not None)
+    if not xs:
+        return None
+    n = len(xs)
+    return xs[n // 2] if n % 2 else round((xs[n // 2 - 1] + xs[n // 2]) / 2, 3)
+
+
+def parts_at_worst(E, now: datetime, cluster: str, metric: str, window: str, enable=()) -> dict | None:
+    """The parts of a cluster KPI at the KPI's worst point of the window (D-111): the values the Details fold shows at
+    that time, each with the part's median and worst of the window. Names are the Agent E2 catalog's. No score, no
+    ranking, no verdict: scoring the parts is domain knowledge, Agent E2's (D-078)."""
+    n = X.node(E, cluster) if cluster else None
+    key = KPI_KEY.get(metric)
+    if n is None or key is None:
+        return None
+    k = next((x for x in M.object_kpis(E, n, now, window, enable) if x["key"] == key), None)
+    if not k or not k.get("details") or not k.get("worst"):
+        return None
+    times = [p["t"] for p in k["points"]]
+    if k["worst"]["t"] not in times:
+        return None
+    i = times.index(k["worst"]["t"])
+    parts = []
+    for d in k["details"]:
+        vals = [p["v"] for p in d["points"]]
+        parts.append({"name": d["label"], "unit": d["unit"].strip(), "better": "lower", "value": vals[i], "median": _median(vals),
+                      "worst": (d.get("worst") or {}).get("v"), "worst_time": (d.get("worst") or {}).get("t")})
+    return {"kpi": k["label"], "time": k["worst"]["t"], "kpi_value": k["worst"]["v"],
+            "shown_in": f"{n['name']} (cluster) · Performance tab · Details under {k['label']}", "parts": parts}
 
 
 def _minutes(times: list) -> int | None:
@@ -226,6 +260,9 @@ def _facts(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
         kpi = {key: k.get(key) for key in ("label", "better", "now", "worst", "percentile_95", "check_value", "closure_levels")}
         kpi["unit"] = "%"
         kpi["points"] = [[p["t"], p["v"]] for p in k.get("points", [])]
+        parts = parts_at_worst(E, now, cap.get("cluster"), ctx.get("metric"), window, enable)
+        if parts:
+            kpi["parts_at_worst"] = parts
         facts = {**base, "pillar": "Capacity", "cluster": cap.get("cluster"), "check": cap.get("check"),
                  "contention_now": cap.get("contention_now"), "asked_about_kpi": kpi,
                  "other_kpis": [{key: x.get(key) for key in ("label", "now", "worst", "percentile_95", "check_value")} for x in cap["kpis"] if x is not k]}

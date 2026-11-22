@@ -367,6 +367,7 @@ story:
     name: Every question to Agent E2 carries the screen the person sees
     given:
       kpi: { kind: kpi, object: fr-bat-6839, pillar: capacity, metric: performance, window: 24h }
+      kpi_m5: { kind: kpi, object: SG-S-01, pillar: capacity, metric: performance, window: 24h }
       metric: { kind: metric, object: fr-svc-5526, layer: guest_os, metric: run_queue_per_vcpu, window: 24h }
       page: { kind: page, object: fr-svc-5526, pillar: performance, window: 24h }
     expect:
@@ -377,11 +378,14 @@ story:
       kpi_point_minutes: 5
       kpi_belongs_to: FR-B-04
       kpi_drill_down_page: "FR-B-04 (cluster) · Performance tab · Last 24 hours"
-      kpi_not_shown_yet: "the 9 sub-metrics of Cluster Performance"
+      kpi_drill_down_shows: "the fold Details"
+      kpi_nothing_not_shown: true
+      kpi_parts_at_worst: { count: 9, time: "2026-10-19T08:30:00+08:00", kpi_value: 41.9, first_part: "Worst peak vCPU Ready among all VMs" }
+      kpi_part_fields: [name, unit, value, median, worst, worst_time]
       metric_clicked: "the E2 mark on the Run Queue chart, in the Guest OS layer"
       page_clicked: "the E2 mark in the top bar: a question about the whole page"
       no_drop_verdict_from_pcm: true
-    decisions: [D-078, D-103]
+    decisions: [D-078, D-103, D-111]
 
 page:
   - id: LPG-1
