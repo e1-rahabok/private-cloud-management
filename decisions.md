@@ -104,6 +104,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-097 | 2026-11-21 | Agent E2 is on every L2 page, in one place. An **E2 mark** in the top bar says whether it is available; the same mark sits on each metric, KPI, finding, chain link and layer, where the question comes up. A click opens the **Agent E2 panel**, docked on the right: it pushes the content, never covers it, and the inventory tree folds to a narrow strip while it is open. PCM sends the facts of what was clicked; Agent E2 answers with its sources. The panel stays open across pages. Revises the L2 frame rule "no other item in the top bar". | The screen is full, and a panel on top would hide the chart being asked about. While L2 talks to Agent E2 they are not browsing the tree. An avatar mark, not a sparkle: Agent E2 is a team member who explains with sources (D-047), not magic. See Rationale. |
 | D-098 | 2026-11-22 | The NOC desk has the same Agent E2 mark and panel as L2 (D-097): the mark in the top bar, on each tile, on the cluster drill-down, on each incident row, on the incident header and on each SOP step. PCM sends L1's facts (scores from 0 to 100, the SOP and its results) with the role l1. Every answer is checked against the NOC vocabulary; one that still uses an L2 word after one rewrite is not shown. "Explain this incident" and "Draft the escalation note" become the panel's first suggestions on an incident. The wall has no mark. | One mark and one panel for every workspace: an operator who moves to L2 already knows them. L1 must never get raw counters (NOC vocabulary), and must never be told to act outside the SOP (NOC design, 3.8). The wall has no mouse or keyboard (D-032). |
 | D-099 | 2026-11-22 | In the Agent E2 panel an answer shows its sources behind a closed control, "Sources (n)", where n is the number of knowledge files it read. One click opens the list as chips. Applies to L2 and the NOC desk. Refines D-097 ("answers with its sources"): the sources are still there, one click away. | An answer reads 10 or more knowledge files. Showing them all as chips crowded a 400 px panel and pushed the answer and the footer out of sight. The file list is for checking an answer, not for reading it. |
+| D-100 | 2026-11-22 | The L2 Performance and Capacity tabs lead with the object's KPI over time. **Performance:** on a VM the two Performance (%) scores (Guest OS Performance, VM Performance) come first, above the layers; on a cluster and anything under it, the object's own KPI as a trend chart (Cluster Performance and Cluster Risk, ESXi Performance), in place of the four summary cards. **Capacity:** on a VM, ESXi host and cluster, a summary first: Capacity Remaining (%) and Time Remaining (days), plus VM Remaining on a host and a cluster, read from VCF Operations, placeholder values in release 1.0. **KPI figures** (Now, Worst, 95th percentile) carry the band of their value. Revises D-092 (order of the VM tab) and D-094 (no Capacity Remaining or Time Remaining on L2), for VM, host and cluster only. | The author: the trend chart on the Capacity tab says more than four cards with one number each; the Performance (%) KPI is the main counter, so it goes first; L2 wants the remaining figures before the detail. |
 
 ## Rationale
 
@@ -634,7 +635,7 @@ Source: Cost n Price n Value (in `sources/`).
 | Owner of the rule | vCommunity's check, read by PCM | The Capacity team (D-054) |
 
 - The two usable capacities differ on purpose. Planning holds back a maintenance host before it happens. Running measures the hosts that run: a host in maintenance mode already drops out.
-- L2 shows no run-out date, decision date, Capacity Remaining or Time Remaining. One sentence points to the Capacity workspace.
+- L2 shows no run-out date, decision date, Capacity Remaining or Time Remaining. One sentence points to the Capacity workspace. Revised by D-100: a VM, host and cluster show VCF Operations' Capacity Remaining, Time Remaining and VM Remaining as a summary; a group still shows none.
   - A forecast on two pages becomes two forecasts.
   - Capacity Remaining in VCF Operations comes from its own engine, which reads at most 90 days (Capacity design, 3.5).
 
@@ -738,3 +739,40 @@ Source: Cost n Price n Value (in `sources/`).
 
 **Not changed**
 - Agent E2 does not set severity, choose an action outside the SOP or close an alert (NOC design, 3.8). The panel has no action button.
+
+### D-100 The KPI first: Performance and Capacity tabs
+
+**What was wrong**
+- On a cluster or host the Performance tab opened with four cards: the score, a sparkline with no axis, "Children outside green" and "Just above the line". One number each, no time axis. The Capacity tab already showed its KPIs as trend charts, and they read better.
+- On a VM the two Performance (%) scores sat last in their layers, under the counters. They are the KPI: they say whether anything is wrong. The counters say where.
+- A KPI's Now, Worst and 95th percentile were plain black numbers. Whether 52.4 is fine had to be read off the chart's bands.
+- The Capacity tab went straight into the cluster's detail. On a VM or a host it opened with the cluster's verdict, not with the object asked about.
+
+**Now: Performance tab**
+- **On a VM:** a Performance section first, Guest OS Performance then VM Performance, stacked, each with its chart and figures. Then the two layers, each with its counters only. The layer chips stay; the layer order stays (D-092).
+- **On a cluster and anything under it, not a VM:** the object's KPI over the window, the same chart and figures as the Capacity tab. Cluster: Cluster Performance, then Cluster Risk. ESXi host: ESXi Performance. Datastore and resource pool: Worst VM Performance (they have no KPI of their own; l2.node_score). Port group: its cluster's.
+  - Cluster Performance on both tabs is one series (l2.cluster_kpi_series), so the two tabs show one number for "now".
+  - "Children outside green" becomes one sentence; the children table under it is already worst first.
+  - "Just above the line" becomes a chart: VMs between 75 and 80, one point a day for 7 days, with its count and direction in words.
+- **Above the cluster:** unchanged (D-091).
+
+**Now: band figures**
+- Now, Worst and 95th percentile of a 0 to 100% KPI (the Performance scores, Cluster Consumption, Cluster Performance, Cluster Risk) show the band of their value: green, yellow, orange, red.
+- Visible on white: a tinted pill with dark text of the same hue (6.2:1 to 7.5:1), a bar in the band color, and the band's name. The band yellow on white is 3.0:1, too faint for text, so no figure is written in a band color.
+- Counters without bands (CPU Ready, Disk Latency, the parts of Consumption) stay black. No threshold is invented for them.
+
+**Now: Capacity tab**
+- **On a VM:** Capacity Remaining (%) and Time Remaining (days). **On an ESXi host and a cluster:** the same, and VM Remaining. Then the cluster's page as before (D-094), headed with the cluster's name on a VM or host page.
+- **Source: VCF Operations,** its own capacity engine. PCM shows the values; it does not compute them (spec rule 1).
+- **Release 1.0: placeholder values,** stable per object, and the page says so under them. The real values replace them when PCM reads VCF Operations (D-062).
+- **Above the cluster:** unchanged. No Capacity Remaining, Time Remaining or VM Remaining on a group (D-094).
+
+**What D-094 warned of, and how it is held**
+- A forecast on two pages becomes two forecasts. VCF Operations' Time Remaining reads at most 90 days; the Capacity workspace's forecast reads 13 months. They can disagree on the same cluster.
+  - The L2 figures name their source, VCF Operations. The purchase decision stays in the Capacity workspace, and the tab's one sentence still points there.
+  - Open: when the connector is live, compare the two for the same cluster. If they disagree often, the author decides which one L2 shows.
+
+**Not changed**
+- The cluster's verdict, the three KPI charts, the check strip, the parts, usable capacity, the host spread and the hosts table (D-094).
+- No average anywhere (D-095).
+

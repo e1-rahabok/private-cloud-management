@@ -215,10 +215,11 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
   - **Clusters at a time:** a click on either chart, or on the VM chart, picks a time. The table lists every cluster in scope at that time, worst first: Performance, Risk, VMs hit at that time, and different VMs hit over the window. Before any click, the time is the worst point of the window.
   - A click on a cluster opens it in the tree: its hosts, then vSAN, NSX and the switches underneath.
 - **What, not why:** the tab says what was hit, when, where and how wide. Causes, including a VM that slows itself (a limit, too many vCPUs), are the case's (D-084).
-- **At the cluster and below,** the tab stays as 4.1: the summary, the children worst first, the detail.
+- **At the cluster and below,** the tab opens with the object's KPI over the window, as a trend chart with Now, Worst and 95th percentile: Cluster Performance and Cluster Risk on a cluster, ESXi Performance on a host (D-100). Then children outside green in one sentence, "Just above the line" as a 7-day chart, and the children worst first.
 
 ### 4.3.2 The Performance tab on a VM (D-092)
 
+- **The two Performance (%) scores first** (D-100): Guest OS Performance, then VM Performance. They say whether anything is wrong; the layers under them say where.
 - **Two layers, one over the other.** The Guest OS runs on the Virtual Motherboard (the VM's virtual hardware), so the Guest OS comes first and the Virtual Motherboard under it. Never side by side.
 - **One chart per metric,** over the window. Beside it, three named figures: Now, Worst (with its time) and 95th percentile. Never an average: a VM is felt at its peak.
 - **Group by, "Just above the line", "Children outside green" and Inventory are not on a VM.** They describe a group of objects.
@@ -298,9 +299,10 @@ The same shape as the Performance tab (4.3.1): one class of service filter, a se
 
 ### 4.3.6 What the Capacity tab leaves to the Capacity workspace
 
-- **No forecast, run-out date, decision date, Capacity Remaining or Time Remaining.** One sentence on the tab points to the Capacity workspace for months ahead.
-- **Why:**
-  - A forecast on two pages becomes two forecasts that disagree.
+- **No forecast, run-out date or decision date.** One sentence on the tab points to the Capacity workspace for months ahead.
+- **Capacity Remaining, Time Remaining and VM Remaining** (D-100): on a VM, host and cluster only, as a summary first, read from VCF Operations and labelled with it. Placeholder values in release 1.0. Never on a group.
+- **Why no forecast of PCM's own here:**
+  - A forecast on two pages becomes two forecasts that disagree. VCF Operations' figures are shown as VCF Operations', not as PCM's forecast (D-100).
   - VCF Operations' Capacity Remaining comes from its own engine, which reads at most 90 days (Capacity design, 3.5). PCM's forecast reads 13 months.
   - L2 owns short-term capacity risk (SP5 People); Capacity owns the purchase. The tab answers "now and the window"; the Capacity workspace answers "months ahead".
 

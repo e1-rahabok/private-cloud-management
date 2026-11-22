@@ -171,6 +171,47 @@ def vm_layers(n: dict, now: datetime, window: str, act: dict, own: float) -> lis
     return layers
 
 
+# ---------------------------------------------------------------- the object's own Performance KPI (l2.object_kpis, D-100)
+
+# The KPI each kind of object is read by, as the PCM adapter (vCommunity) names it. Datastore and resource pool have
+# no KPI of their own: their score is the worst VM on them (l2.node_score), and the label says so.
+OBJECT_KPI_LABEL = {"cluster": "Cluster Performance", "host": "ESXi Performance", "guest_os": "Guest OS Performance",
+                    "virtual_disk": "VM Performance", "vnic": "VM Performance", "port_group": "Cluster Performance",
+                    "datastore": "Worst VM Performance", "resource_pool": "Worst VM Performance"}
+
+
+def _kpi(key: str, label: str, better: str, vals: list, times: list, minutes: int) -> dict:
+    xs = [(v, i) for i, v in enumerate(vals) if v is not None]
+    w = (max(xs) if better == "lower" else min(xs)) if xs else None
+    p95 = P.nearest_rank([v for v, _ in xs], 95 if better == "lower" else 5) if xs else None
+    return {"key": key, "label": label, "unit": "%", "better": better, "decimals": 1, "scale": (0, 100), "minutes": minutes,
+            "points": [{"t": t, "v": v} for t, v in zip(times, vals)], "now": vals[-1] if vals else None,
+            "worst": {"v": w[0], "t": times[w[1]]} if w else None, "percentile_95": None if p95 is None else round(p95, 1),
+            "bands": "lower_is_better" if better == "higher" else "higher_is_worse"}
+
+
+def object_kpis(E, n: dict, now: datetime, window: str, enable=()) -> list:
+    """l2.object_kpis: the Performance KPI of a cluster or anything under it, over the window, one point per slot
+    (l2.statistics). First on its Performance tab. A cluster adds Cluster Risk: potential slowness (D-091)."""
+    start, L, count = P._slots(now, window)
+    times = [datetime.fromtimestamp(start + (i + 1) * L, tz=now.tzinfo).isoformat() for i in range(count)]
+    cid = n["id"] if n["kind"] == "cluster" else n.get("cluster") if n["kind"] == "port_group" else None
+    if cid:
+        series = P._cluster_series(tuple(enable), now.isoformat(), window).get(cid)
+        if series:  # one definition with the Capacity tab: Now is the NOC's own value at this moment
+            cap = CAP.cluster_view(now, cid, window, enable)
+            perf = {k["key"]: k for k in cap.get("kpis", [])}.get("performance")
+            pv = [p["v"] for p in perf["points"]] if perf else [None if v is None else round(v, 1) for v in series["performance"]]
+            return [_kpi("cluster_performance", "Cluster Performance", "higher", pv, times, L // 60),
+                    _kpi("cluster_risk", "Cluster Risk", "lower", [None if v is None else round(v, 1) for v in series["risk"]], times, L // 60)]
+    s = perf_score(E, n, now, window, enable)
+    if s is None:
+        return []
+    label = OBJECT_KPI_LABEL.get(n["kind"], "Performance")
+    key = label.lower().replace(" ", "_")
+    return [_kpi(key, label, "higher", _series(n["id"], key, round(s, 1), "higher", 1, (0, 100), count), times, L // 60)]
+
+
 # ---------------------------------------------------------------- where an object sits
 
 def ancestors(E, nid: str) -> set:
@@ -354,8 +395,9 @@ def iceberg(E, view: str, nid: str, now: datetime, window: str, enable=()) -> di
             cnt += lo <= s < hi
         trend.append(cnt)
     direction = "rising" if trend[-1] > trend[0] + max(1, trend[0] * 0.05) else "falling" if trend[-1] < trend[0] - max(1, trend[0] * 0.05) else "steady"
+    days = [(now - timedelta(days=d)).isoformat() for d in range(6, -1, -1)]
     return {"vms": len(vms), "near_line": now_n, "below_green": below, "trend_7_days": trend, "direction": direction,
-            "near_line_from": lo, "near_line_to": hi}
+            "points_7_days": [{"t": t, "v": v} for t, v in zip(days, trend)], "near_line_from": lo, "near_line_to": hi}
 
 
 def group_by(E, view: str, nid: str, attribute: str, now: datetime, window: str, enable=()) -> list:
@@ -603,6 +645,8 @@ def pillar_view(now: datetime, view: str, nid: str, pillar: str, window: str, gr
         out["group_by"] = {"attribute": group, "rows": group_by(E, v, nid, group, now, window, enable)}
     if pillar == "performance" and P.applies(n):
         out["perf"] = P.view(now, v, nid, window, cls or P.DEFAULT_CLASS, at, enable)
+    elif pillar == "performance" and n["kind"] != "vm":
+        out["kpis"] = object_kpis(E, n, now, window, enable)
     if pillar == "capacity":
         out["capacity"] = capacity_tab(E, v, n, now, window, cls, at, enable)
         out["status"] = out["capacity"]["status"]
@@ -620,7 +664,8 @@ def capacity_tab(E, view: str, n: dict, now: datetime, window: str, cls, at, ena
     if not cid or cid not in E.nodes:
         return {"kind": "none", "status": "green"}
     host = n["id"] if n["kind"] == "host" else n.get("host") if n["kind"] == "vm" else E.nodes.get(n.get("vm", ""), {}).get("host")
-    return {"kind": "cluster", **CAP.cluster_view(now, cid, window, enable, host if n["kind"] != "cluster" else None)}
+    return {"kind": "cluster", **CAP.cluster_view(now, cid, window, enable, host if n["kind"] != "cluster" else None),
+            "remaining": CAP.capacity_remaining(n, now)}
 
 
 def trend(E, n: dict, now: datetime, window: str, enable=()) -> list:

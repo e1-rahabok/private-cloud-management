@@ -2,7 +2,7 @@
 # (D-027, D-033). Never one health score (L2 design, 3.3). No compliance until after 1.0 (D-022).
 version: 2
 workspace: l2
-allowed: [CPU Ready, Co-stop, Other Wait, latency, run queue, ESXi, vSAN, NSX, DRS, HA, NUMA, cluster, host, datastore, snapshot, resource pool, Cluster Consumption, Cluster Performance, Cluster Risk, usable capacity, buffer, overcommit, CPU Imbalance]
+allowed: [Capacity Remaining, Time Remaining, VM Remaining, ESXi Performance, CPU Ready, Co-stop, Other Wait, latency, run queue, ESXi, vSAN, NSX, DRS, HA, NUMA, cluster, host, datastore, snapshot, resource pool, Cluster Consumption, Cluster Performance, Cluster Risk, usable capacity, buffer, overcommit, CPU Imbalance]
 avoided:
   - cost
   - price
@@ -23,4 +23,6 @@ labels:
   host_spread: Spread between hosts
 # Capacity tab only (D-094): no forecast words. Checked by LPG-18, not by the avoided list, because Improve
 # legitimately reads the Capacity workspace's purchase decision.
-capacity_tab_avoided: [VMs waiting, Full now, forecast, run-out, decision date, Capacity Remaining, Time Remaining, imbalance]
+capacity_tab_avoided: [VMs waiting, Full now, forecast, run-out, decision date, imbalance]
+# Capacity tab above the cluster only (D-100): VCF Operations' remaining figures belong to one VM, host or cluster.
+capacity_group_avoided: [Capacity Remaining, Time Remaining, VM Remaining]

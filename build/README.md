@@ -136,8 +136,8 @@ Third L2 build: the workspace is rebuilt around three activities, **Monitor, Tro
 | Level | Tests | Result |
 |---|---|---|
 | Catalog | LCAT-1 to LCAT-16 | all passed |
-| Story | LST-1 to LST-28, plus tree, stale, realms, generic complaint, agent and money checks | all passed |
-| Page | LPG-1 to LPG-22 | 21 browser checks and the specification check passed |
+| Story | LST-1 to LST-30, plus tree, stale, realms, generic complaint, agent and money checks | all passed |
+| Page | LPG-1 to LPG-23 | 22 browser checks and the specification check passed |
 | Demo rehearsal | 21 steps, 8 of them L2 | all OK |
 
 - **The whole estate is in the tree:** 1,200 hosts, 106 clusters, about 27,900 VMs, built from `spec/data/estate.yaml` (`l2_tree`). Every object a story names sits where the story says. Five views: Compute, Storage, Network, Class of service, Management.
@@ -154,6 +154,14 @@ Third L2 build: the workspace is rebuilt around three activities, **Monitor, Tro
 - **Story M-4:** LD-B-01 shows red at 77 and stays open, then closes at 82; FR-B-04 drifts up (a 7-day finding); FR-B-03 is near closure and steady. FR-S-02 (N-1) is open at the check with contention now at 22.
 - **One definition:** each Consumption check value is exactly the 95th percentile of that day's 5-minute points. Performance and Risk are the Performance tab's own series; their check values come from it, so both tabs show one number. Found in review: the first cut drew Performance from that series but took its check value from a separate model (77.5 against 87); fixed.
 - **Found in review and fixed:** "Contention now" said 22 while the chart's last point said 31; the last point is now the NOC's value now. A closed cluster's chip had no finding row in the 7-day window; the window now links to the daily finding instead of repeating it. An old daily finding quoted the Capacity workspace's decision date on L2; it now names no date.
+
+**The KPI first (D-100):** `object_kpis` in `pcm_proto/l2_monitor.py`, `capacity_remaining` in `pcm_proto/l2_capacity.py`.
+- **Performance tab, VM:** Guest OS Performance and VM Performance first, in a section of their own; the layers keep their counters.
+- **Performance tab, cluster and below:** the four cards are gone. The object's KPI over the window comes first: Cluster Performance and Cluster Risk on a cluster (the same series as the Capacity tab: FR-B-04 shows 82.2, 80.2, 80.7 on both), ESXi Performance on a host. "Just above the line" is a 7-day chart.
+- **Band figures:** Now, Worst and 95th percentile of every 0 to 100% KPI are pills in the band of their value, with its name; text 6.2:1 or better (LPG-23 measures it in the browser).
+- **Capacity tab, VM, host, cluster:** a summary first, Capacity Remaining, Time Remaining and, on a host and a cluster, VM Remaining. Placeholder values, stable per object, labelled as such on the page. Never on a group (LST-30, LPG-18).
+- Screenshots: `screenshots/l2-monitor-vm-performance.png`, `l2-monitor-cluster-performance.png`, `l2-monitor-capacity-host.png`.
+- **Pre-existing, not from this change:** run in one `unittest` call together with the L2, Capacity and NOC tests, `test_executive` fails ST-2 and "stories hold on another day"; run alone, as listed under Test, it passes. The same happens on the commit before this change.
 
 **Policy as code (D-079):** the trust ladder is gone. Action policies (tier and guardrails, versioned, owned) decide what runs automatically. The approval record is evidence only. "Propose a policy change" replays against history before Publish. The L-4 move runs automatically under v2, with the policy owner and version as its accountable party and no approval record.
 
@@ -262,6 +270,7 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 | L2 cannot yet reclassify a downtime as customer-caused | Specified (D-077) | Add to the L2 pages |
 | Workflow state is one JSON document per name | Fine for the prototype | One table each in the product database |
 | Capacity: host costs, trend weeks, purchase cover and waste limits are proposals | Numbers not yet confirmed | Author to confirm the settings marked proposal |
+| L2 Capacity Remaining, Time Remaining and VM Remaining are placeholders (D-100) | No VCF Operations connector in 1.0 | Read them from VCF Operations; verify the metric keys on the live system (D-062) |
 
 ## Layout
 

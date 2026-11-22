@@ -1,4 +1,4 @@
-// Page tests LPG-2 to LPG-22 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
+// Page tests LPG-2 to LPG-23 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
 // GENERATED from spec/tests/l2.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/l2.page.test.mjs
 import { spawn } from 'node:child_process';
@@ -44,6 +44,7 @@ const PAGES = ['/l2', '/l2/monitor/compute/estate/performance', '/l2/monitor/com
 const CAPACITY_PAGES = ['/l2/monitor/compute/LD-B-01/capacity?window=7d', '/l2/monitor/compute/LD-B-01/capacity', '/l2/monitor/compute/wld-fr-gen/capacity?window=7d&class=bronze',
   '/l2/monitor/compute/wld-fr-gen/capacity', '/l2/monitor/compute/estate/capacity?class=all', '/l2/monitor/compute/FR-S-02/capacity', '/l2/monitor/compute/ld-esx-202/capacity?window=30d'];
 const capAvoided = readFileSync(ROOT + 'spec/catalog/vocabulary/l2.yaml', 'utf8').match(/^capacity_tab_avoided:\s*\[(.*)\]/m)[1].split(',').map(w => w.trim());
+const capGroupAvoided = readFileSync(ROOT + 'spec/catalog/vocabulary/l2.yaml', 'utf8').match(/^capacity_group_avoided:\s*\[(.*)\]/m)[1].split(',').map(w => w.trim());
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on('request', r => hosts.add(new URL(r.url()).host));
@@ -168,7 +169,8 @@ try {
   for (const p of CAPACITY_PAGES) {
     await go(p);
     const t = await page.innerText('#panel');
-    for (const w of capAvoided) {
+    const isGroup = !!(await page.$('[data-section="capacity-group"]')) || !!(await page.$('[data-empty]'));
+    for (const w of isGroup ? [...capAvoided, ...capGroupAvoided] : capAvoided) {
       const re = w === 'imbalance' ? /(?<!CPU )\bimbalance\b/i : new RegExp(`\\b${w}\\b`, 'i');
       if (re.test(t)) capBad.push(`${p}: ${w}`);
     }
@@ -207,6 +209,36 @@ try {
     && labels.join() === 'Now,Worst,95th percentile' && figs.every(f => /\d(%|\/s| ms| per vCPU| pages\/s)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
     && !(await page.$('#grp')) && !/side by side|Just above the line|Children outside green/i.test(mainText) && !/average/i.test(mainText),
     `${tabsText}; ${layers}; ${names.length} charts; ${figs.slice(0, 3)}`);
+
+  // LPG-23 the KPI first: band figures on the Performance tabs, the remaining summary first on the Capacity tab (D-100)
+  const lum = c => { const [r, g, b] = c.match(/\d+/g).slice(0, 3).map(x => { x = x / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const band = v => v >= 75 ? 'green' : v >= 50 ? 'yellow' : v >= 25 ? 'orange' : 'red';
+  const pills = async () => page.$$eval('.metric', ms => ms.map(m => ({ key: m.dataset.metric || m.dataset.kpi, pills: [...m.querySelectorAll('dd')].map(d => { const p = d.querySelector('.bv'); if (!p) return null; const cs = getComputedStyle(p);
+    return { band: p.dataset.band, name: p.querySelector('.bn').textContent, v: parseFloat(p.textContent), fg: cs.color, bg: cs.backgroundColor }; }) })));
+  const pillsOk = (ms, hiw) => ms.every(m => m.pills.every(p => p === null || (p.band === band(hiw(m.key) ? 100 - p.v : p.v) && p.name.toLowerCase() === p.band && ratio(p.fg, p.bg) >= 4.5)));
+  await go('/l2/monitor/compute/fr-bat-6839/performance');
+  const vmFirst = await page.$eval('section.persp', s => s.dataset.section);
+  const vmKpis = await page.$$eval('[data-section="performance-kpis"] .metric', ms => ms.map(m => m.dataset.metric));
+  const vmLayerKpis = await page.$$eval('section.layer .metric', ms => ms.map(m => m.dataset.metric).filter(k => /performance/.test(k)));
+  const vmPills = await pills();
+  const counterPlain = vmPills.filter(m => !/performance/.test(m.key)).every(m => m.pills.every(p => p === null));
+  const vmPillOk = pillsOk(vmPills, () => false) && vmPills.filter(m => /performance/.test(m.key)).every(m => m.pills.every(p => p !== null));
+  await go('/l2/monitor/compute/FR-B-04/performance');
+  const clKpis = await page.$$eval('[data-section="performance-kpis"] .metric h4', hs => hs.map(h => h.textContent));
+  const clText = await page.innerText('main');
+  const clPills = await pills();
+  const clPillOk = pillsOk(clPills, k => k === 'cluster_risk') && clPills.filter(m => m.key.startsWith('cluster_')).every(m => m.pills.every(p => p !== null));
+  const noCards = !/This object|Children outside green\n/.test(clText) && !(await page.$('.cards .card h3'));
+  await go('/l2/monitor/compute/fr-esx-244/capacity');
+  const capFirst = await page.evaluate(() => [...document.querySelectorAll('[data-section="capacity-summary"], [data-verdict]')].map(e => e.dataset.section ? 'summary' : 'verdict'));
+  const rem = await page.$$eval('[data-remaining] h3', hs => hs.map(h => h.textContent));
+  const placeholder = await page.innerText('[data-placeholder]');
+  const capPillOk = pillsOk(await pills(), k => k !== 'performance');
+  check('LPG-23', vmFirst === 'performance-kpis' && vmKpis.join() === 'guest_os_performance,vm_performance' && vmLayerKpis.length === 0 && counterPlain && vmPillOk
+    && clKpis.join() === 'Cluster Performance,Cluster Risk' && clPillOk && noCards
+    && capFirst.join() === 'summary,verdict' && rem.join() === 'Capacity Remaining,Time Remaining,VM Remaining' && /Placeholder values.*VCF Operations/.test(placeholder) && capPillOk,
+    `VM ${vmKpis}; cluster ${clKpis}; capacity ${capFirst} ${rem}; pills ${vmPillOk}/${clPillOk}/${capPillOk}`);
 
   // LPG-16 moving between pages does not load the page; the window is a drop-down; tabs are tabs with a dot each
   await go('/l2/monitor/compute/estate/summary');
@@ -331,6 +363,8 @@ try {
   shot.on('dialog', d => d.accept('Reason given in the test'));
   for (const [p, name, full] of [['/l2', 'l2-monitor-estate', false], ['/l2/monitor/compute/ld/performance?window=7d&group=host_model', 'l2-monitor-group-by', false],
     ['/l2/monitor/compute/estate/performance', 'l2-monitor-performance', true],
+    ['/l2/monitor/compute/fr-bat-6839/performance', 'l2-monitor-vm-performance', true], ['/l2/monitor/compute/FR-B-04/performance', 'l2-monitor-cluster-performance', true],
+    ['/l2/monitor/compute/fr-esx-244/capacity', 'l2-monitor-capacity-host', true],
     ['/l2/monitor/compute/LD-B-01/capacity?window=7d', 'l2-monitor-capacity-cluster', true], ['/l2/monitor/compute/wld-fr-gen/capacity?window=7d&class=bronze', 'l2-monitor-capacity-group', true],
     ['/l2/troubleshoot/compute/estate', 'l2-troubleshoot-cases', false], ['/l2/troubleshoot/case/case-inc-tk-s-03', 'l2-case-escalation', true],
     ['/l2/troubleshoot/case/case-sg-app-117', 'l2-case-guest-os', true], ['/l2/improve/compute/estate/summary', 'l2-improve', false], ['/l2/rules', 'l2-rules', false]]) {

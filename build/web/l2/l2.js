@@ -280,12 +280,7 @@ async function monitor(msg = '') {
   } else if (R.pillar === 'performance' && d.layers) {
     body += layersView(d) + `<p><a class="link" href="${complaintURL(R.object)}">Log a complaint about this VM</a></p>` + childrenTable(d);
   } else if (R.pillar === 'performance') {
-    const ice = c.iceberg;
-    const unit = d.trend.length && d.trend[0].unit ? d.trend[0].unit : 'score';
-    body += `<div class="cards"><div class="card ${d.status}"><h3>This object ${chip(d.status)}</h3><div class="big2">${d.score ?? '–'}</div><div class="muted">Over ${R.window}${d.score_now !== null && R.window !== '1h' ? `; last hour ${d.score_now}` : ''}</div></div>
-      <div class="card"><h3>Trend</h3>${spark(d.trend)}<div class="muted">${unit === 'score' ? 'Score over the window' : 'Clusters outside green over the window'}</div></div>
-      <div class="card ${d.outside_green ? 'amber' : 'green'}"><h3>Children outside green</h3><div class="big2">${d.outside_green} <span class="muted" style="font-size:16px">of ${d.children_total}</span></div></div>
-      ${ice ? `<div class="card" data-iceberg><h3>Just above the line</h3><div class="big2">${n0(ice.near_line)}</div><div class="muted">VMs between ${ice.near_line_from} and ${ice.near_line_to}, ${esc(ice.direction)} over 7 days; ${n0(ice.below_green)} below green, of ${n0(ice.vms)}</div>${bars(ice.trend_7_days)}</div>` : ''}</div>`;
+    body += objectKpis(d, c.iceberg);
     body += groupBy(d);
     body += childrenTable(d);
   } else if (R.pillar === 'availability') {
@@ -322,7 +317,7 @@ async function monitor(msg = '') {
   main.innerHTML = objHead(d.object) + tabbed({ ...st, [R.pillar]: d.status }, d.object.kind, head + (d.stale ? '<p class="why">No data from this location\'s VCF Operations. Shown grey, never green.</p>' : '') + body);
   const g = document.getElementById('grp');
   if (g) g.addEventListener('change', () => go(url({ group: g.value })));
-  if (d.perf || d.layers || d.capacity) wireCharts();
+  if (d.perf || d.layers || d.kpis || d.capacity) wireCharts();
   main.querySelectorAll('[data-why-toggle]').forEach(b => b.addEventListener('click', () => {
     const open = b.getAttribute('aria-expanded') !== 'true';
     b.setAttribute('aria-expanded', String(open)); document.getElementById(b.getAttribute('aria-controls')).hidden = !open;
@@ -477,23 +472,47 @@ const niceMax = v => { if (!(v > 0)) return 1; const p = 10 ** Math.floor(Math.l
 const withUnit = (v, m, tick) => v == null ? '–' : `${Number(v).toLocaleString('en-US', tick ? { maximumFractionDigits: 2 } : { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals })}${tick && m.unit !== '%' ? '' : m.unit}`;
 // In the figures on the left a unit that is words ("per vCPU", "ms") is set small and light, so every metric reads alike.
 const figure = (v, m) => { if (v == null) return '–'; const t = withUnit(v, m); return m.unit && m.unit !== '%' && t.endsWith(m.unit) ? `${esc(t.slice(0, -m.unit.length))}<span class="u">${esc(m.unit)}</span>` : esc(t); };
+// A KPI's figures carry the band of their value: a tinted pill with dark text (6.2:1 or better), a bar in the band
+// color, and the band's name, so color is never the only signal (tokens.md, Band figures; D-100).
+const bandOf = (v, m) => v == null || !m.scale ? null : m.better === 'lower' ? riskBand(v) : perfBand(v);
+const bandFig = (v, m, text) => { const b = bandOf(v, m); return b && b !== 'no_data' ? `<span class="bv ${b}" data-band="${b}">${text}<span class="bn">${BAND_NAME[b]}</span></span>` : text; };
 const LAYER_NOTE = { guest_os: 'Runs on top of the Virtual Motherboard.', virtual_motherboard: 'The VM\'s virtual hardware, under the Guest OS.' };
 function metricBlock(m, layer) {
   const score = !!m.scale;
   const hiV = Math.max(...m.points.map(p => p.v));
   const top = score ? 100 : m.unit === '%' && hiV > 50 && hiV <= 100 ? 100 : niceMax(hiV * 1.1);  // a percentage near full reads on 0 to 100%, never 200%
   const fmt = (v, tick) => withUnit(v, m, tick);
-  const series = [score ? { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }
+  const hiw = m.better === 'lower';
+  const series = [score ? (hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: riskBand, worse: Math.max }
+    : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min })
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
-    fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined });
+    fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? (hiw ? HIGH_BANDS : LOW_BANDS) : undefined });
   const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, { p95: fmt(m.percentile_95), worst: fmtPoint(m.worst.t, m.minutes) }) : '';
   return `<div class="metric" data-metric="${m.key}"><div class="mfig"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div>
-    <dl><dt>Now</dt><dd>${figure(m.now, m)}</dd><dt>Worst</dt><dd>${figure(m.worst.v, m)}</dd><dt>95th percentile</dt><dd>${figure(m.percentile_95, m)}</dd></dl></div>${chart}</div>`;
+    <dl><dt>Now</dt><dd>${bandFig(m.now, m, figure(m.now, m))}</dd><dt>Worst</dt><dd>${m.worst ? bandFig(m.worst.v, m, figure(m.worst.v, m)) : '–'}</dd><dt>95th percentile</dt><dd>${bandFig(m.percentile_95, m, figure(m.percentile_95, m))}</dd></dl></div>${chart}</div>`;
 }
+const pointsNote = minutes => `<p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(minutes)}. Each point shows the worst value in that interval. 95% of points were better than the 95th percentile.</p>`;
+// The Performance (%) KPIs come first: they say whether anything is wrong; the counters under them say where (D-100).
 function layersView(d) {
-  return `<p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(d.layers[0].metrics[0].minutes)}. Each point shows the worst value in that interval. 95% of points were better than the 95th percentile.</p>`
-    + d.layers.map(l => `<section class="persp layer" data-layer="${l.key}"><h2>${esc(l.title)} ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span>${e2mark({ kind: 'vm_layer', layer: l.key, pillar: 'performance' }, `the ${l.title} layer`, { name: `${l.title} layer`, layer: l.title })}</h2>${l.metrics.map(m => metricBlock(m, l.key)).join('')}</section>`).join('');
+  const kpis = d.layers.flatMap(l => l.metrics.filter(m => m.scale).map(m => metricBlock(m, l.key)));
+  return pointsNote(d.layers[0].metrics[0].minutes)
+    + `<section class="persp kpis" data-section="performance-kpis"><h2>Performance <span class="muted">0 to 100%, higher is better. The Guest OS runs on top of the Virtual Motherboard.</span></h2>${kpis.join('')}</section>`
+    + d.layers.map(l => `<section class="persp layer" data-layer="${l.key}"><h2>${esc(l.title)} ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span>${e2mark({ kind: 'vm_layer', layer: l.key, pillar: 'performance' }, `the ${l.title} layer`, { name: `${l.title} layer`, layer: l.title })}</h2>${l.metrics.filter(m => !m.scale).map(m => metricBlock(m, l.key)).join('')}</section>`).join('');
+}
+// A cluster and anything under it, but not a VM: its Performance KPI over the window first, then its children (D-100).
+function objectKpis(d, ice) {
+  const win = esc(WINDOWS.find(w => w[0] === R.window)[1]).toLowerCase();
+  const kpis = d.kpis && d.kpis.length
+    ? pointsNote(d.kpis[0].minutes) + d.kpis.map(m => metricBlock(m, 'object')).join('')
+    : '<p class="muted">No data for this object in the window.</p>';
+  const outside = d.children_total ? `<p data-outside-green>${n0(d.outside_green)} of ${n0(d.children_total)} children outside green: over the ${win}, or in the last hour. They are first in the list below.</p>` : '';
+  const iceChart = ice && ice.vms ? lineChart('iceberg', ice.points_7_days, [{ key: 'v', label: `VMs between ${ice.near_line_from} and ${ice.near_line_to}`, short: 'VMs', color: 'var(--series-1)' }],
+    { label: `VMs just above the line, one point a day for 7 days`, width: 760, height: 140, left: 56, minutes: 1440, noclick: true, nodirect: true, nolegend: true, fmt: (v, tick) => n0(v) }) : '';
+  const iceWords = ice && ice.vms ? `<h3>Just above the line <span class="muted">VMs between ${ice.near_line_from} and ${ice.near_line_to}, last 7 days</span></h3>
+    <p data-iceberg>${n0(ice.near_line)} VMs now, ${esc(ice.direction)} over 7 days. ${n0(ice.below_green)} below green, of ${n0(ice.vms)}.</p>
+    <div data-iceberg-chart>${iceChart}</div>` : '';
+  return `<section class="persp kpis" data-section="performance-kpis"><h2>Performance <span class="muted">0 to 100%</span></h2>${kpis}</section>${outside}${iceWords}`;
 }
 function perfTab(p, d) {
   const cls = CLASS_NAME[p.class], m = p.point_minutes, sel = p.selected, C = p.consumer, P = p.provider;
@@ -549,14 +568,24 @@ const checkPeriod = c => `${c.period_hours} hours to ${fmtTime(c.window_end)}`;
 const capGroupURL = (loc, cls) => `/capacity/group/${enc(loc.toUpperCase())}-${enc(cls.charAt(0).toUpperCase() + cls.slice(1))}${PASS ? '?' + PASS : ''}`;
 const monthsAhead = href => `<p class="muted" data-months-ahead>To plan ahead and decide when to buy, open the <a class="link" href="${href}">Capacity workspace</a>.</p>`;
 function kpiBlock(k, c, m) {
-  const hiw = k.better === 'lower';
+  const hiw = k.better === 'lower', km = { scale: [0, 100], better: k.better };
   const chart = lineChart(`cap-${k.key}`, k.points, [hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: riskBand, worse: Math.max }
     : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }],
     { label: `${k.label} over the window, 0 to 100%`, max: 100, width: 760, height: 250, left: 56, minutes: m, noclick: true, nodirect: true, nolegend: true, bands: hiw ? HIGH_BANDS : LOW_BANDS });
   const mark = e2mark({ kind: 'kpi', metric: k.key, pillar: 'capacity' }, k.label, { p95: pct(k.percentile_95), worst: k.worst ? fmtPoint(k.worst.t, m) : '' });
   return `<div class="metric" data-kpi="${k.key}"><div class="mfig"><div class="mname"><h4>${esc(k.label)}</h4>${mark}</div>
-    <dl><dt>Now</dt><dd>${pct(k.now)}</dd><dt>Worst</dt><dd>${pct(k.worst && k.worst.v)}</dd>
-    <dt>95th percentile</dt><dd>${pct(k.percentile_95)}</dd></dl></div>${chart}</div>`;
+    <dl><dt>Now</dt><dd>${bandFig(k.now, km, pct(k.now))}</dd><dt>Worst</dt><dd>${k.worst ? bandFig(k.worst.v, km, pct(k.worst.v)) : '–'}</dd>
+    <dt>95th percentile</dt><dd>${bandFig(k.percentile_95, km, pct(k.percentile_95))}</dd></dl></div>${chart}</div>`;
+}
+// Capacity Remaining, Time Remaining and VM Remaining are VCF Operations' own figures; PCM shows them, never computes them.
+// Release 1.0 has no connector yet, so the values are placeholders, and the page says so (D-100).
+const KIND_WORD = { vm: 'VM', host: 'ESXi host', cluster: 'cluster' };
+function remainingSummary(r, kind) {
+  if (!r) return '';
+  const val = x => `${n0(x.value)}${x.unit === '%' ? '%' : `<span class="u">${esc(x.unit)}</span>`}`;
+  return `<section class="persp" data-section="capacity-summary"><h2>Summary <span class="muted">this ${esc(KIND_WORD[kind] || kind)}</span></h2>
+    <div class="cards remaining">${r.values.map(x => `<div class="card" data-remaining="${x.key}"><h3>${esc(x.label)}</h3><div class="big2">${val(x)}</div></div>`).join('')}</div>
+    <p class="muted" data-placeholder>${r.placeholder ? `Placeholder values. They will come from ${esc(r.source)} once PCM reads it.` : `From ${esc(r.source)}, ${esc(fmtTime(r.time))}.`}</p></section>`;
 }
 function capCluster(c, d) {
   if (!c.applies) return '<p class="muted">Capacity is tracked on workload clusters. Management and edge clusters run the platform\'s own appliances.</p>';
@@ -584,7 +613,7 @@ function capCluster(c, d) {
     <td class="num">${pct(h.cpu_thread_utilization.percentile_95)}</td><td class="num">${pct(h.cpu_thread_utilization.worst.v)}</td>
     <td class="num">${pct(h.memory_consumed.percentile_95)}</td><td class="num">${pct(h.memory_consumed.worst.v)}</td><td>${spark(h.spark)}</td>
     <td class="num">${n0(h.running_vms)}</td><td class="num">${h.cpu_overcommit}</td><td class="num">${h.memory_overcommit}</td><td>${h.state === 'running' ? 'Running' : esc(h.state.replace('_', ' '))}</td></tr>`).join('');
-  return `<section class="persp" data-section="capacity-cluster">
+  return remainingSummary(c.remaining, d.object.kind) + `${c.remaining && d.object.kind !== 'cluster' ? `<h2>Its cluster, ${esc(c.cluster)}</h2>` : ''}<section class="persp" data-section="capacity-cluster">
     <div class="verdict" data-verdict="${ck.state}"><p>${verdict}${cn}</p>${ck.state === 'no_check' ? '' : `<p class="why-panel" id="why-verdict" data-why${ck.state === 'closed' ? '' : ' hidden'}>${esc(why)}</p>`}</div>
     ${c.marked_host ? `<p class="muted">This is the cluster's capacity. ${esc(c.marked_host)} is highlighted in the host list below.</p>` : ''}
     <h2>Key Trends</h2>

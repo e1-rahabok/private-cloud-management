@@ -83,7 +83,26 @@ entries:
       For a node and its children: how many sit just above the green line (75 to 80), and how that count moved over
       the window. A rising count under the waterline warns before any alert fires (SP5: an alert is the tip).
     near_line: { from: 75, to: 80 }
-    decisions: [D-088]
+    series: "the count at each of the last 7 days, dated, for a chart (D-100)"
+    decisions: [D-088, D-100]
+
+  l2.object_kpis:
+    description: >
+      The KPI of a cluster or anything under it (not a VM, which has l2.realms), over the window, one point per slot
+      (l2.statistics), with Now, Worst and 95th percentile. First on the object's Performance tab (D-100).
+    kpi:
+      cluster: ["Cluster Performance (l2.cluster_kpi_series, the same series as the Capacity tab)", "Cluster Risk"]
+      host: "ESXi Performance (vCommunity|ESXi Performance|ESXi Performance Score)"
+      port_group: "its cluster's Cluster Performance and Cluster Risk"
+      datastore: "Worst VM Performance: the lowest VM Performance of its VMs (l2.node_score)"
+      resource_pool: "Worst VM Performance"
+      guest_os: "Guest OS Performance"
+      virtual_disk: "VM Performance of its VM"
+      vnic: "VM Performance of its VM"
+    bands:
+      higher_is_better: "green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
+      higher_is_worse: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100 (Cluster Risk)"
+    decisions: [D-095, D-100]
 
   l2.consumer_hits:
     description: >
@@ -129,9 +148,9 @@ entries:
 
   l2.node_summary:
     description: >
-      Every node in Monitor shows three parts: a summary (its own trend for the pillar and the count of children
-      outside the green zone), its children worst first, and the detail of the selected child.
-    decisions: [D-088]
+      Every node in Monitor shows three parts: a summary (its own KPI over time for the pillar, l2.object_kpis, and
+      the count of children outside the green zone), its children worst first, and the detail of the selected child.
+    decisions: [D-088, D-100]
 
   l2.pillar_status:
     description: >
@@ -236,6 +255,19 @@ entries:
       higher_is_worse: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100"
       higher_is_better: "green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
     decisions: [D-094, D-095]
+
+  l2.capacity_remaining:
+    description: >
+      VCF Operations' own capacity figures for one VM, ESXi host or cluster, shown first on its Capacity tab. PCM
+      reads them; it never computes them. Not on a group: no sum across clusters (D-095).
+    source: "VCF Operations capacity engine, through the VCF Operations API (D-064)"
+    figures:
+      capacity_remaining: { label: "Capacity Remaining", unit: "%", on: [vm, host, cluster] }
+      time_remaining:     { label: "Time Remaining", unit: " days", on: [vm, host, cluster] }
+      vm_remaining:       { label: "VM Remaining", unit: " VMs", on: [host, cluster] }
+    release_1_0: "Placeholder values, stable per object, flagged placeholder: true, and labelled as placeholders on the page. Replaced by the read values, with their time, when PCM reads VCF Operations."
+    to_verify: "D-062: the metric keys of Capacity Remaining, Time Remaining and VM Remaining on VM, host and cluster in VCF Operations 9.1"
+    decisions: [D-094, D-100]
 
   l2.cluster_check:
     description: >

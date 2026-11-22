@@ -387,6 +387,29 @@ def cluster_view(now: datetime, cid: str, window: str, enable=(), marked_host: s
             "parts": parts, "memory_tiering": None, "usable": uc, "spread": spread, "hosts": hosts, "marked_host": marked_host}
 
 
+# ---------------------------------------------------------------- Capacity Remaining, from VCF Operations (l2.capacity_remaining, D-100)
+
+REMAINING_KINDS = {"vm": ("capacity_remaining", "time_remaining"),
+                   "host": ("capacity_remaining", "time_remaining", "vm_remaining"),
+                   "cluster": ("capacity_remaining", "time_remaining", "vm_remaining")}
+REMAINING_LABEL = {"capacity_remaining": ("Capacity Remaining", "%"), "time_remaining": ("Time Remaining", " days"),
+                   "vm_remaining": ("VM Remaining", " VMs")}
+
+
+def capacity_remaining(n: dict, now: datetime) -> dict | None:
+    """l2.capacity_remaining: VCF Operations' own Capacity Remaining, Time Remaining and VM Remaining for a VM, host
+    or cluster. Release 1.0 has no VCF Operations connector, so the values are placeholders, flagged as such, never
+    computed by PCM. The real values replace them, with their collection time, when the connector reads them."""
+    keys = REMAINING_KINDS.get(n["kind"])
+    if not keys:
+        return None
+    h = lambda k: X._h(n["id"], "remaining", k)
+    dummy = {"capacity_remaining": round(10 + 60 * h("c"), 1), "time_remaining": int(30 + 330 * h("t")),
+             "vm_remaining": int(5 + 120 * h("v")) if n["kind"] == "cluster" else int(2 + 25 * h("v"))}
+    return {"source": "VCF Operations", "placeholder": True, "time": None,
+            "values": [{"key": k, "label": REMAINING_LABEL[k][0], "unit": REMAINING_LABEL[k][1], "value": dummy[k]} for k in keys]}
+
+
 # ---------------------------------------------------------------- above the cluster
 
 def _scope(E, view: str, nid: str, cls: str, stale: set) -> list:
