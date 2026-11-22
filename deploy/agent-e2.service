@@ -1,0 +1,30 @@
+# systemd unit for the Agent E2 service next to PCM on a lab VM (deploy/README.md, Agent E2; D-078).
+# PCM calls it on 127.0.0.1:8090 (setting agent_e2.service_url, or PCM_AGENT_E2_URL in /etc/pcm/pcm.env).
+[Unit]
+Description=Agent E2 service for PCM (knowledge base, reading plan, model call)
+After=network-online.target
+Wants=network-online.target
+Before=pcm.service
+
+[Service]
+Type=simple
+User=pcm
+Group=pcm
+WorkingDirectory=/opt/agent-e2
+# AI_GATEWAY_API_KEY: the model and the embeddings go through the AI gateway in the lab (D-076). Same file as PCM.
+EnvironmentFile=-/etc/pcm/pcm.env
+# The repository is owned by root; let git name its commit for the "knowledge" line of each answer.
+Environment=GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/opt/agent-e2
+# Listens on the loopback only: PCM is its only caller.
+ExecStart=/usr/bin/python3 harness/answer_service.py --host 127.0.0.1 --port 8090
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# The embeddings cache, built on the first start (about 50 s), reused after.
+ReadWritePaths=/opt/agent-e2/harness/.cache
+
+[Install]
+WantedBy=multi-user.target

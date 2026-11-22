@@ -192,5 +192,7 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 | The Frankfurt case is not in Troubleshoot | Refresh. If still missing, the Escalate click in step 3 did not land: click it again on tab 3. |
 | The wall does not rotate | Check the URL has `rotate=8`. |
 | Agent E2 shows a fixed text | Expected without `AI_GATEWAY_API_KEY`. Say "this is the offline fallback". |
+| The E2 mark is grey; the panel says "The Agent E2 service is not available." | The Agent E2 service is not running next to PCM. Start it: `deploy/README.md`, section Agent E2. |
+| The panel says "Agent E2 is running, but its model cannot be reached." | The service is up; its key or its route to the gateway is not. Check `AI_GATEWAY_API_KEY`, then restart `agent-e2`. |
 | Numbers differ from this script | The clock is missing: every URL needs `now=2026-10-19T10:05:00%2B08:00`. |
 | A previous run's actions are on screen | Run the reset command in Setup, step 2. |

@@ -109,7 +109,8 @@ api: /api/l2/agent/ask
 - **Clarifying questions** (at most one round): shown as a list under "Agent E2 asks"; the next question sent is the reply, with the earlier turns.
 - **Only on a finding that is a problem:** "Troubleshoot this", as on the finding row.
 - **No action that decides:** nothing in the panel confirms, rules out, approves or closes (L2 design, 8).
-- **States:** empty (the suggestions); waiting; answer; clarify; not available ("The Agent E2 service is not available." and no answer); error (the error, and the question kept in the box).
+- **States:** empty (the suggestions); waiting; answer; clarify; not available ("The Agent E2 service is not available." and no answer); model not reachable, when the service answers but its model does not ("Agent E2 is running, but its model cannot be reached." and no answer); error (the error, and the question kept in the box).
+- **Which part is down** decides the words, so the person who installs PCM looks in the right place: no service is the Agent E2 service (deploy/README.md, Agent E2); no model is its key or its network.
 - **Narrow screen (under 900 px):** the panel is a full-width sheet over the page, with Close at the top.
 
 ## Inventory tree
