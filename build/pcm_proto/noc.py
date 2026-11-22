@@ -19,7 +19,7 @@ import yaml
 from . import agent_e2, api, catalog, generator, store
 
 SPEC = Path(__file__).resolve().parents[2] / "spec"
-SCREENS = ("changed", "up", "fast", "safe", "set_right")
+SCREENS = ("up", "fast", "safe", "changed", "set_right", "capacity")
 CHANGE_TYPES = ("created", "deleted", "powered_off", "moved", "resized")
 CLASS_LETTER = {"gold": "G", "silver": "S", "bronze": "B", "mixed": "M"}
 ROOT_CAUSES = ("noisy_neighbour", "hardware_fault", "configuration_change", "planned_work_not_in_calendar",
@@ -254,8 +254,20 @@ def build(now: datetime, enable: tuple = (), seed: int = 7) -> dict:
                         else "acknowledged" if inc["id"] in STATE.acks else "new")
         inc["acknowledged_by"] = STATE.acks.get(inc["id"])
 
+    # Scale and capacity per location (noc.running_counts, noc.capacity_status).
+    vm_cfg, layout = est["vms"], est["cluster_layout"]["share_of_hosts"]
+    scale, capacity = {}, {}
+    for lid, loc in locs.items():
+        vms = sum(round(loc["hosts"] * layout[c] * vm_cfg["per_host_average"][c]) for c in ("gold", "silver", "bronze", "mixed"))
+        scale[lid] = {"vms_running": vms, "hosts_running": loc["hosts"]}
+        groups = [g for g in ds["capacity"]["groups"] if g["location"] == lid]
+        days = [g["resources"][g["tightest"]]["run_out_days"] for g in groups]
+        known = [d for d in days if d is not None]
+        capacity[lid] = {"in_use": dict(loc["in_use"]),
+                         "days_remaining": min(known) if known else None,
+                         "status": "red" if any(g["quadrant"] == "red" for g in groups) else "green"}
     return {"ds": ds, "now": now, "settings": st, "locations": locs, "stale": stale, "changed": changed,
-            "clusters": cl, "safe": safe, "incidents": incidents, "n1": n1,
+            "scale": scale, "capacity": capacity, "clusters": cl, "safe": safe, "incidents": incidents, "n1": n1,
             "risk_certificates": ds["health"]["safe"]["risk_certificates"]}
 
 
@@ -276,6 +288,21 @@ def worst(statuses):
     return min(live, key=order.index)
 
 
+def performance_trend(nd: dict) -> dict:
+    """noc.performance_trend: per 5-minute point of the last hour, the average and the lowest cluster score.
+    Clusters of a location with no data are left out and counted."""
+    clusters = nd["clusters"]
+    live = [c for c in clusters if not nd["stale"][c["location"]]]
+    pts = []
+    if live:
+        for i in range(len(live[0]["trend"])):
+            vals = [(c["trend"][i]["v"], c["id"]) for c in live]
+            low = min(vals)
+            pts.append({"t": live[0]["trend"][i]["t"], "average": round(sum(v for v, _ in vals) / len(vals), 1),
+                        "lowest": low[0], "lowest_cluster": low[1]})
+    return {"points": pts, "clusters_counted": len(live), "clusters_left_out": len(clusters) - len(live)}
+
+
 def wall(nd: dict) -> dict:
     open_inc = [i for i in nd["incidents"] if i["state"] != "closed" and not i.get("hidden_by_stale")]
     screens = {
@@ -291,7 +318,10 @@ def wall(nd: dict) -> dict:
                            for lid, f in nd["safe"].items()],
                  "risk_certificates": nd["risk_certificates"]},
         "set_right": {"tiles": [_tile(nd, lid, "green", count=0) for lid in nd["locations"]]},
+        "capacity": {"tiles": [_tile(nd, lid, c["status"], in_use=c["in_use"], days_remaining=c["days_remaining"])
+                               for lid, c in nd["capacity"].items()]},
     }
+    screens["fast"]["trend"] = performance_trend(nd)
     est = generator.load_spec()["estate"]
     screens["up"]["no_data_sources"] = [
         {"region": est["regions"][r]["name"],
@@ -299,9 +329,10 @@ def wall(nd: dict) -> dict:
         for r, st_ in nd["ds"]["region_stale"].items() if st_]
     # A stale VCF Operations instance shows on "Is it up?" as red until acknowledged (sop-no-data).
     strip, pins = [], []
-    for name in ("changed", "up", "fast", "safe", "set_right"):
+    for name in SCREENS:
         status = worst([t["status"] for t in screens[name]["tiles"]])
-        reds = [i for i in open_inc if i["screen"] == name and i["severity"] == "red"]
+        open_inc_on = [i for i in open_inc if i["screen"] == name]
+        reds = [i for i in open_inc_on if i["severity"] == "red"]
         if reds and status != "no_data":
             status = "red"
         if reds and all(t["status"] == "no_data" for t in screens[name]["tiles"]):
@@ -310,9 +341,13 @@ def wall(nd: dict) -> dict:
         in_hand = status == "red" and bool(reds) and not unacked
         if unacked:
             pins.append(name)
-        strip.append({"screen": name, "status": status, "in_hand": in_hand})
+        strip.append({"screen": name, "status": status, "in_hand": in_hand, "open_incidents": len(open_inc_on)})
         screens[name]["status"] = status
-    return {"updated_at": nd["now"].isoformat(), "pcm_ok": True, "strip": strip,
+    live = [lid for lid in nd["locations"] if not nd["stale"][lid]]
+    scale = {"vms_running": sum(nd["scale"][l]["vms_running"] for l in live) if live else None,
+             "hosts_running": sum(nd["scale"][l]["hosts_running"] for l in live) if live else None,
+             "locations_without_data": [nd["locations"][l]["name"] for l in nd["locations"] if nd["stale"][l]]}
+    return {"updated_at": nd["now"].isoformat(), "pcm_ok": True, "strip": strip, "scale": scale,
             "rotation_seconds": nd["settings"]["noc.rotation_seconds"],
             "refresh_seconds": nd["settings"]["noc.refresh_seconds"],
             "pin": pins[0] if pins else None, "pins": pins, "screens": screens,

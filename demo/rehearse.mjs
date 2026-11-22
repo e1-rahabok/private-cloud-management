@@ -44,8 +44,8 @@ try {
   // 2. NOC wall
   await page.goto(url('/noc/wall', '&screen=fast')); await page.waitForSelector('body[data-ready="1"]');
   t = await text();
-  const strip = await page.$$eval('#strip .s', els => els.map(e => `${e.dataset.screen}:${[...e.classList].find(c => ['red', 'amber', 'green', 'no_data'].includes(c))}`));
-  step('2 Wall: "What changed?" and "Is it fast?" red; FR-S-02 at 22', strip.includes('changed:red') && strip.includes('fast:red') && /FR-S-02/.test(t) && /\b22\b/.test(t), strip.join(' '));
+  const strip = await page.$$eval('#strip .s', els => els.map(e => e.innerText.replace(/\s+/g, ' ').trim()));
+  step('2 Wall: Volatility and Performance have open incidents; FR-S-02 at 22', strip.includes('Volatility 1 open') && strip.includes('Performance 2 open') && /FR-S-02/.test(t) && /\b22\b/.test(t), strip.join(' '));
   await shot('2-wall');
 
   // 3. NOC incident

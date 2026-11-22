@@ -7,12 +7,15 @@ const getJSON = p => fetch(apiURL(p)).then(r => { if (!r.ok) throw new Error(r.s
 const postJSON = (p, body) => fetch(apiURL(p), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
   .then(async r => ({ status: r.status, body: await r.json() }));
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const LABEL = { changed: 'What changed?', up: 'Is it up?', fast: 'Is it fast?', safe: 'Is it safe?', set_right: 'Is it set right?' };
+const LABEL = { up: 'Availability', fast: 'Performance', safe: 'Security', changed: 'Volatility', set_right: 'Configuration', capacity: 'Capacity' };
 const STATUS = { green: 'Good', amber: 'Watch', red: 'Act now', no_data: 'No data', orange: 'By end of day' };
-const SCREENS = ['changed', 'up', 'fast', 'safe', 'set_right'];
+const SCREENS = ['up', 'fast', 'safe', 'changed', 'set_right', 'capacity'];
 const chip = s => `<span class="chip ${s}">${STATUS[s] || s}</span>`;
 // Viewer's time zone, with the zone named (spec README, rule 8).
 const fmtTime = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+const fmtHM = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const num = n => Number(n).toLocaleString('en-US');
+const RES = { compute: 'Compute', memory: 'Memory', storage: 'Storage' };
 const ago = iso => { const m = Math.round((Date.parse(QS.get('now') || new Date().toISOString()) - Date.parse(iso)) / 60000); return m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h ${m % 60} min ago`; };
 const CHANGE = { created: 'Created', deleted: 'Deleted', powered_off: 'Powered off', moved: 'Moved', resized: 'Resized' };
 const UP = { vms_down_unplanned: 'VMs down, not planned', hosts_not_responding: 'Hosts not responding', clusters_lost_ha: 'Clusters without HA spare', management_down: 'Management not answering', datastores_unreachable: 'Datastores unreachable' };

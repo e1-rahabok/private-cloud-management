@@ -10,7 +10,7 @@
     { name: '1. CIO', path: '/exec', match: p => p === '/exec',
       about: 'Gets three plain answers: is it up, is it fast, is it safe. Today "safe" is red and Singapore must order by 18 Nov 2026.' },
     { name: '2. NOC wall', path: '/noc/wall', extra: '&rotate=8', match: p => p === '/noc/wall',
-      about: 'A TV nobody touches. Tells the room what is wrong in five seconds. Today "Is it fast?" is red: FR-S-02 is at 22, was 94 an hour ago.' },
+      about: 'A TV nobody touches. Tells the room what is wrong in five seconds. Today Performance is red: FR-S-02 is at 22, was 94 an hour ago.' },
     { name: '3. NOC L1 engineer', path: '/noc/alert/inc-fr-s-02', match: p => p.startsWith('/noc'),
       about: 'Follows the SOP on one page. Can stop new VMs on FR-S-02, cannot limit a production VM, then escalates to Platform with the evidence.' },
     { name: '4. L2 platform engineer', path: '/l2', match: p => p.startsWith('/l2'),

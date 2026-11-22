@@ -11,7 +11,7 @@ paths:
 
   /api/noc/wall:
     get:
-      summary: The five screens with their tiles and the status strip. Read every noc.refresh_seconds.
+      summary: The six screens with their tiles, the tab row and the banner counts (D-107). Read every noc.refresh_seconds.
       responses:
         "200":
           description: Wall
@@ -125,13 +125,21 @@ components:
         pcm_ok: { type: boolean, description: "PCM's own health (PCM core, 3.11)" }
         strip:
           type: array
-          description: Five chips in the fixed order changed, up, fast, safe, set_right.
+          description: Six tabs in the fixed order up, fast, safe, changed, set_right, capacity.
           items:
             type: object
             properties:
-              screen: { enum: [changed, up, fast, safe, set_right] }
+              screen: { enum: [up, fast, safe, changed, set_right, capacity] }
               status: { enum: [green, amber, red, no_data] }
               in_hand: { type: boolean, description: "Red, but every red incident on it is acknowledged" }
+              open_incidents: { type: integer, description: "Open incidents on that screen; the tab shows it as a plain count" }
+        scale:
+          type: object
+          description: noc.running_counts. Null numbers when no location has data.
+          properties:
+            vms_running: { type: integer, nullable: true }
+            hosts_running: { type: integer, nullable: true }
+            locations_without_data: { type: array, items: { type: string } }
         pin:
           type: [string, "null"]
           description: >

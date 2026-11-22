@@ -18,7 +18,7 @@ from .l2_agent import service_url
 
 KINDS = ("page", "tile", "cluster", "incident", "step")
 PAGES = {"screens": "Screens", "alerts": "Alerts", "alert": "Incident", "shift": "Shift handover"}
-SCREENS = {"changed": "What changed?", "up": "Is it up?", "fast": "Is it fast?", "safe": "Is it safe?", "set_right": "Is it set right?"}
+SCREENS = {"up": "Availability", "fast": "Performance", "safe": "Security", "changed": "Volatility", "set_right": "Configuration", "capacity": "Capacity"}
 L1_RULE = ("Answer for a Level 1 NOC operator who follows the SOP: plain, short sentences; scores from 0 to 100; "
            "never suggest an action outside the SOP; never use these words: {avoided}.")
 

@@ -116,6 +116,8 @@ Third build: the three gaps from the first review are fixed in the specification
 
 ## Results: NOC
 
+**Wall redesign (D-107):** six screens named Availability, Performance, Security, Volatility, Configuration, Capacity, shown as display-only tabs with no colour and no summary word. Banner: ACME Corp Private Cloud with running VMs and running ESXi hosts. Performance has a one-hour chart (average and lowest cluster). Capacity is new. Tests NST-14 to NST-16 and NPG-12 to NPG-14 cover it. **Found by the page test and fixed:** the Capacity tile of a stale location raised an error because it read numbers a stale tile does not carry. **Not changed:** the CIO page, and its labels.
+
 | Level | Tests | Result |
 |---|---|---|
 | Catalog | NCAT-1 to NCAT-6 | 6 passed |
