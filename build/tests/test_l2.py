@@ -675,6 +675,13 @@ class KpiFirst(Base):
             self.assertEqual(len(k["points"]), e["points_24h"])
             self.assertTrue(set(e["figures"]) <= set(k) and "average" not in k)
             self.assertTrue(all(0 <= p["v"] <= 100 for p in k["points"] if p["v"] is not None))
+        for k in c["kpis"]:
+            self.assertEqual(len(k["details"]), e["kpi_details"][k["key"]])
+            for part in k["details"]:
+                self.assertEqual(len(part["points"]), e["points_24h"])
+                self.assertTrue(set(e["kpi_details_figures"]) <= set(part) and "average" not in part)
+                self.assertEqual(part["now"], part["points"][-1]["v"])
+        self.assertTrue(all("details" not in k for k in h["kpis"]) and e["kpi_details"]["host"] == 0)
         self.assertEqual(len(c["content"]["iceberg"]["points_7_days"]), e["iceberg_points"])
         self.assertEqual("kpis" in M.pillar_view(NOW, "compute", g["vm"], "performance", g["window"]), e["vm_has_kpis"])
 

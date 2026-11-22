@@ -215,7 +215,8 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
   - **Clusters at a time:** a click on either chart, or on the VM chart, picks a time. The table lists every cluster in scope at that time, worst first: Performance, Risk, VMs hit at that time, and different VMs hit over the window. Before any click, the time is the worst point of the window.
   - A click on a cluster opens it in the tree: its hosts, then vSAN, NSX and the switches underneath.
 - **What, not why:** the tab says what was hit, when, where and how wide. Causes, including a VM that slows itself (a limit, too many vCPUs), are the case's (D-084).
-- **At the cluster and below,** the tab opens with the object's KPI over the window, as a trend chart with Now, Worst and 95th percentile: Cluster Performance and Cluster Risk on a cluster, ESXi Performance on a host (D-100). Then children outside green in one sentence, "Just above the line" as a 7-day chart, and the children worst first.
+- **At the cluster and below,** the tab opens with the object's KPI over the window, as a trend chart with Now, Worst and 95th percentile: Cluster Performance and Cluster Risk on a cluster, ESXi Performance on a host (D-100).
+  - **Details (D-106):** under each cluster KPI a fold named "Details", closed when the page opens. It holds what the KPI is made of, one chart per part: nine for Cluster Performance (VM contention, worst and 90th percentile, and the host's bad packets), eleven for Cluster Risk (the worst host's utilization, saturation, reservation, allocation and monster VMs). It is closed because L2 has no need of it when the KPI is green, and a long page of eleven charts hides the two that matter. It says what moved, not why (D-084). Then children outside green in one sentence, "Just above the line" as a 7-day chart, and the children worst first.
 
 ### 4.3.2 The Performance tab on a VM (D-092)
 
