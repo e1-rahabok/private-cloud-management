@@ -480,8 +480,9 @@ const figure = (v, m) => { if (v == null) return '–'; const t = withUnit(v, m)
 // A figure with bands carries the band of its value: a tinted pill with dark text (6.2:1 or better) and a bar in the band
 // color. The band's name is not written: the color already says it (tokens.md, Band figures; D-100, D-104).
 // A KPI on the 0 to 100% scale uses the SP5 bands; a metric with band_ends (upper end of green, yellow, orange) uses those. A value on an end stays in the lower band.
-const endBand = (v, ends) => v == null ? 'no_data' : ['green', 'yellow', 'orange'].find((_, i) => v <= ends[i]) || 'red';
-const bandOf = (v, m) => v == null ? null : m.band_ends ? endBand(v, m.band_ends) : !m.scale ? null : m.better === 'lower' ? riskBand(v) : perfBand(v);
+// A higher-is-better counter (Free Memory) has lower limits: green from the first end up, then yellow, orange, red below the last.
+const endBand = (v, ends, better) => v == null ? 'no_data' : ['green', 'yellow', 'orange'].find((_, i) => better === 'higher' ? v >= ends[i] : v <= ends[i]) || 'red';
+const bandOf = (v, m) => v == null ? null : m.band_ends ? endBand(v, m.band_ends, m.better) : !m.scale ? null : m.better === 'lower' ? riskBand(v) : perfBand(v);
 const bandFig = (v, m, text) => { const b = bandOf(v, m); return b && b !== 'no_data' ? `<span class="bv ${b}" data-band="${b}">${text}</span>` : text; };
 const LAYER_NOTE = { guest_os: 'Runs on top of the Virtual Motherboard.', virtual_motherboard: 'The VM\'s virtual hardware, under the Guest OS.' };
 function metricBlock(m, layer) {
@@ -492,11 +493,13 @@ function metricBlock(m, layer) {
   const hiw = m.better === 'lower';
   // A counter with band_ends is drawn like a KPI: tinted zones behind the line, the line in the band of its value (D-108).
   const ends = !score && m.band_ends ? m.band_ends : null;
-  const zones = ends ? [[0, ends[0], 'green'], [ends[0], ends[1], 'yellow'], [ends[1], ends[2], 'orange'], [ends[2], top, 'red']]
+  const zones = ends ? (hiw ? [[0, ends[0], 'green'], [ends[0], ends[1], 'yellow'], [ends[1], ends[2], 'orange'], [ends[2], top, 'red']]
+    : [[ends[0], top, 'green'], [ends[1], ends[0], 'yellow'], [ends[2], ends[1], 'orange'], [0, ends[2], 'red']])
     .filter(([lo]) => lo < top).map(([lo, hi, b]) => [lo, Math.min(hi, top), b]) : undefined;
   const series = [score ? (hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: riskBand, worse: Math.max }
     : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min })
-    : ends ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: v => endBand(v, ends), worse: Math.max }
+    : ends ? (hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: v => endBand(v, ends, m.better), worse: Math.max }
+      : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: v => endBand(v, ends, m.better), worse: Math.min })
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
     fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? (hiw ? HIGH_BANDS : LOW_BANDS) : zones });

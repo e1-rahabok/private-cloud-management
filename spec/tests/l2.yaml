@@ -239,8 +239,8 @@ story:
     given: { object: sg-app-117, window: 24h }
     expect:
       layer_order: [guest_os, virtual_motherboard]
-      guest_os_metrics: [run_queue_per_vcpu, context_switches_per_s, paging_per_s, guest_os_performance]
-      virtual_motherboard_metrics: [cpu_ready_percent, co_stop_percent, memory_wait_percent, disk_latency_ms, vm_performance]
+      guest_os_metrics: [run_queue_per_vcpu, context_switches_per_s, disk_queue, free_memory_mb, paging_per_s, guest_os_performance]
+      virtual_motherboard_metrics: [cpu_ready_percent, co_stop_percent, cpu_overlap_percent, memory_contention_percent, disk_latency_ms, network_dropped_tx_percent, cpu_run_percent, memory_ballooned_percent, memory_zip_swap_percent, vm_performance]
       points: 288
       figures: [now, worst, percentile_95]
       no_average: true
@@ -329,7 +329,7 @@ story:
       vm_layer: { kind: vm_layer, object: fr-svc-5526, layer: guest_os, window: 24h }
     expect:
       vm_performance_layers: [Guest OS, Virtual Motherboard]
-      vm_performance_metrics: 9
+      vm_performance_metrics: 16
       vm_performance_points: none
       vm_summary_pillars: [availability, performance, capacity, security, configuration]
       vm_layer_metrics_with_points: 4
@@ -470,7 +470,7 @@ page:
       The KPI comes first (D-100). On fr-bat-6839's Performance tab the first section is "Performance" with Guest OS Performance
       then VM Performance, and neither layer repeats them. On FR-B-04's Performance tab the first charts are Cluster Performance and
       Cluster Risk, and no card "This object", "Trend" or "Children outside green" remains. Every figure of a 0 to 100% KPI is a band
-      pill whose band matches its value and names it; its text is at least 4.5:1 on its background. A counter's figure has a pill only where the catalog has band ends (D-108): on a VM, Run Queue, Paging, CPU Ready, CPU Co-Stop, Memory Wait and Disk Latency; Context Switches has none. A metric title is on one line, in a row above the figures and chart; the Guest OS Performance and VM Performance cards have the same height.
+      pill whose band matches its value and names it; its text is at least 4.5:1 on its background. A counter's figure has a pill only where the catalog has band ends (D-108): on a VM, every counter of the two KPIs (Run Queue, Disk Queue, Free Memory, Page-Out Rate; the nine VM Performance sub-metrics); Context Switches has none. Free Memory, higher is better, takes its band from lower limits. A metric title is on one line, in a row above the figures and chart; the Guest OS Performance and VM Performance cards have the same height.
       On fr-esx-244's Capacity tab the first section is the summary with Capacity Remaining, Time Remaining and VM Remaining, and
       says the values are placeholders from VCF Operations; then the verdict.
     decisions: [D-100, D-108]

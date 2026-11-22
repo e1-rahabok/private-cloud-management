@@ -116,8 +116,8 @@ On a VM, the tab shows detail. The Guest OS runs on top of the Virtual Motherboa
 - **No Group by, no "Just above the line", no "Children outside green", no trend card.** They describe a group; this is one VM.
 - **The two Performance (%) scores first** (D-100), in a section "Performance" above the layers: Guest OS Performance, then VM Performance, stacked, each with its chart and figures. They say whether anything is wrong; the layers say where.
 - **Tabs:** Summary, Availability, Performance, Capacity, Security, Configuration. No Inventory (D-092).
-- **Layer 1, Guest OS** (status chip in its heading, from Guest OS Performance): Run Queue, Context Switches, Paging.
-- **Layer 2, Virtual Motherboard** (status chip in its heading, from VM Performance): CPU Ready, CPU Co-Stop, Memory Wait, Disk Latency.
+- **Layer 1, Guest OS** (status chip in its heading, from Guest OS Performance): the four sub-metrics of the KPI (Run Queue per vCPU, Disk Queue, Free Memory, Page-Out Rate) and Context Switches. Limits and units: the adapter's guest-os-performance.md. Free Memory is higher-is-better: its limits are lower limits (green from 512 MB, yellow from 256, orange from 128, red below).
+- **Layer 2, Virtual Motherboard** (status chip in its heading, from VM Performance): the nine sub-metrics of the KPI: CPU Co-Stop, CPU Ready, CPU Overlap, Memory Contention, Disk Latency, Network Dropped Tx, CPU Run, Memory Ballooned, Memory Zip Swap. Limits and units: the adapter's vm-performance.md. Memory Wait is not part of VM Performance and is not shown.
 - **One chart per metric,** over the window picked at the top. Points as in D-091 (5 minutes for 1 hour and 24 hours, 1 hour for 7 days, 4 hours for 30 days, 1 day for 1 year); a point holds the worst value inside it. The two Performance scores use the 0 to 100% scale and the band colors.
 - **Three named figures beside each chart,** each with its unit after the number:
   - **Now:** the latest point.
