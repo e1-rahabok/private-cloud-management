@@ -58,7 +58,7 @@ const E2Panel = (() => {
     box.innerHTML = `<div class="e2head"><span class="e2mark big" aria-hidden="true">E2</span><div class="e2who"><h2 id="e2title">Agent E2</h2><div class="ctx" data-e2ctx>${esc(H.label(c))}</div></div>
         <button type="button" class="e2close" aria-label="Close Agent E2" title="Close (Esc)">×</button></div>
       ${S.up === false ? '<p class="why e2down">The Agent E2 service is not available.</p>' : ''}
-      <div class="e2body" aria-live="polite">${thread || `<p class="muted">${esc(H.intro ? H.intro(c) : `Ask about ${c.show.about}. Agent E2 reads the knowledge base and the facts PCM sends; it explains, you decide.`)}</p>`}
+      <div class="e2body" aria-live="polite">${thread || (H.intro ? `<p class="muted">${esc(H.intro(c))}</p>` : '')}
         ${S.busy && S.waiting && S.waiting.key === k ? `<div class="e2q"><div class="lbl">${esc(S.waiting.label)}</div>${esc(S.waiting.q)}</div><div class="e2wait" role="status">${esc(S.waiting.note)} <span data-secs>0</span> s</div>` : ''}${sugg}</div>
       <form class="e2form" id="e2form"><label class="sr" for="e2q">Question for Agent E2</label><textarea id="e2q" rows="2" placeholder="${S.pending ? 'Your reply to Agent E2…' : 'Ask Agent E2…'}">${esc(kept)}</textarea>
         <button type="submit" class="act"${S.busy ? ' disabled' : ''}>Ask</button></form>`;
