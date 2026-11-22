@@ -157,9 +157,9 @@ page:
     rule: >
       Every desk page shows the Agent E2 mark in the top bar; the wall has none. Each "Is it fast?" tile, the cluster drill-down, each
       alert row and each SOP step has a mark. A mark opens the panel on the right: the content is pushed, not covered. With the service
-      running, an answer shows its sources; an answer that keeps an avoided word shows "Agent E2's answer used words that are not used on
+      running, an answer has a closed "Sources (n)" control; an answer that keeps an avoided word shows "Agent E2's answer used words that are not used on
       this screen" and no answer text. No avoided word appears in the panel in any state.
-    decisions: [D-098]
+    decisions: [D-098, D-099]
 
   - id: NPG-1
     rule: Every NOC page and section names question, role and cadence.

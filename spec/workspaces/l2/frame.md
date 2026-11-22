@@ -103,7 +103,7 @@ api: /api/l2/agent/ask
 - **An answer:**
   - the text, direct answer first, as Agent E2 wrote it;
   - each value its code computed, boxed, under "Computed, not written by the model";
-  - "Sources": the knowledge files it read, as chips;
+  - "Sources (n)": a control, closed by default, with the number of knowledge files Agent E2 read. Open, it shows the files as chips. Closed, the answer is the text, the computed values and the footer, so a long list of files does not crowd the panel (D-099). One click answers "from which sources?";
   - an object of the estate named in the text is a link to it, on the same tab and window;
   - footer: model, knowledge version, asked by, "recorded in the action history".
 - **Clarifying questions** (at most one round): shown as a list under "Agent E2 asks"; the next question sent is the reply, with the earlier turns.

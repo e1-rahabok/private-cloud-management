@@ -103,7 +103,7 @@ api: /api/l2/agent/ask
 ```
 
 - **In the Agent E2 panel** (frame.md), not a section of the page. The marks on the header, the links and the layers open it with the case as context (D-097).
-- PCM sends the question, the case facts (header, trigger evidence, chain with each link's state, layers, hand-over, timeline) and the role to the Agent E2 service (D-078). The answer shows with the knowledge files it read.
+- PCM sends the question, the case facts (header, trigger evidence, chain with each link's state, layers, hand-over, timeline) and the role to the Agent E2 service (D-078). The answer shows with the knowledge files it read, behind the "Sources (n)" control (frame.md, D-099).
 - If the service is not running, the panel says "The Agent E2 service is not available" and shows no answer.
 
 ## Close

@@ -250,6 +250,11 @@ try {
   const ctx = await page.innerText('[data-e2ctx]');
   const nSugg = (await page.$$('#e2 [data-sugg]')).length;
   await page.click('#e2 [data-sugg]'); await page.waitForSelector('#e2 .e2src', { timeout: 30000 });
+  // D-099: the sources are a closed control with their number; one click opens the chips.
+  const srcLabel = await page.$eval('#e2 .e2src summary', e => e.textContent.trim());
+  const srcClosed = await page.$eval('#e2 .e2src details', d => !d.open) && !(await page.isVisible('#e2 .srcchip'));
+  await page.click('#e2 .e2src summary');
+  const srcOpened = await page.isVisible('#e2 .srcchip');
   const chips = (await page.$$('#e2 .srcchip')).length, boxes = (await page.$$('#e2 .e2computed .box')).length;
   const objLinks = await page.$$eval('#e2 .e2a a[data-obj]', as => as.map(a => a.dataset.obj));
   const foot = await page.innerText('#e2 .e2foot');
@@ -261,7 +266,7 @@ try {
   const focusBack = await page.evaluate(() => document.activeElement && document.activeElement.id);
   check('LPG-20', e2utils[0] === 'e2top' && e2utils.slice(1).join() === 'Rules,Calendar' && findRows.length > 0 && findRows.every(Boolean) && noExplain && marksOk
     && chartRight <= panelBox.x && folded && outlined && /fr-svc-5526/.test(ctx) && /Performance/.test(ctx) && /Last 24 hours/.test(ctx) && nSugg >= 1 && nSugg <= 3
-    && chips === 2 && boxes === 1 && objLinks.includes('fr-esx-218') && foot.includes('recorded in the action history') && sentFacts.role === 'l2' && sentFacts.facts.asked_about_metric.name === 'Run Queue'
+    && srcLabel === 'Sources (2)' && srcClosed && srcOpened && chips === 2 && boxes === 1 && objLinks.includes('fr-esx-218') && foot.includes('recorded in the action history') && sentFacts.role === 'l2' && sentFacts.facts.asked_about_metric.name === 'Run Queue'
     && stillOpen && /Capacity/.test(ctx2) && closed && focusBack === 'e2top',
     `${e2utils}; ${findRows.length} findings marked; ${marks.length} metric marks; chart right ${Math.round(chartRight)} <= panel ${Math.round(panelBox.x)}; ${ctx}; ${nSugg} suggestions; ${chips} sources; links ${objLinks}; then ${ctx2}; focus ${focusBack}`);
 
