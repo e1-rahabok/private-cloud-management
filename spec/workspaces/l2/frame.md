@@ -99,6 +99,14 @@ api: /api/l2/agent/ask
   - on the Summary tab: every pillar with its status and headline;
   - on a VM's Performance tab: both layers, each with its status and, per metric, Now, Worst with its time, 95th percentile and which way is better. No points: those go with a question about one metric.
 - **What PCM sends for a layer of a VM:** that layer's status and every metric with its points, Now, Worst, 95th percentile; the other layer's status and figures without points.
+- **What PCM sends with every question: the screen** (D-101), so Agent E2 speaks of what the person sees, never of the data behind it ("the provided JSON"):
+  - who asks (an L2 platform engineer) and that they typed only the question;
+  - the page: the object, its kind, the tab and the window, as in the panel's context line;
+  - what was clicked: the top bar mark (the whole page), or the mark on a chart, layer, finding or case, by its name;
+  - what that card shows, in one line: for a trend chart, the KPI over the window, how often a point comes and that a point holds the worst value inside it, and Now, Worst and 95th percentile in their band colours;
+  - for a KPI that belongs to another object than the page (a cluster's KPI on a VM's Capacity tab), the object it belongs to, by name;
+  - for a KPI, where to look next (drill_down): the page and tab that take it further, what that page shows, and what PCM does not show yet. Cluster Performance and Cluster Risk: the cluster's Performance tab (the two KPIs over the window, then the hosts worst first with their scores); PCM does not show the sub-metrics of Cluster Performance yet. Cluster Consumption: "What makes up Consumption" on the cluster's Capacity tab.
+- **Not PCM's to send:** whether a move of a KPI is a drop. That is domain knowledge, Agent E2's (D-078): its KPI change level and its calculator read the points PCM sends.
 - **While Agent E2 works:** "Agent E2 is reading the knowledge base and the facts PCM sent." with the seconds elapsed. A local model takes 10 to 40 seconds; no made-up progress steps.
 - **An answer:**
   - the text, direct answer first, as Agent E2 wrote it;

@@ -105,6 +105,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 | D-098 | 2026-11-22 | The NOC desk has the same Agent E2 mark and panel as L2 (D-097): the mark in the top bar, on each tile, on the cluster drill-down, on each incident row, on the incident header and on each SOP step. PCM sends L1's facts (scores from 0 to 100, the SOP and its results) with the role l1. Every answer is checked against the NOC vocabulary; one that still uses an L2 word after one rewrite is not shown. "Explain this incident" and "Draft the escalation note" become the panel's first suggestions on an incident. The wall has no mark. | One mark and one panel for every workspace: an operator who moves to L2 already knows them. L1 must never get raw counters (NOC vocabulary), and must never be told to act outside the SOP (NOC design, 3.8). The wall has no mouse or keyboard (D-032). |
 | D-099 | 2026-11-22 | In the Agent E2 panel an answer shows its sources behind a closed control, "Sources (n)", where n is the number of knowledge files it read. One click opens the list as chips. Applies to L2 and the NOC desk. Refines D-097 ("answers with its sources"): the sources are still there, one click away. | An answer reads 10 or more knowledge files. Showing them all as chips crowded a 400 px panel and pushed the answer and the footer out of sight. The file list is for checking an answer, not for reading it. |
 | D-100 | 2026-11-22 | The L2 Performance and Capacity tabs lead with the object's KPI over time. **Performance:** on a VM the two Performance (%) scores (Guest OS Performance, VM Performance) come first, above the layers; on a cluster and anything under it, the object's own KPI as a trend chart (Cluster Performance and Cluster Risk, ESXi Performance), in place of the four summary cards. **Capacity:** on a VM, ESXi host and cluster, a summary first: Capacity Remaining (%) and Time Remaining (days), plus VM Remaining on a host and a cluster, read from VCF Operations, placeholder values in release 1.0. **KPI figures** (Now, Worst, 95th percentile) carry the band of their value. Revises D-092 (order of the VM tab) and D-094 (no Capacity Remaining or Time Remaining on L2), for VM, host and cluster only. | The author: the trend chart on the Capacity tab says more than four cards with one number each; the Performance (%) KPI is the main counter, so it goes first; L2 wants the remaining figures before the detail. |
+| D-101 | 2026-11-22 | Every question to Agent E2 carries the **screen**: who asks, the page (object, tab, window), what was clicked, what that card shows, the object a KPI belongs to when it is not the page's, and for a KPI where to look next (drill_down) with what PCM does not show yet. Whether a KPI moved enough to be a drop is Agent E2's to decide, from its knowledge base (a KPI change level per KPI) and its calculator, not PCM's. | Agent E2 answered "Why the worst at 18 Oct, 10:10?" on a steady Cluster Performance chart (80.2% to 82.2% all day) by explaining a "dip", spoke of "the provided JSON" to an engineer who had typed one line, and pointed at knowledge-base flows instead of a PCM tab. The model saw data, not a screen; and no rule said what size of move is a drop. PCM owns the screens (D-078), so it describes them; Agent E2 owns the domain knowledge. See Rationale. |
 
 ## Rationale
 
@@ -775,4 +776,20 @@ Source: Cost n Price n Value (in `sources/`).
 **Not changed**
 - The cluster's verdict, the three KPI charts, the check strip, the parts, usable capacity, the host spread and the hosts table (D-094).
 - No average anywhere (D-095).
+
+### D-101 Agent E2 sees the screen, not the data
+
+**What went wrong (2026-11-22, VM fr-bat-6839, Capacity tab, Cluster Performance of FR-B-04, last 24 hours)**
+- The question: "Why the worst at 18 Oct, 10:10?". The answer: "The cause of the performance dip cannot be identified with the provided data", then three steps from the knowledge base.
+- Three errors. There was no dip: the line held 80.2% to 82.2% all day, all green, and the check the day before read 80.4%. The answer named the 9 sub-metrics but not where L2 can look in PCM. And it spoke of "the provided JSON" to a person who typed one line.
+
+**Where each fix lives**
+- **The screen: PCM.** Only PCM knows the page, the tab, what was clicked and what the card shows. It sends a `screen` block with every question (frame.md, Agent E2 panel).
+- **Where to look next: PCM.** A KPI's drill_down names the page and tab and what PCM does not show yet. Today the sub-metrics of Cluster Performance are on no PCM page; the cluster's Performance tab shows the KPI and the hosts worst first.
+- **What counts as a drop: Agent E2.** A KPI change level per KPI in its catalog (Cluster Performance: 5 points from the median of the window), the rule in its knowledge base, and a calculator that reads the points PCM already sends and boxes the verdict under "Computed, not written by the model". PCM computes no verdict: one owner for domain knowledge (D-078).
+- **How Agent E2 speaks to a screen: Agent E2.** Its service tells the model the person sees the page, not the data, and rewrites once an answer that still says JSON, payload or "the data provided".
+
+**Not done**
+- No sub-metric chart for Cluster Performance on any PCM page. If L2 needs it to answer "which resource moved", it is a page change, decided separately.
+- PCM's red and orange levels for the cluster KPIs stay in PCM's settings. If a PCM page ever marks a drop on a chart, it reads the change level from Agent E2, not a copy.
 

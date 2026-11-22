@@ -89,7 +89,74 @@ def _layer(x: dict) -> dict:
 
 
 def facts_for(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
-    """Returns (status, {facts, label, finding?}) or (status, {error})."""
+    """Returns (status, {facts, label, finding?}) or (status, {error}). The facts open with the screen (D-101)."""
+    code, got = _facts(now, ctx, enable)
+    if code == 200:
+        got["facts"] = {"screen": screen(ctx, got), **got["facts"]}
+    return code, got
+
+
+# ---------------------------------------------------------------- the screen (D-101): what the person sees, not the data
+
+CLICKED = {"page": "the E2 mark in the top bar: a question about the whole page",
+           "finding": "the E2 mark on a finding row", "case": "the E2 mark on the case",
+           "link": "the E2 mark on a link of the case's chain", "layer": "the E2 mark on a layer of the case"}
+# Where a KPI goes further, and what PCM does not show yet (frame.md, Agent E2 panel).
+DRILL = {
+    "performance": ("Performance", "Cluster Performance and Cluster Risk over the window, then the cluster's hosts worst first, "
+                    "each with its score over the window and over the last hour",
+                    "the 9 sub-metrics of Cluster Performance: no PCM page shows them yet"),
+    "risk": ("Performance", "Cluster Performance and Cluster Risk over the window, then the cluster's hosts worst first, "
+             "each with its score over the window and over the last hour",
+             "the parts of Cluster Risk: no PCM page shows them yet"),
+    "consumption": ("Capacity", "What makes up Consumption: each part as % of usable capacity, over the window", None),
+}
+
+
+def _minutes(times: list) -> int | None:
+    try:
+        return int((datetime.fromisoformat(times[1]) - datetime.fromisoformat(times[0])).total_seconds() // 60)
+    except (IndexError, TypeError, ValueError):
+        return None
+
+
+def _chart(name: str, window: str, minutes, banded: bool) -> str:
+    every = f", one point every {minutes} minutes, each point the worst value inside it" if minutes else ""
+    band = ", each in its band colour" if banded else ""  # a KPI has bands; a counter has none (D-100)
+    return f"a trend chart of {name} over the {window.lower()}{every}; beside it Now, Worst and 95th percentile{band}"
+
+
+def screen(ctx: dict, got: dict) -> dict:
+    """What the person sees: who asks, the page, what was clicked, what that card shows, and for a KPI where to look next."""
+    kind, f = ctx.get("kind") or "page", got["facts"]
+    o = f.get("object") or {}
+    page = got["label"] if kind in ("case", "link", "layer") else \
+        f"{o.get('name')} ({o.get('kind')}) · {PNAME.get(ctx.get('pillar'), f.get('pillar'))} tab · {f.get('window')}"
+    out = {"workspace": "L2 Platform", "asked_by": "an L2 platform engineer, who typed only the question", "page": page,
+           "clicked": CLICKED.get(kind, "")}
+    if kind == "kpi":
+        k = f["asked_about_kpi"]
+        out["clicked"] = f"the E2 mark on the {k['label']} chart"
+        out["card_shows"] = _chart(k["label"], f["window"], _minutes([p[0] for p in k["points"][:2]]), True)
+        cl = f.get("cluster")
+        if cl and o.get("kind") != "cluster":
+            out["kpi_belongs_to"] = f"the cluster {cl}, not the {o.get('kind')} {o.get('name')}: it is the cluster's KPI, shown on this page"
+        d = DRILL.get(ctx.get("metric"))
+        if d and cl:
+            out["drill_down"] = {"page": f"{cl} (cluster) · {d[0]} tab · {f['window']}", "shows": d[1]}
+            if d[2]:
+                out["drill_down"]["not_shown_yet"] = d[2]
+    elif kind == "metric":
+        m = f["asked_about_metric"]
+        out["clicked"] = f"the E2 mark on the {m['name']} chart, in the {f['layer']} layer"
+        out["card_shows"] = _chart(m["name"], f["window"], m.get("point_minutes"), m.get("unit") == "%" and "Performance" in m["name"])
+    elif kind == "vm_layer":
+        out["clicked"] = f"the E2 mark on the {f['asked_about_layer']['layer']} layer"
+        out["card_shows"] = "the layer's status and one trend chart per metric, each with Now, Worst and 95th percentile"
+    return out
+
+
+def _facts(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
     kind = ctx.get("kind") or "page"
     if kind not in KINDS:
         return 400, {"error": "context kind must be one of " + ", ".join(KINDS)}

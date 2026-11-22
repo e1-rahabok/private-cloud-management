@@ -5,6 +5,7 @@ Run from the repository root:  python3 -m unittest build.tests.test_l2 -v
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import unittest
@@ -361,6 +362,23 @@ class Troubleshoot(Base):
         self.assertEqual(sum(1 for m in f["asked_about_layer"]["metrics"] if len(m["values"]) == 288), e["vm_layer_metrics_with_points"])
         self.assertTrue(all("values" not in m for x in f["other_layers"] for m in x["metrics"]))
         self.assertEqual(A.facts_for(NOW, {**g["vm_layer"], "layer": "no_such_layer"})[0], e["unknown_layer"])
+
+    def test_LST_31_every_question_carries_the_screen(self):
+        """LST-31 (D-101): Agent E2 is told what the person sees, not only the data; whether a move is a drop is Agent E2's."""
+        t = T["LST-31"]; g, e = t["given"], t["expect"]
+        code, got = A.facts_for(NOW, g["kpi"])
+        self.assertEqual(code, 200)
+        self.assertEqual(next(iter(got["facts"])), e["first_key"])
+        s = got["facts"]["screen"]
+        self.assertEqual((s["asked_by"], s["page"], s["clicked"]), (e["asked_by"], e["kpi_page"], e["kpi_clicked"]))
+        self.assertIn(f"one point every {e['kpi_point_minutes']} minutes", s["card_shows"])
+        self.assertIn(e["kpi_belongs_to"], s["kpi_belongs_to"])
+        self.assertEqual(s["drill_down"]["page"], e["kpi_drill_down_page"])
+        self.assertIn(e["kpi_not_shown_yet"], s["drill_down"]["not_shown_yet"])
+        flat = json.dumps(got["facts"]).lower()
+        self.assertEqual(not any(w in flat for w in ("verdict", "steady", "drop")), e["no_drop_verdict_from_pcm"])
+        self.assertEqual(A.facts_for(NOW, g["metric"])[1]["facts"]["screen"]["clicked"], e["metric_clicked"])
+        self.assertEqual(A.facts_for(NOW, g["page"])[1]["facts"]["screen"]["clicked"], e["page_clicked"])
 
 
 class Improve(Base):
