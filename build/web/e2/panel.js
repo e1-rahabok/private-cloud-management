@@ -26,9 +26,23 @@ const E2Panel = (() => {
   // A suggestion is a question, or a draft task the workspace runs on its own path (NOC drafts, D-076).
   const sText = x => typeof x === 'string' ? x : x.q;
   function linkify(text, links) {
-    let h = esc(text).replace(/`([^`]+)`/g, '<code>$1</code>');
+    let h = esc(text).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*(?=\S)([^*\n]+?)\*\*/g, '<strong>$1</strong>');
     for (const l of links || []) h = h.replace(new RegExp(`(^|[^\\w-])(${l.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?![\\w-])`, 'g'), `$1<a class="link" data-obj="${esc(l.id)}" data-view="${esc(l.view)}" href="${H.linkHref(l)}">$2</a>`);
-    return h.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+    // Blocks: lists (1. / - / *) become real lists; other lines keep their line breaks.
+    return h.split(/\n{2,}/).map(blk => {
+      const out = []; let list = null;
+      const flush = () => { if (list) { out.push(`<${list.t}>${list.items.map(i => `<li>${i}</li>`).join('')}</${list.t}>`); list = null; } };
+      let text = [];
+      const flushText = () => { if (text.length) { out.push(`<p>${text.join('<br>')}</p>`); text = []; } };
+      for (const line of blk.split('\n')) {
+        const m = line.match(/^\s*(?:(\d+)[.)]|[-*•])\s+(.*)$/), hd = line.match(/^#{1,6}\s+(.*)$/);
+        if (m) { flushText(); const t = m[1] ? 'ol' : 'ul'; if (list && list.t !== t) flush(); (list = list || { t, items: [] }).items.push(m[2]); }
+        else if (hd) { flush(); flushText(); out.push(`<p><strong>${hd[1]}</strong></p>`); }
+        else { flush(); text.push(line); }
+      }
+      flush(); flushText();
+      return out.join('');
+    }).join('');
   }
   function answer(a) {
     if (a.error) return `<div class="e2a err"><p class="why">${esc(a.error)}</p></div>`;
