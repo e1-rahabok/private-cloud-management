@@ -222,8 +222,11 @@ try {
   const vmKpis = await page.$$eval('[data-section="performance-kpis"] .metric', ms => ms.map(m => m.dataset.metric));
   const vmLayerKpis = await page.$$eval('section.layer .metric', ms => ms.map(m => m.dataset.metric).filter(k => /performance/.test(k)));
   const vmPills = await pills();
-  const counterPlain = vmPills.filter(m => !/performance/.test(m.key)).every(m => m.pills.every(p => p === null));
-  const vmPillOk = pillsOk(vmPills, () => false) && vmPills.filter(m => /performance/.test(m.key)).every(m => m.pills.every(p => p !== null));
+  const VM_END = { paging_per_s: [1000, 2000, 4000], cpu_ready_percent: [2, 4, 8], co_stop_percent: [1, 2, 4], memory_wait_percent: [0.5, 1, 2], disk_latency_ms: [10, 20, 40] };
+  const endOf = (v, e) => ['green', 'yellow', 'orange'].find((_, i) => v <= e[i]) || 'red';
+  const counterPlain = vmPills.filter(m => !/performance/.test(m.key) && !VM_END[m.key]).every(m => m.pills.every(p => p === null))
+    && vmPills.filter(m => VM_END[m.key]).length === 5 && vmPills.filter(m => VM_END[m.key]).every(m => m.pills.every(p => p !== null && p.band === endOf(p.v, VM_END[m.key])));
+  const vmPillOk = pillsOk(vmPills.filter(m => /performance/.test(m.key)), () => false) && vmPills.filter(m => /performance/.test(m.key)).every(m => m.pills.every(p => p !== null));
   await go('/l2/monitor/compute/FR-B-04/performance');
   const clKpis = await page.$$eval('[data-section="performance-kpis"] .metric:not(.kpi-details .metric) h4', hs => hs.map(h => h.textContent));
   const clText = await page.innerText('main');
@@ -257,11 +260,23 @@ try {
   const RISK_END = { highest_esxi_cpu_thread_utilization: [60, 80, 90], worst_esxi_memory_ballooned: [1, 2, 4], highest_esxi_cpu_overcommit: [2, 3, 4] };
   const riskPills = await page.$$eval('details[data-details="cluster_risk"] .metric', ms => ms.map(m => ({ key: m.dataset.metric, pills: [...m.querySelectorAll('dd .bv')].map(p => ({ band: p.dataset.band, v: parseFloat(p.textContent) })) })));
   const riskBandOk = riskPills.filter(m => RISK_END[m.key]).length === 3 && riskPills.filter(m => RISK_END[m.key]).every(m => m.pills.every(p => p.band === (['green', 'yellow', 'orange'].find((_, i) => p.v <= RISK_END[m.key][i]) || 'red')));
-  const perfPills = await page.$$eval('details[data-details="cluster_performance"] .metric:not([data-metric="highest_esxi_packets"]) .bv', ps => ps.length);
+  const PERF_END = { worst_vcpu_ready: [4, 8, 16], p90_disk_latency: [20, 40, 60], highest_esxi_packets: [0, 0.2, 0.4] };
+  const bandedAll = async sel => page.$$eval(sel + ' .metric', ms => ms.every(m => [...m.querySelectorAll('dd .bv')].length === 3 && m.querySelectorAll('.zones rect').length >= 1));
+  const perfPills = await page.$$eval('details[data-details="cluster_performance"] .metric', ms => ms.map(m => ({ key: m.dataset.metric, pills: [...m.querySelectorAll('dd .bv')].map(p => ({ band: p.dataset.band, v: parseFloat(p.textContent) })) })));
+  const perfBandOk = perfPills.filter(m => PERF_END[m.key]).length === 3 && perfPills.filter(m => PERF_END[m.key]).every(m => m.pills.length === 3 && m.pills.every(p => p.band === endOf(p.v, PERF_END[m.key])));
+  const perfAllBanded = await bandedAll('details[data-details="cluster_performance"]') && await bandedAll('details[data-details="cluster_risk"]');
   await go('/l2/monitor/compute/fr-esx-244/performance');
-  const hostDets = await page.$$eval('details.kpi-details', ds => ds.length);
-  check('LPG-24', detsClosed && detsOpen.length === 2 && detsOpen.every(d => d.open && d.charts === d.parts && d.w > 300) && detsOpen[0].parts === 9 && detsOpen[1].parts === 11 && riskBandOk && perfPills === 0 && hostDets === 0,
-    `closed ${detsClosed}; open ${JSON.stringify(detsOpen)}; risk bands ${riskBandOk}; perf pills ${perfPills}; host ${hostDets}`);
+  await page.click('details[data-details="esxi_performance"] summary');
+  const hostDets = await page.$$eval('details.kpi-details', ds => ds.map(d => ({ parts: d.querySelectorAll('.metric').length, closedTitle: d.querySelector('summary').firstChild.textContent.trim() })));
+  const hostBanded = await bandedAll('details[data-details="esxi_performance"]');
+  check('LPG-24', detsClosed && detsOpen.length === 2 && detsOpen.every(d => d.open && d.charts === d.parts && d.w > 300) && detsOpen[0].parts === 9 && detsOpen[1].parts === 11 && riskBandOk && perfBandOk && perfAllBanded && hostDets.length === 1 && hostDets[0].parts === 9 && hostBanded,
+    `closed ${detsClosed}; open ${JSON.stringify(detsOpen)}; risk bands ${riskBandOk}; perf bands ${perfBandOk}/${perfAllBanded}; host ${JSON.stringify(hostDets)}/${hostBanded}`);
+
+  // LPG-25 charts keep their own height: a chart box is as tall as its drawing; the wall's chart rules stay in the wall (D-108)
+  await go('/l2/monitor/compute/LD-B-01/capacity');
+  const chartBoxes = await page.$$eval('[data-chartbox]', cs => cs.map(c => ({ plot: c.querySelector('.plot').getBoundingClientRect().height, svg: c.querySelector('svg.lc').getBoundingClientRect().height })));
+  const stacked = await page.$$eval('[data-chartbox], h2, h3, table.data', els => { const r = els.map(e => e.getBoundingClientRect()).sort((a, b) => a.top - b.top); return r.every((x, i) => i === 0 || x.top >= r[i - 1].bottom - 1 || x.left >= r[i - 1].right - 1); });
+  check('LPG-25', chartBoxes.length >= 9 && chartBoxes.every(b => b.plot >= b.svg - 1) && stacked, `${chartBoxes.length} charts; boxes ${chartBoxes.every(b => b.plot >= b.svg - 1)}; no overlap ${stacked}`);
 
   // LPG-16 moving between pages does not load the page; the window is a drop-down; tabs are tabs; no dot
   await go('/l2/monitor/compute/estate/summary');

@@ -348,9 +348,9 @@ story:
       figures: [now, worst, percentile_95]
       iceberg_points: 7
       vm_has_kpis: false
-      kpi_details: { cluster_performance: 9, cluster_risk: 11, host: 0 }
+      kpi_details: { cluster_performance: 9, cluster_risk: 11, host: 9 }
       kpi_details_figures: [now, worst, percentile_95]
-    decisions: [D-100, D-106]
+    decisions: [D-100, D-106, D-108]
   - id: LST-30
     name: Capacity Remaining, Time Remaining and VM Remaining from VCF Operations, on one VM, host or cluster only
     given: { vm: fr-bat-6839, host: fr-esx-244, cluster: FR-B-04, group: wld-fr-gen, window: 24h }
@@ -470,17 +470,22 @@ page:
       The KPI comes first (D-100). On fr-bat-6839's Performance tab the first section is "Performance" with Guest OS Performance
       then VM Performance, and neither layer repeats them. On FR-B-04's Performance tab the first charts are Cluster Performance and
       Cluster Risk, and no card "This object", "Trend" or "Children outside green" remains. Every figure of a 0 to 100% KPI is a band
-      pill whose band matches its value and names it; its text is at least 4.5:1 on its background; a counter's figure has no pill.
+      pill whose band matches its value and names it; its text is at least 4.5:1 on its background. A counter's figure has a pill only where the catalog has band ends (D-108): on a VM, Paging, CPU Ready, CPU Co-Stop, Memory Wait and Disk Latency; Run Queue and Context Switches have none.
       On fr-esx-244's Capacity tab the first section is the summary with Capacity Remaining, Time Remaining and VM Remaining, and
       says the values are placeholders from VCF Operations; then the verdict.
-    decisions: [D-100]
+    decisions: [D-100, D-108]
   - id: LPG-24
     rule: >
-      Details (D-106). On FR-B-04's Performance tab each of Cluster Performance and Cluster Risk has a fold named "Details" under its
+      Details (D-106, D-108). On FR-B-04's Performance tab each of Cluster Performance and Cluster Risk has a fold named "Details" under its
       chart, closed when the page opens. Opened, Cluster Performance shows 9 charts and Cluster Risk 11, each at a readable width, one per
-      part. A Risk part's figures carry the band of the catalog's band ends. A Performance part has no band, except the ESXi packets:
-      the catalog has no level for a 5-minute point. An ESXi host has no Details.
-    decisions: [D-106]
+      part. Every part's figures carry the band of the catalog's band ends, and its chart shows the zones and a line in the band of each
+      value. On an ESXi host (fr-esx-244) ESXi Performance has the same fold with 9 parts, banded the same way.
+    decisions: [D-106, D-108]
+  - id: LPG-25
+    rule: >
+      Charts keep their own height (D-108). On a cluster's Capacity tab no chart overlaps the heading, table or chart under it: the box of
+      every chart is as tall as its drawing. The NOC wall's chart rules apply only inside the wall's panels.
+    decisions: [D-108]
   - id: LPG-21
     rule: >
       A clarifying answer shows its questions under "Agent E2 asks"; the next question sent carries the earlier turns. On a narrow screen

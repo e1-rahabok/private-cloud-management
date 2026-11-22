@@ -66,12 +66,12 @@ body.wall { background: var(--hero-bg); color: #fff; overflow: hidden; height: 1
 .perf-low { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; flex: 1; min-height: 190px; }
 .panel-w { background: var(--raised); border-radius: 18px; padding: 16px 22px; display: flex; flex-direction: column; min-height: 0; }
 .panel-w h3 { margin: 0 0 8px; font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 12px; }
-.legend { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 600; color: var(--on-dark-muted); }
-.legend i { width: 22px; height: 6px; border-radius: 3px; display: inline-block; margin-left: 12px; }
-.chart { flex: 1; min-height: 0; position: relative; }
-.chart svg { position: absolute; inset: 0; }
-.chart .ax { font-size: 15px; fill: var(--on-dark-muted); font-family: inherit; }
-.chart .end { font-size: 20px; font-weight: 800; font-family: inherit; }
+.panel-w .legend { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 600; color: var(--on-dark-muted); }
+.panel-w .legend i { width: 22px; height: 6px; border-radius: 3px; display: inline-block; margin-left: 12px; }
+.panel-w .chart { flex: 1; min-height: 0; position: relative; }
+.panel-w .chart svg { position: absolute; inset: 0; }
+.panel-w .chart .ax { font-size: 15px; fill: var(--on-dark-muted); font-family: inherit; }
+.panel-w .chart .end { font-size: 20px; font-weight: 800; font-family: inherit; }
 .panel-w .r { display: grid; grid-template-columns: auto auto 1fr; column-gap: 14px; align-items: baseline; padding: 6px 0; font-size: 24px; }
 .panel-w .r .sc { font-weight: 700; }
 .panel-w .r .line { grid-column: 2 / -1; margin: 0; font-size: 18px; }
