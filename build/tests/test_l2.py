@@ -573,6 +573,9 @@ class CapacityTab(Base):
         flat = str(d).lower()
         for w in e["forbidden_fields"]:
             self.assertNotIn(f"'{w}'", flat, w)
+        r = d["remaining"]
+        self.assertEqual(([x["key"] for x in r["values"]], r["source"], r["placeholder"]),
+                         (e["remaining"]["figures"], e["remaining"]["source"], e["remaining"]["placeholder"]))
 
     def test_LST_23_frankfurt_general_on_bronze(self):
         e, g = T["LST-23"]["expect"], T["LST-23"]["given"]
@@ -590,6 +593,8 @@ class CapacityTab(Base):
         self.assertIn("FR-X-01", [r["cluster"] for r in a["clusters_at"]])
         none = M.pillar_view(NOW, "compute", g["object"], "capacity", g["window"])["capacity"]
         self.assertEqual((none["class"], none["clusters"]), (e["without_class"]["class"], 0))
+        for w in e["forbidden_fields"]:
+            self.assertNotIn(f"'{w}'", str(d), w)
 
     def test_LST_24_fr_s_02_open_at_the_check_with_contention_now(self):
         e, g = T["LST-24"]["expect"], T["LST-24"]["given"]
@@ -633,3 +638,36 @@ class SpecRules(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class KpiFirst(Base):
+    """D-100: the KPI first on the Performance tab; VCF Operations' remaining figures first on the Capacity tab."""
+
+    def test_LST_29_cluster_and_host_open_with_their_kpi(self):
+        t = T["LST-29"]; g, e = t["given"], t["expect"]
+        c = M.pillar_view(NOW, "compute", g["cluster"], "performance", g["window"])
+        self.assertEqual([k["label"] for k in c["kpis"]], e["cluster_kpis"])
+        cp = c["kpis"][0]
+        self.assertEqual({"now": cp["now"], "worst": cp["worst"]["v"], "percentile_95": cp["percentile_95"]}, e["cluster_performance"])
+        cap = {k["key"]: k for k in M.pillar_view(NOW, "compute", g["cluster"], "capacity", g["window"])["capacity"]["kpis"]}["performance"]
+        self.assertEqual(cp["points"] == cap["points"] and cp["percentile_95"] == cap["percentile_95"], e["cluster_performance_same_as_capacity_tab"])
+        h = M.pillar_view(NOW, "compute", g["host"], "performance", g["window"])
+        self.assertEqual([k["label"] for k in h["kpis"]], e["host_kpis"])
+        for k in c["kpis"] + h["kpis"]:
+            self.assertEqual(len(k["points"]), e["points_24h"])
+            self.assertTrue(set(e["figures"]) <= set(k) and "average" not in k)
+            self.assertTrue(all(0 <= p["v"] <= 100 for p in k["points"] if p["v"] is not None))
+        self.assertEqual(len(c["content"]["iceberg"]["points_7_days"]), e["iceberg_points"])
+        self.assertEqual("kpis" in M.pillar_view(NOW, "compute", g["vm"], "performance", g["window"]), e["vm_has_kpis"])
+
+    def test_LST_30_remaining_from_vcf_operations_on_one_object_only(self):
+        t = T["LST-30"]; g, e = t["given"], t["expect"]
+        for kind in ("vm", "host", "cluster"):
+            r = M.pillar_view(NOW, "compute", g[kind], "capacity", g["window"])["capacity"]["remaining"]
+            self.assertEqual([x["key"] for x in r["values"]], e[kind], kind)
+            self.assertEqual((r["source"], r["placeholder"]), (e["source"], e["placeholder"]))
+            again = M.pillar_view(NOW, "compute", g[kind], "capacity", "7d")["capacity"]["remaining"]
+            self.assertEqual(again == r, e["stable"])
+        grp = M.pillar_view(NOW, "compute", g["group"], "capacity", g["window"])["capacity"]
+        self.assertNotIn("remaining", grp)
+

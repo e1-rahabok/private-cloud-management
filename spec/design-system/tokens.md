@@ -42,6 +42,20 @@ Taken from the Executive Dashboard mockup (D-015), which is already accessible. 
 - **Colour is never the only signal.** Every colour comes with a text label (mockup rule, WCAG).
 - `in_plan` uses the accent, not amber. A short date already covered by the next purchase round is not an alarm (Executive design, 4.4).
 
+## Band figures
+
+A KPI on the 0 to 100% scale has four bands: green, yellow, orange, red (catalog.kpi_band). Its figures (Now, Worst, 95th percentile) show the band of their value (D-100). The band colours are for lines and zones; as text on white, yellow is 3.0:1 and green 3.3:1, too faint. So a figure is a pill:
+
+| Band | Line and bar | Pill background | Pill text | Text contrast |
+|---|---|---|---|---|
+| `green` | `#0E9F8E` | `#D2ECE5` | `#0A5E54` | 6.2:1 |
+| `yellow` | `#B39200` | `#F7EBB5` | `#5C4700` | 7.4:1 |
+| `orange` | `#C9480C` | `#F9DCC8` | `#7A2A05` | 7.5:1 |
+| `red` | `#8F1D13` | `#F6D6D1` | `#8F1D13` | 6.6:1 |
+
+- A 4 px bar on the left of the pill in the band's line colour, and the band's name in small capitals after the number. Colour is never the only signal.
+- Only figures of a metric with bands. A counter without bands (CPU Ready, Disk Latency) stays in `text`: no band is invented for it.
+
 ## Type
 
 - Typeface: Manrope, with system-ui as fallback. The font files ship with the build (`fonts/`, SIL Open Font License); they are never loaded from the internet (spec README, rule 7).

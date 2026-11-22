@@ -267,8 +267,9 @@ story:
       host_spread_memory: { highest: ld-esx-202, highest_percent: 96, lowest_percent: 71 }
       hosts_first: ld-esx-202
       finding: { kind: closed_consumption, window: "24h", severity: amber, outcome: improve }
-      forbidden_fields: [run_out_date, decision_date, capacity_remaining, time_remaining, forecast]
-    decisions: [D-094, D-095]
+      forbidden_fields: [run_out_date, decision_date, forecast]
+      remaining: { figures: [capacity_remaining, time_remaining, vm_remaining], source: VCF Operations, placeholder: true }
+    decisions: [D-094, D-095, D-100]
   - id: LST-23
     name: The Frankfurt general workload domain opens on Gold, empty; Bronze shows two clusters near closure
     story: M-4
@@ -284,7 +285,8 @@ story:
       FR-B-03_finding: null
       mixed_with_class_bronze: excluded
       mixed_with_class_all: included
-    decisions: [D-091, D-094]
+      forbidden_fields: [capacity_remaining, time_remaining, vm_remaining, remaining]
+    decisions: [D-091, D-094, D-100]
   - id: LST-24
     name: FR-S-02 is open at the check and has contention now
     story: N-1
@@ -334,6 +336,31 @@ story:
       vm_layer_other_layer_points: none
       unknown_layer: 404
     decisions: [D-097]
+  - id: LST-29
+    name: A cluster's and a host's Performance tab open with their KPI over time
+    given: { cluster: FR-B-04, host: fr-esx-244, vm: fr-bat-6839, window: 24h }
+    expect:
+      cluster_kpis: [Cluster Performance, Cluster Risk]
+      cluster_performance: { now: 82.2, worst: 80.2, percentile_95: 80.7 }
+      cluster_performance_same_as_capacity_tab: true
+      host_kpis: [ESXi Performance]
+      points_24h: 288
+      figures: [now, worst, percentile_95]
+      iceberg_points: 7
+      vm_has_kpis: false
+    decisions: [D-100]
+  - id: LST-30
+    name: Capacity Remaining, Time Remaining and VM Remaining from VCF Operations, on one VM, host or cluster only
+    given: { vm: fr-bat-6839, host: fr-esx-244, cluster: FR-B-04, group: wld-fr-gen, window: 24h }
+    expect:
+      vm: [capacity_remaining, time_remaining]
+      host: [capacity_remaining, time_remaining, vm_remaining]
+      cluster: [capacity_remaining, time_remaining, vm_remaining]
+      source: VCF Operations
+      placeholder: true
+      stable: true
+      group: none
+    decisions: [D-100]
 
 page:
   - id: LPG-1
@@ -391,9 +418,9 @@ page:
   - id: LPG-18
     rule: >
       No /l2 Capacity tab, on any object or window, shows a word from capacity_tab_avoided (catalog/vocabulary/l2.yaml),
-      except "imbalance" inside "CPU Imbalance". The tab has one sentence linking to the Capacity workspace, and no date or
-      percentage read from it.
-    decisions: [D-094]
+      except "imbalance" inside "CPU Imbalance"; above the cluster, none from capacity_group_avoided either. The tab has one
+      sentence linking to the Capacity workspace, and no date or percentage read from it.
+    decisions: [D-094, D-100]
   - id: LPG-19
     rule: >
       On wld-fr-gen's Capacity tab, Gold is selected and the page says there is no Gold cluster; a click on Bronze keeps the
@@ -417,6 +444,15 @@ page:
       with the layer in the context and suggests "Is the Guest OS layer the problem?". The top bar mark on the same tab suggests
       "Is this VM performing well over the last 24 hours?", and a question sent from it carries both layers' figures.
     decisions: [D-097]
+  - id: LPG-23
+    rule: >
+      The KPI comes first (D-100). On fr-bat-6839's Performance tab the first section is "Performance" with Guest OS Performance
+      then VM Performance, and neither layer repeats them. On FR-B-04's Performance tab the first charts are Cluster Performance and
+      Cluster Risk, and no card "This object", "Trend" or "Children outside green" remains. Every figure of a 0 to 100% KPI is a band
+      pill whose band matches its value and names it; its text is at least 4.5:1 on its background; a counter's figure has no pill.
+      On fr-esx-244's Capacity tab the first section is the summary with Capacity Remaining, Time Remaining and VM Remaining, and
+      says the values are placeholders from VCF Operations; then the verdict.
+    decisions: [D-100]
   - id: LPG-21
     rule: >
       A clarifying answer shows its questions under "Agent E2 asks"; the next question sent carries the earlier turns. On a narrow screen
