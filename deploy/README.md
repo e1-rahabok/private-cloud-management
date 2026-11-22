@@ -65,6 +65,14 @@ Without this section, the E2 mark is grey and the Agent E2 panel says "The Agent
 - **What it is:** a second service on the same VM, from the Agent E2 repository. It holds the knowledge base and calls the model. PCM calls it on `127.0.0.1:8090`; it listens on the loopback only.
 - **What it needs:** `python3-requests`, and in the lab a key for the AI gateway in `/etc/pcm/pcm.env` (`AI_GATEWAY_API_KEY`), with outbound HTTPS to `ai-gateway.vercel.sh`. A customer site points it at its local model server instead.
 
+**One command** does all of the steps below and checks a real question. It asks for the key without showing it:
+
+```bash
+sudo bash /opt/pcm/deploy/install-agent-e2.sh
+```
+
+The same steps, by hand:
+
 ```bash
 apt-get install -y python3-requests
 ```
