@@ -145,7 +145,7 @@ svg.lc .ref { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 2 3;
 .metric dt { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-top: 8px; font-weight: 700; }
 .metric dd { margin: 0; font-size: 20px; font-weight: 800; }
 .metric dd .muted { font-size: 13px; font-weight: 400; }
-.metric .chart { margin: 0; padding: 0; }
+.metric .chart { margin: 0; padding: 56px 0 0; }  /* the plot starts level with the figures, below the title */
 @media (max-width: 900px) {
   .metric { grid-template-columns: 1fr; }
   .frame { grid-template-columns: 1fr; }
@@ -158,6 +158,11 @@ svg.lc .ref { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 2 3;
 
 /* The Capacity tab (monitor.md, Capacity tab) */
 .verdict { font-size: 17px; line-height: 1.6; }
+.verdict p { margin: 0 0 6px; }
+.verdict .why-panel { font-size: 14px; color: var(--text-muted); background: #fff; border-radius: 10px; padding: 10px 14px; max-width: 70ch; }
+.chip.vbtn { font: inherit; font-size: 15px; font-weight: 700; border: 0; cursor: pointer; }
+.chip.vbtn::after { content: "▾"; margin-left: 6px; font-size: 11px; }
+.chip.vbtn[aria-expanded="true"]::after { content: "▴"; }
 .strip { display: flex; gap: 2px; height: 28px; margin: 6px 0 2px; }
 .strip .cell { flex: 1; border-radius: 3px; background: #DCEFEA; font-size: 11px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .strip .cell.closed { background: var(--band-orange); }

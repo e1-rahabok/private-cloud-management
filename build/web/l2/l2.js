@@ -323,6 +323,10 @@ async function monitor(msg = '') {
   const g = document.getElementById('grp');
   if (g) g.addEventListener('change', () => go(url({ group: g.value })));
   if (d.perf || d.layers || d.capacity) wireCharts();
+  main.querySelectorAll('[data-why-toggle]').forEach(b => b.addEventListener('click', () => {
+    const open = b.getAttribute('aria-expanded') !== 'true';
+    b.setAttribute('aria-expanded', String(open)); document.getElementById(b.getAttribute('aria-controls')).hidden = !open;
+  }));
   main.querySelectorAll('form.expect').forEach(fm => fm.addEventListener('submit', async e => {
     e.preventDefault();
     const r = await postJSON(`inventory/${fm.dataset.c}/expected`, Object.fromEntries(new FormData(fm)));
@@ -410,7 +414,7 @@ function lineChart(id, pts, series, o) {
   const legend = `<div class="legend">${series.map(s => `<span>${swatch(s.color || 'var(--text-muted)', s.dash)}${esc(s.label)}</span>`).join('')}
     ${(o.refs || []).map(r => `<span><svg width="18" height="8" aria-hidden="true"><line x1="1" x2="17" y1="4" y2="4" stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="2 3"/></svg>${esc(r.label)}</span>`).join('')}
     ${o.bands ? `<span class="muted">Line color is the band of the value.</span>` : ''}${o.noclick ? '' : '<span class="muted">Click a time to see it below.</span>'}</div>`;
-  return `<div class="chart" data-chartbox="${id}">${legend}<div class="plot">${chartSvg(id, o.width ?? 1000)}<div class="tip" hidden></div></div></div>`;
+  return `<div class="chart" data-chartbox="${id}">${o.nolegend ? '' : legend}<div class="plot">${chartSvg(id, o.width ?? 1000)}<div class="tip" hidden></div></div></div>`;
 }
 function mountChart(box) {
   const id = box.dataset.chartbox, C = CHARTS[id], { pts, series, o } = C, plot = box.querySelector('.plot'), tip = box.querySelector('.tip');
@@ -461,13 +465,13 @@ function metricBlock(m, layer) {
   const series = [score ? { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
-    fmt, width: 760, height: 160, left: m.unit.length > 3 ? 104 : 72, minutes: m.minutes, noclick: true, nodirect: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined });
+    fmt, width: 760, height: 160, left: m.unit.length > 3 ? 104 : 72, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [0, 25, 'red']] : undefined });
   const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, { p95: fmt(m.percentile_95), worst: fmtPoint(m.worst.t, m.minutes) }) : '';
   return `<div class="metric" data-metric="${m.key}"><div class="mfig"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div><div class="muted">${lowest ? 'Higher is better' : 'Lower is better'}</div>
     <dl><dt>Now</dt><dd>${fmt(m.now)}</dd><dt>Worst</dt><dd>${fmt(m.worst.v)}</dd><dt>95th percentile</dt><dd>${fmt(m.percentile_95)}</dd></dl></div>${chart}</div>`;
 }
 function layersView(d) {
-  return `<p class="muted">Over ${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point per ${fmtDur(d.layers[0].metrics[0].minutes)}. Each point holds the worst value inside it. The 95th percentile is the value that 95% of the points were better than.</p>`
+  return `<p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(d.layers[0].metrics[0].minutes)}. Each point shows the worst value in that interval. 95% of points were better than the 95th percentile.</p>`
     + d.layers.map(l => `<section class="persp layer" data-layer="${l.key}"><h2>${esc(l.title)} ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span>${e2mark({ kind: 'vm_layer', layer: l.key, pillar: 'performance' }, `the ${l.title} layer`, { name: `${l.title} layer`, layer: l.title })}</h2>${l.metrics.map(m => metricBlock(m, l.key)).join('')}</section>`).join('');
 }
 function perfTab(p, d) {
@@ -522,27 +526,26 @@ const LOW_BANDS = [[75, 100, 'green'], [50, 75, 'yellow'], [25, 50, 'orange'], [
 const pct = v => v == null ? '–' : `${Number(v).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`;
 const checkPeriod = c => `${c.period_hours} hours to ${fmtTime(c.window_end)}`;
 const capGroupURL = (loc, cls) => `/capacity/group/${enc(loc.toUpperCase())}-${enc(cls.charAt(0).toUpperCase() + cls.slice(1))}${PASS ? '?' + PASS : ''}`;
-const monthsAhead = href => `<p class="muted" data-months-ahead>Months ahead, and when to buy, are in the <a class="link" href="${href}">Capacity workspace</a>.</p>`;
-function closureRefs(k) {
-  return k.better === 'lower' ? [{ value: k.closure_levels.red, label: `Closes above ${k.closure_levels.red}%` }, { value: k.closure_levels.orange, label: `Orange for closure above ${k.closure_levels.orange}%` }]
-    : [{ value: k.closure_levels.red, label: `Closes below ${k.closure_levels.red}%` }, { value: k.closure_levels.orange, label: `Orange for closure below ${k.closure_levels.orange}%` }];
-}
+const monthsAhead = href => `<p class="muted" data-months-ahead>To plan ahead and decide when to buy, open the <a class="link" href="${href}">Capacity workspace</a>.</p>`;
 function kpiBlock(k, c, m) {
   const hiw = k.better === 'lower';
   const chart = lineChart(`cap-${k.key}`, k.points, [hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: riskBand, worse: Math.max }
     : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min }],
-    { label: `${k.label} over the window, 0 to 100%`, max: 100, width: 760, height: 230, left: 56, minutes: m, noclick: true, nodirect: true, bands: hiw ? HIGH_BANDS : LOW_BANDS, refs: closureRefs(k) });
+    { label: `${k.label} over the window, 0 to 100%`, max: 100, width: 760, height: 250, left: 56, minutes: m, noclick: true, nodirect: true, nolegend: true, bands: hiw ? HIGH_BANDS : LOW_BANDS });
   const mark = e2mark({ kind: 'kpi', metric: k.key, pillar: 'capacity' }, k.label, { p95: pct(k.percentile_95), worst: k.worst ? fmtPoint(k.worst.t, m) : '' });
   return `<div class="metric" data-kpi="${k.key}"><div class="mfig"><div class="mname"><h4>${esc(k.label)}</h4>${mark}</div><div class="muted">${hiw ? 'Higher is worse' : 'Higher is better'}</div>
     <dl><dt>Now</dt><dd>${pct(k.now)}</dd><dt>Worst</dt><dd>${pct(k.worst && k.worst.v)}</dd>
     <dt>95th percentile</dt><dd>${pct(k.percentile_95)}</dd></dl></div>${chart}</div>`;
 }
 function capCluster(c, d) {
-  if (!c.applies) return '<p class="muted">Management and edge clusters run the platform\'s own appliances. Capacity is read on workload clusters.</p>';
+  if (!c.applies) return '<p class="muted">Capacity is tracked on workload clusters. Management and edge clusters run the platform\'s own appliances.</p>';
   const m = c.point_minutes, ck = c.check;
-  const verdict = ck.state === 'closed' ? `<span class="chip ${ck.rule === 2 || ck.performance_red ? 'red' : 'amber'}">Closed for new VMs</span> since the check of ${esc(fmtDay(ck.since))} (${ck.checks_closed} check${ck.checks_closed === 1 ? '' : 's'}). ${esc(ck.reason)}`
-    : ck.state === 'no_check' ? `<span class="chip no_data">No check</span> for the ${esc(checkPeriod(ck))}: a KPI has no data.`
-    : `<span class="chip green">Open for new VMs</span> at the check of the ${esc(checkPeriod(ck))}.`;
+  const period = `the ${checkPeriod(ck)}`;
+  const rule = 'A cluster closes when Consumption goes above 80%, when Performance drops below 20%, or when both are orange and Risk is above 60%.';
+  const why = ck.state === 'closed' ? `${ck.reason} Based on ${period}.`
+    : `Nothing is red. Consumption is ${pct(ck.consumption)}, Performance is ${pct(ck.performance)} and Risk is ${pct(ck.risk)}. ${rule} Based on ${period}.`;
+  const verdict = ck.state === 'no_check' ? `<span class="chip no_data">No check</span> <span class="muted">A metric has no data for ${esc(period)}.</span>`
+    : `<button type="button" class="chip vbtn ${ck.state === 'closed' ? (ck.rule === 2 || ck.performance_red ? 'red' : 'amber') : 'green'}" data-why-toggle aria-expanded="${ck.state === 'closed'}" aria-controls="why-verdict">${ck.state === 'closed' ? 'Closed for new VMs' : 'Open for new VMs'}</button>${ck.state === 'closed' ? ` <span class="muted">since ${esc(fmtDay(ck.since))}</span>` : ''}`;
   const cn = c.contention_now ? ` <a class="chip red" data-contention-now href="${url({ pillar: 'performance', cls: undefined })}">Contention now</a> Cluster Performance ${pct(c.contention_now.value)} at ${esc(fmtTime(c.contention_now.t))}.` : '';
   const strip = c.strip_as_words
     ? `<p data-strip-words>Latest check, ${esc(checkPeriod(ck))}: ${ck.state === 'closed' ? 'Closed' : ck.state === 'open' ? 'Open' : 'No check'}. The check before, to ${esc(fmtTime(ck.previous.end))}: ${ck.previous.state === 'closed' ? 'Closed' : 'Open'}, Consumption ${pct(ck.previous.consumption)}, Performance ${pct(ck.previous.performance)}, Risk ${pct(ck.previous.risk)}.</p>`
@@ -551,7 +554,7 @@ function capCluster(c, d) {
   const u = c.usable;
   const usable = `<table class="data" data-usable><thead><tr><th></th><th class="num">Total</th><th class="num">HA</th><th class="num">Buffer</th><th class="num">Usable</th></tr></thead><tbody>
     ${[['cpu', 'CPU'], ['memory', 'Memory']].map(([k, l]) => `<tr><td>${l} <span class="muted">${esc(u[k].unit)}</span></td><td class="num">${n0(u[k].total)}</td><td class="num">−${n0(u[k].ha)}</td><td class="num">−${n0(u[k].buffer)} <span class="muted">(${u[k].buffer_percent}%)</span></td><td class="num"><strong>${n0(u[k].usable)}</strong></td></tr>`).join('')}</tbody></table>
-    <p class="muted">${u.running_hosts} of ${u.hosts} hosts running. HA holds back the largest host. The buffer is the Capacity team's setting. The Capacity workspace plans on less: it also holds back a maintenance host.</p>`;
+    <p class="muted">${u.running_hosts} of ${u.hosts} hosts running. The largest host is held back for HA. The Capacity team sets the buffer. The Capacity workspace plans on a bit less, because it also reserves a maintenance host.</p>`;
   const spreadChart = (key, label) => lineChart(`spread-${key}`, c.spread[key], [
     { key: 'highest', who: 'highest_host', label: 'Highest host', short: 'Highest', color: 'var(--series-1)' },
     { key: 'lowest', who: 'lowest_host', label: 'Lowest host', short: 'Lowest', color: 'var(--series-2)', dash: true }],
@@ -561,17 +564,17 @@ function capCluster(c, d) {
     <td class="num">${pct(h.memory_consumed.percentile_95)}</td><td class="num">${pct(h.memory_consumed.worst.v)}</td><td>${spark(h.spark)}</td>
     <td class="num">${n0(h.running_vms)}</td><td class="num">${h.cpu_overcommit}</td><td class="num">${h.memory_overcommit}</td><td>${h.state === 'running' ? 'Running' : esc(h.state.replace('_', ' '))}</td></tr>`).join('');
   return `<section class="persp" data-section="capacity-cluster">
-    <p class="verdict" data-verdict="${ck.state}">${verdict}${cn}</p>
-    ${c.marked_host ? `<p class="muted">Capacity is the cluster's: ${esc(c.marked_host)} is marked in the hosts below.</p>` : ''}
-    <h2>The three inputs of the check</h2>
-    <p class="muted">Over ${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point per ${fmtDur(m)}. Each point holds the worst value inside it. The check closes the cluster when Consumption or Performance is red, or when both are orange and Risk is orange or red. Risk alone never closes it.</p>
+    <div class="verdict" data-verdict="${ck.state}"><p>${verdict}${cn}</p>${ck.state === 'no_check' ? '' : `<p class="why-panel" id="why-verdict" data-why${ck.state === 'closed' ? '' : ' hidden'}>${esc(why)}</p>`}</div>
+    ${c.marked_host ? `<p class="muted">This is the cluster's capacity. ${esc(c.marked_host)} is highlighted in the host list below.</p>` : ''}
+    <h2>Key Trends</h2>
+    <p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(m)}. Each point shows the worst value in that interval.</p>
     ${c.kpis.map(k => kpiBlock(k, ck, m)).join('')}
-    <h3>The check, period by period</h3>${strip}
-    <h2>What consumption is made of <span class="muted">each in % of usable capacity</span></h2>
+    <h3>Past checks</h3>${strip}
+    <h2>What makes up Consumption <span class="muted">as % of usable capacity</span></h2>
     ${c.parts.map(p => metricBlock({ ...p, better: 'lower', decimals: p.key.startsWith('memory_b') || p.key.startsWith('memory_z') ? 2 : 1, scale: null, minutes: m }, 'part')).join('')}
-    <p class="muted">No memory tier on these hosts.</p>
-    <h2>Usable capacity <span class="muted">as running</span></h2>${usable}
-    <h2>Spread between hosts</h2><p class="muted">A wide gap says the hosts do not carry equal loads. Why is a case's job.</p>
+    <p class="muted">These hosts have no memory tiering.</p>
+    <h2>Usable capacity <span class="muted">hosts that are running</span></h2>${usable}
+    <h2>Host balance</h2><p class="muted">A wide gap means some hosts are working harder than others.</p>
     ${spreadChart('cpu_thread_utilization', 'CPU Thread Utilization')}${spreadChart('memory_consumed', 'Memory Consumed')}
     <h2>ESXi hosts, worst first</h2>
     <table class="data" data-hosts><thead><tr><th>Host</th><th class="num">CPU Thread Utilization, 95th percentile</th><th class="num">CPU, Worst</th><th class="num">Memory Consumed, 95th percentile</th><th class="num">Memory, Worst</th><th>Memory Consumed</th><th class="num">Running VMs</th><th class="num">CPU Overcommit</th><th class="num">Memory Overcommit</th><th>State</th></tr></thead><tbody>${hostRows}</tbody></table>
@@ -591,8 +594,7 @@ function capGroup(g, d) {
   const spread = lineChart('capspread', g.spread.points, [
     { key: 'highest', who: 'highest_cluster', label: 'Highest Cluster Consumption', short: 'Highest', band: riskBand, worse: Math.max },
     { key: 'percentile', label: `${g.spread.percentile}th percentile`, short: `${g.spread.percentile}th pct`, band: riskBand, worse: Math.max, dash: true }],
-    { label: 'Cluster Consumption across clusters, 0 to 100%', max: 100, minutes: m, bands: HIGH_BANDS, selected: sel.index,
-      refs: [{ value: g.spread.closure_levels.red, label: `Closes above ${g.spread.closure_levels.red}%` }, { value: g.spread.closure_levels.orange, label: `Orange for closure above ${g.spread.closure_levels.orange}%` }] });
+    { label: 'Cluster Consumption across clusters, 0 to 100%', max: 100, minutes: m, bands: HIGH_BANDS, selected: sel.index });
   const rows = g.clusters_at.map(r => `<tr data-cluster-at="${esc(r.cluster)}"><td>${objLink(r.cluster)}</td><td>${esc(r.location)}</td><td>${esc(CLASS_NAME[r.class_of_service] || r.class_of_service)}</td>
     <td>${r.check.state === 'closed' ? `<span class="chip ${r.check.rule === 2 ? 'red' : 'amber'}">Closed for new VMs</span> <span class="muted">since ${esc(fmtDay(r.check.since))}</span>` : r.check.state === 'open' ? `Open${r.near_closure ? ` <span class="near">Near closure, ${pct(r.check.consumption)}</span>` : ''}` : 'No check'}</td>
     <td class="num">${pct(r.consumption)}</td><td class="num">${pct(r.performance)}</td><td class="num">${pct(r.risk)}</td><td>${spark(r.spark)}</td>
