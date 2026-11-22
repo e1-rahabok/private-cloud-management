@@ -214,7 +214,7 @@ try {
   const lum = c => { const [r, g, b] = c.match(/\d+/g).slice(0, 3).map(x => { x = x / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
   const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
   const band = v => v >= 75 ? 'green' : v >= 50 ? 'yellow' : v >= 25 ? 'orange' : 'red';
-  const pills = async () => page.$$eval('.metric', ms => ms.map(m => ({ key: m.dataset.metric || m.dataset.kpi, pills: [...m.querySelectorAll('dd')].map(d => { const p = d.querySelector('.bv'); if (!p) return null; const cs = getComputedStyle(p);
+  const pills = async () => page.$$eval('.metric:not(.kpi-details .metric)', ms => ms.map(m => ({ key: m.dataset.metric || m.dataset.kpi, pills: [...m.querySelectorAll('dd')].map(d => { const p = d.querySelector('.bv'); if (!p) return null; const cs = getComputedStyle(p);
     return { band: p.dataset.band, text: p.textContent.trim(), v: parseFloat(p.textContent), fg: cs.color, bg: cs.backgroundColor }; }) })));
   const pillsOk = (ms, hiw) => ms.every(m => m.pills.every(p => p === null || (p.band === band(hiw(m.key) ? 100 - p.v : p.v) && !/green|yellow|orange|red/i.test(p.text) && ratio(p.fg, p.bg) >= 4.5)));
   await go('/l2/monitor/compute/fr-bat-6839/performance');
@@ -225,7 +225,7 @@ try {
   const counterPlain = vmPills.filter(m => !/performance/.test(m.key)).every(m => m.pills.every(p => p === null));
   const vmPillOk = pillsOk(vmPills, () => false) && vmPills.filter(m => /performance/.test(m.key)).every(m => m.pills.every(p => p !== null));
   await go('/l2/monitor/compute/FR-B-04/performance');
-  const clKpis = await page.$$eval('[data-section="performance-kpis"] .metric h4', hs => hs.map(h => h.textContent));
+  const clKpis = await page.$$eval('[data-section="performance-kpis"] .metric:not(.kpi-details .metric) h4', hs => hs.map(h => h.textContent));
   const clText = await page.innerText('main');
   const clPills = await pills();
   const clPillOk = pillsOk(clPills, k => k === 'cluster_risk') && clPills.filter(m => m.key.startsWith('cluster_')).every(m => m.pills.every(p => p !== null));
@@ -246,6 +246,22 @@ try {
     && clKpis.join() === 'Cluster Performance,Cluster Risk' && clPillOk && noCards
     && capFirst.join() === 'summary,verdict' && rem.join() === 'Capacity Remaining,Time Remaining,VM Remaining' && !/Placeholder values/.test(placeholder) && capPillOk && partsOk,
     `VM ${vmKpis}; cluster ${clKpis}; capacity ${capFirst} ${rem}; pills ${vmPillOk}/${clPillOk}/${capPillOk}/${partsOk}`);
+
+  // LPG-24 Details under each cluster KPI: closed by default, one chart per part, risk parts banded from the catalog's ends (D-106)
+  await go('/l2/monitor/compute/FR-B-04/performance');
+  const dets = await page.$$eval('details.kpi-details', ds => ds.map(d => ({ key: d.dataset.details, open: d.open, title: d.querySelector('summary').firstChild.textContent.trim(), parts: d.querySelectorAll('.metric').length })));
+  const detsClosed = dets.map(d => d.key).join() === 'cluster_performance,cluster_risk' && dets.every(d => !d.open && d.title === 'Details');
+  await page.click('details[data-details="cluster_risk"] summary');
+  await page.click('details[data-details="cluster_performance"] summary');
+  const detsOpen = await page.$$eval('details.kpi-details', ds => ds.map(d => ({ open: d.open, parts: d.querySelectorAll('.metric').length, charts: d.querySelectorAll('svg.lc').length, w: Math.round(d.querySelector('svg.lc').getBoundingClientRect().width) })));
+  const RISK_END = { highest_esxi_cpu_thread_utilization: [60, 80, 90], worst_esxi_memory_ballooned: [1, 2, 4], highest_esxi_cpu_overcommit: [2, 3, 4] };
+  const riskPills = await page.$$eval('details[data-details="cluster_risk"] .metric', ms => ms.map(m => ({ key: m.dataset.metric, pills: [...m.querySelectorAll('dd .bv')].map(p => ({ band: p.dataset.band, v: parseFloat(p.textContent) })) })));
+  const riskBandOk = riskPills.filter(m => RISK_END[m.key]).length === 3 && riskPills.filter(m => RISK_END[m.key]).every(m => m.pills.every(p => p.band === (['green', 'yellow', 'orange'].find((_, i) => p.v <= RISK_END[m.key][i]) || 'red')));
+  const perfPills = await page.$$eval('details[data-details="cluster_performance"] .metric:not([data-metric="highest_esxi_packets"]) .bv', ps => ps.length);
+  await go('/l2/monitor/compute/fr-esx-244/performance');
+  const hostDets = await page.$$eval('details.kpi-details', ds => ds.length);
+  check('LPG-24', detsClosed && detsOpen.length === 2 && detsOpen.every(d => d.open && d.charts === d.parts && d.w > 300) && detsOpen[0].parts === 9 && detsOpen[1].parts === 11 && riskBandOk && perfPills === 0 && hostDets === 0,
+    `closed ${detsClosed}; open ${JSON.stringify(detsOpen)}; risk bands ${riskBandOk}; perf pills ${perfPills}; host ${hostDets}`);
 
   // LPG-16 moving between pages does not load the page; the window is a drop-down; tabs are tabs; no dot
   await go('/l2/monitor/compute/estate/summary');

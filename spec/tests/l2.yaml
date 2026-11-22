@@ -348,7 +348,9 @@ story:
       figures: [now, worst, percentile_95]
       iceberg_points: 7
       vm_has_kpis: false
-    decisions: [D-100]
+      kpi_details: { cluster_performance: 9, cluster_risk: 11, host: 0 }
+      kpi_details_figures: [now, worst, percentile_95]
+    decisions: [D-100, D-106]
   - id: LST-30
     name: Capacity Remaining, Time Remaining and VM Remaining from VCF Operations, on one VM, host or cluster only
     given: { vm: fr-bat-6839, host: fr-esx-244, cluster: FR-B-04, group: wld-fr-gen, window: 24h }
@@ -472,6 +474,13 @@ page:
       On fr-esx-244's Capacity tab the first section is the summary with Capacity Remaining, Time Remaining and VM Remaining, and
       says the values are placeholders from VCF Operations; then the verdict.
     decisions: [D-100]
+  - id: LPG-24
+    rule: >
+      Details (D-106). On FR-B-04's Performance tab each of Cluster Performance and Cluster Risk has a fold named "Details" under its
+      chart, closed when the page opens. Opened, Cluster Performance shows 9 charts and Cluster Risk 11, each at a readable width, one per
+      part. A Risk part's figures carry the band of the catalog's band ends. A Performance part has no band, except the ESXi packets:
+      the catalog has no level for a 5-minute point. An ESXi host has no Details.
+    decisions: [D-106]
   - id: LPG-21
     rule: >
       A clarifying answer shows its questions under "Agent E2 asks"; the next question sent carries the earlier turns. On a narrow screen
