@@ -238,24 +238,23 @@ PERFORMANCE_PARTS = (
     ("worst_vcpu_ready", "Worst peak vCPU Ready among all VMs", "%", 1, lambda c: c * 0.18, [4, 8, 16]),
     ("worst_vcpu_costop", "Worst peak vCPU Co-stop among all VMs", "%", 1, lambda c: c * 0.08, [2, 4, 8]),
     ("worst_memory_wait", "Worst memory wait among all VMs", "%", 1, lambda c: c * 0.04, [1, 2, 4]),
-    ("worst_disk_latency", "Worst peak read/write disk latency, all VM vDisks", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
+    ("worst_disk_latency", "Worst peak disk latency among all VM virtual disks", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
     ("p90_vcpu_ready", "90th percentile peak vCPU Ready among VMs", "%", 1, lambda c: c * 0.05, [1, 2, 4]),
     ("p90_vcpu_costop", "90th percentile peak vCPU Co-stop among VMs", "%", 1, lambda c: c * 0.02, [0.5, 1, 2]),
     ("p90_memory_wait", "90th percentile memory wait among VMs", "%", 1, lambda c: c * 0.01, [0.5, 1, 2]),
-    ("p90_disk_latency", "90th percentile peak read/write latency among VM virtual disks", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
+    ("p90_disk_latency", "90th percentile peak disk latency among VM virtual disks", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
     ("highest_esxi_packets", "Highest ESXi (error + dropped) network packets", "%", 2, lambda c: c * 0.004, [0, 0.2, 0.4]),
 )
-# An ESXi host: the same nine parts over the VMs on the host (HostSystem rows of the same catalog file). Memory wait is
-# "memory latency" there. D-108.
+# An ESXi host: the same nine parts over the VMs on the host (HostSystem rows of the same catalog file). D-108.
 HOST_PARTS = (
     ("worst_vcpu_ready", "Worst peak vCPU Ready among VMs on the host", "%", 1, lambda c: c * 0.18, [4, 8, 16]),
     ("worst_vcpu_costop", "Worst peak vCPU Co-stop among VMs on the host", "%", 1, lambda c: c * 0.08, [2, 4, 8]),
-    ("worst_memory_latency", "Worst memory latency among VMs on the host", "%", 1, lambda c: c * 0.04, [1, 2, 4]),
-    ("worst_disk_latency", "Worst peak read/write disk latency, all vDisks of VMs on the host", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
+    ("worst_memory_latency", "Worst memory wait among VMs on the host", "%", 1, lambda c: c * 0.04, [1, 2, 4]),
+    ("worst_disk_latency", "Worst peak disk latency among virtual disks of VMs on the host", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
     ("p90_vcpu_ready", "90th percentile peak vCPU Ready among VMs on the host", "%", 1, lambda c: c * 0.05, [1, 2, 4]),
     ("p90_vcpu_costop", "90th percentile peak vCPU Co-stop among VMs on the host", "%", 1, lambda c: c * 0.02, [0.5, 1, 2]),
-    ("p90_memory_latency", "90th percentile memory latency among VMs on the host", "%", 1, lambda c: c * 0.01, [0.5, 1, 2]),
-    ("p90_disk_latency", "90th percentile peak read/write latency among virtual disks of VMs on the host", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
+    ("p90_memory_latency", "90th percentile memory wait among VMs on the host", "%", 1, lambda c: c * 0.01, [0.5, 1, 2]),
+    ("p90_disk_latency", "90th percentile peak disk latency among virtual disks of VMs on the host", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
     ("esxi_packets", "ESXi (error + dropped) network packets", "%", 2, lambda c: c * 0.004, [0, 0.2, 0.4]),
 )
 # Where red ends on a part's chart (the last number of the catalog's red band). The chart gives each of the four bands
