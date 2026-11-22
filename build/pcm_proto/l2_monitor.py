@@ -97,44 +97,61 @@ def perf_score(E, n: dict, now: datetime, window: str, enable=()) -> float | Non
 
 def guest_os_values(vm: dict, act: dict) -> dict:
     """The Guest OS's "on my court" values (l2.realms). Planted for story VMs, normal otherwise."""
+    healthy = {"disk_queue": 1 + int(X._h(vm["id"], "dq") * 4), "free_memory_mb": 700 + int(X._h(vm["id"], "fm") * 1200)}
     if act.get("L-2") and vm["id"] == act["L-2"]["objects"]["vm"]:
-        return dict(act["L-2"]["plant"]["guest_os"])
+        return {**healthy, **act["L-2"]["plant"]["guest_os"]}
     if act.get("T-1") and vm["id"] == act["T-1"]["objects"]["vm"]:
-        return dict(act["T-1"]["plant"]["guest_os"])
+        return {**healthy, **act["T-1"]["plant"]["guest_os"]}
     h = X._h(vm["id"], "os")
     return {"run_queue_per_vcpu": round(0.1 + h * 0.6, 2), "context_switches_per_s": int(3000 + h * 9000),
-            "paging_per_s": int(h * 4), "guest_os_performance": round(90 + h * 8, 1)}
+            "paging_per_s": int(h * 4), "guest_os_performance": round(90 + h * 8, 1), **healthy}
 
 
 def vm_values(vm: dict, score: float, act: dict) -> dict:
     """The VM's "on my court" values (l2.realms)."""
+    lack = max(0.0, 100 - score)
+    # The sub-metrics of the VM Performance KPI without a planted value: healthy, a little worse as the score falls.
+    base = {"cpu_ready_percent": round(0.3 + lack * 0.12, 1), "co_stop_percent": round(lack * 0.02, 1),
+            "cpu_overlap_percent": round(0.1 + lack * 0.02, 1), "memory_contention_percent": 0.0,
+            "disk_latency_ms": round(2 + lack * 0.2, 1), "network_dropped_tx_percent": 0.0,
+            "cpu_run_percent": round(40 + X._h(vm["id"], "run") * 40, 1), "memory_ballooned_percent": 0.0,
+            "memory_zip_swap_percent": 0.0, "vm_performance": score}
     if act.get("L-2") and vm["id"] == act["L-2"]["objects"]["vm"]:
-        return {k: v for k, v in act["L-2"]["plant"]["vm"].items()}
+        p = dict(act["L-2"]["plant"]["vm"])
+        if "memory_wait_percent" in p:
+            p["memory_contention_percent"] = p.pop("memory_wait_percent")
+        return {**base, **p}
     if act.get("T-1") and vm["id"] == act["T-1"]["objects"]["vm"]:
         c = act["T-1"]["plant"]["vm_counters"]
-        return {"cpu_ready_percent": c["cpu_ready_percent"], "co_stop_percent": c["co_stop_percent"],
-                "memory_wait_percent": c["memory_wait_percent"], "disk_latency_ms": c["disk_latency_ms"], "vm_performance": score}
-    lack = max(0.0, 100 - score)
-    return {"cpu_ready_percent": round(0.3 + lack * 0.12, 1), "co_stop_percent": round(lack * 0.02, 1),
-            "memory_wait_percent": 0.0, "disk_latency_ms": round(2 + lack * 0.2, 1), "vm_performance": score}
+        return {**base, "cpu_ready_percent": c["cpu_ready_percent"], "co_stop_percent": c["co_stop_percent"],
+                "memory_contention_percent": c["memory_wait_percent"], "disk_latency_ms": c["disk_latency_ms"],
+                "cpu_run_percent": c.get("run_percent", base["cpu_run_percent"]), "vm_performance": score}
+    return base
 
 
 # ---------------------------------------------------------------- a VM's two layers (l2.realms, D-092)
 
 # (key, label, unit, better, decimals, scale, band_ends). The label never holds the unit; the unit follows the number.
 # band_ends: upper end of green, yellow, orange, from the Agent E2 catalog (thresholds-performance.yaml, VirtualMachine and
-# Guest OS rows). None where the catalog has no row in the same unit (Run Queue is a count there, here per vCPU; Context Switches).
+# Guest OS rows; Run Queue per vCPU from the adapter's Guest OS Performance table: 2, 4, 8). None where there is no row (Context Switches).
 LAYER_METRICS = (
     ("guest_os", "Guest OS", (
-        ("run_queue_per_vcpu", "Run Queue", " per vCPU", "lower", 2, None, None),
+        ("run_queue_per_vcpu", "Run Queue", " per vCPU", "lower", 2, None, [2, 4, 8]),
         ("context_switches_per_s", "Context Switches", "/s", "lower", 0, None, None),
-        ("paging_per_s", "Paging", " pages/s", "lower", 0, None, [1000, 2000, 4000]),
+        ("disk_queue", "Disk Queue", " IOs", "lower", 0, None, [20, 40, 80]),
+        ("free_memory_mb", "Free Memory", " MB", "higher", 0, None, [512, 256, 128]),
+        ("paging_per_s", "Page-Out Rate", " pages/s", "lower", 0, None, [1000, 2000, 4000]),
         ("guest_os_performance", "Guest OS Performance", "%", "higher", 1, (0, 100), None))),
     ("virtual_motherboard", "Virtual Motherboard", (
         ("cpu_ready_percent", "CPU Ready", "%", "lower", 1, None, [2, 4, 8]),
         ("co_stop_percent", "CPU Co-Stop", "%", "lower", 1, None, [1, 2, 4]),
-        ("memory_wait_percent", "Memory Wait", "%", "lower", 1, None, [0.5, 1, 2]),
+        ("cpu_overlap_percent", "CPU Overlap", "%", "lower", 1, None, [0.5, 1, 2]),
+        ("memory_contention_percent", "Memory Contention", "%", "lower", 1, None, [0.5, 1, 2]),
         ("disk_latency_ms", "Disk Latency", " ms", "lower", 1, None, [10, 20, 40]),
+        ("network_dropped_tx_percent", "Network Dropped Tx", "%", "lower", 1, None, [0, 0.5, 1]),
+        ("cpu_run_percent", "CPU Run", "%", "lower", 1, None, [95, 97, 99]),
+        ("memory_ballooned_percent", "Memory Ballooned", "%", "lower", 1, None, [2, 4, 8]),
+        ("memory_zip_swap_percent", "Memory Zip Swap", "%", "lower", 1, None, [0.25, 0.5, 1]),
         ("vm_performance", "VM Performance", "%", "higher", 1, (0, 100), None))),
 )
 
@@ -145,7 +162,9 @@ def _series(vm_id: str, key: str, now_value: float, better: str, decimals: int, 
     out = []
     for i in range(n):
         h, spike = X._h(vm_id, key, i), X._h(vm_id, key, "spike", i)
-        if better == "higher":
+        if better == "higher" and scale is None:
+            v = max(0, now_value * (0.9 + 0.2 * h) * (0.6 if spike > 0.97 else 1))
+        elif better == "higher":
             v = now_value + (h - 0.5) * 6 - (8 + 12 * spike if spike > 0.97 else 0)
             v = min(scale[1], max(scale[0], v))
         else:

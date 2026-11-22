@@ -479,17 +479,24 @@ entries:
       guest_os:
         title: Guest OS
         metrics:
-          run_queue_per_vcpu:     { label: "Run Queue",              unit: " per vCPU", better: lower,  decimals: 2 }
+          run_queue_per_vcpu:     { label: "Run Queue",              unit: " per vCPU", better: lower,  decimals: 2, band_ends: [2, 4, 8] }
           context_switches_per_s: { label: "Context Switches",       unit: "/s",        better: lower,  decimals: 0 }
-          paging_per_s:           { label: "Paging",                 unit: " pages/s",  better: lower,  decimals: 0, band_ends: [1000, 2000, 4000] }
+          disk_queue:             { label: "Disk Queue",             unit: " IOs",      better: lower,  decimals: 0, band_ends: [20, 40, 80] }
+          free_memory_mb:         { label: "Free Memory",            unit: " MB",       better: higher, decimals: 0, band_ends: [512, 256, 128] }  # higher is better: lower limits of green, yellow, orange
+          paging_per_s:           { label: "Page-Out Rate",                 unit: " pages/s",  better: lower,  decimals: 0, band_ends: [1000, 2000, 4000] }
           guest_os_performance:   { label: "Guest OS Performance",   unit: "%",         better: higher, decimals: 1, scale: [0, 100] }
       virtual_motherboard:
         title: Virtual Motherboard
         metrics:
           cpu_ready_percent:      { label: "CPU Ready",              unit: "%",         better: lower,  decimals: 1, band_ends: [2, 4, 8] }
           co_stop_percent:        { label: "CPU Co-Stop",            unit: "%",         better: lower,  decimals: 1, band_ends: [1, 2, 4] }
-          memory_wait_percent:    { label: "Memory Wait",            unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
+          cpu_overlap_percent:    { label: "CPU Overlap",            unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
+          memory_contention_percent: { label: "Memory Contention",   unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
           disk_latency_ms:        { label: "Disk Latency",           unit: " ms",       better: lower,  decimals: 1, band_ends: [10, 20, 40] }
+          network_dropped_tx_percent: { label: "Network Dropped Tx", unit: "%",         better: lower,  decimals: 1, band_ends: [0, 0.5, 1] }
+          cpu_run_percent:        { label: "CPU Run",                unit: "%",         better: lower,  decimals: 1, band_ends: [95, 97, 99] }
+          memory_ballooned_percent: { label: "Memory Ballooned",     unit: "%",         better: lower,  decimals: 1, band_ends: [2, 4, 8] }
+          memory_zip_swap_percent: { label: "Memory Zip Swap",       unit: "%",         better: lower,  decimals: 1, band_ends: [0.25, 0.5, 1] }
           vm_performance:         { label: "VM Performance",         unit: "%",         better: higher, decimals: 1, scale: [0, 100] }
     figures: [now, worst, percentile_95]
     percentile_95: "the value that 95% of the points were better than (nearest rank); the lowest 5% of points for a metric where higher is better"

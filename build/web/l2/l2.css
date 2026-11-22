@@ -148,7 +148,9 @@ svg.lc .ref { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 2 3;
 .metric dd { margin: 0; font-size: 20px; font-weight: 800; }
 .metric dd .muted { font-size: 13px; font-weight: 400; }
 .metric dd .u { font-size: 13px; font-weight: 500; color: var(--text-muted); }
-.metric .chart { margin: 0; padding: 34px 0 0; }  /* the plot starts level with the figures, below the title */
+.metric .chart { margin: 0; padding: 0; }  /* the title has its own full-width row, so the plot starts level with the figures */
+.metric > .mname { grid-column: 1 / -1; justify-content: flex-start; gap: 10px; }  /* one line, whatever its length */
+.metric > .mname h4 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 @media (max-width: 900px) {
   .metric { grid-template-columns: 1fr; }
   .frame { grid-template-columns: 1fr; }

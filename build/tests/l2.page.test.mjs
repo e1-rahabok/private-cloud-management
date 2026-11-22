@@ -205,8 +205,8 @@ try {
   const figs = await page.$$eval('.metric dd', xs => xs.map(x => x.textContent.trim()));
   const labels = await page.$$eval('.metric dt', xs => [...new Set(xs.map(x => x.textContent.trim()))]);
   const mainText = await page.innerText('main');
-  check('LPG-15', tabsText === 'Summary,Availability,Performance,Capacity,Security,Configuration' && layers.join() === 'guest_os,virtual_motherboard' && names.length === 9
-    && labels.join() === 'Now,Worst,95th percentile' && figs.every(f => /\d\+?(%|\/s| ms| per vCPU| pages\/s)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
+  check('LPG-15', tabsText === 'Summary,Availability,Performance,Capacity,Security,Configuration' && layers.join() === 'guest_os,virtual_motherboard' && names.length === 16
+    && labels.join() === 'Now,Worst,95th percentile' && figs.every(f => /\d\+?(%|\/s| ms| per vCPU| pages\/s| IOs| MB)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
     && !(await page.$('#grp')) && !/side by side|Just above the line|Children outside green/i.test(mainText) && !/average/i.test(mainText),
     `${tabsText}; ${layers}; ${names.length} charts; ${figs.slice(0, 3)}`);
 
@@ -215,17 +215,17 @@ try {
   const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
   const band = v => v >= 75 ? 'green' : v >= 50 ? 'yellow' : v >= 25 ? 'orange' : 'red';
   const pills = async () => page.$$eval('.metric:not(.kpi-details .metric)', ms => ms.map(m => ({ key: m.dataset.metric || m.dataset.kpi, pills: [...m.querySelectorAll('dd')].map(d => { const p = d.querySelector('.bv'); if (!p) return null; const cs = getComputedStyle(p);
-    return { band: p.dataset.band, text: p.textContent.trim(), v: parseFloat(p.textContent), fg: cs.color, bg: cs.backgroundColor }; }) })));
+    return { band: p.dataset.band, text: p.textContent.trim(), v: parseFloat(p.textContent.replace(/,/g, '')), fg: cs.color, bg: cs.backgroundColor }; }) })));
   const pillsOk = (ms, hiw) => ms.every(m => m.pills.every(p => p === null || (p.band === band(hiw(m.key) ? 100 - p.v : p.v) && !/green|yellow|orange|red/i.test(p.text) && ratio(p.fg, p.bg) >= 4.5)));
   await go('/l2/monitor/compute/fr-bat-6839/performance');
   const vmFirst = await page.$eval('section.persp', s => s.dataset.section);
   const vmKpis = await page.$$eval('[data-section="performance-kpis"] .metric', ms => ms.map(m => m.dataset.metric));
   const vmLayerKpis = await page.$$eval('section.layer .metric', ms => ms.map(m => m.dataset.metric).filter(k => /performance/.test(k)));
   const vmPills = await pills();
-  const VM_END = { paging_per_s: [1000, 2000, 4000], cpu_ready_percent: [2, 4, 8], co_stop_percent: [1, 2, 4], memory_wait_percent: [0.5, 1, 2], disk_latency_ms: [10, 20, 40] };
-  const endOf = (v, e) => ['green', 'yellow', 'orange'].find((_, i) => v <= e[i]) || 'red';
+  const VM_END = { run_queue_per_vcpu: [2, 4, 8], disk_queue: [20, 40, 80], free_memory_mb: [512, 256, 128], paging_per_s: [1000, 2000, 4000], cpu_ready_percent: [2, 4, 8], co_stop_percent: [1, 2, 4], cpu_overlap_percent: [0.5, 1, 2], memory_contention_percent: [0.5, 1, 2], disk_latency_ms: [10, 20, 40], network_dropped_tx_percent: [0, 0.5, 1], cpu_run_percent: [95, 97, 99], memory_ballooned_percent: [2, 4, 8], memory_zip_swap_percent: [0.25, 0.5, 1] };
+  const endOf = (v, e) => ['green', 'yellow', 'orange'].find((_, i) => e[0] > e[1] ? v >= e[i] : v <= e[i]) || 'red';
   const counterPlain = vmPills.filter(m => !/performance/.test(m.key) && !VM_END[m.key]).every(m => m.pills.every(p => p === null))
-    && vmPills.filter(m => VM_END[m.key]).length === 5 && vmPills.filter(m => VM_END[m.key]).every(m => m.pills.every(p => p !== null && p.band === endOf(p.v, VM_END[m.key])));
+    && vmPills.filter(m => VM_END[m.key]).length === 13 && vmPills.filter(m => VM_END[m.key]).every(m => m.pills.every(p => p !== null && p.band === endOf(p.v, VM_END[m.key])));
   const vmPillOk = pillsOk(vmPills.filter(m => /performance/.test(m.key)), () => false) && vmPills.filter(m => /performance/.test(m.key)).every(m => m.pills.every(p => p !== null));
   await go('/l2/monitor/compute/FR-B-04/performance');
   const clKpis = await page.$$eval('[data-section="performance-kpis"] .metric:not(.kpi-details .metric) h4', hs => hs.map(h => h.textContent));
@@ -311,7 +311,7 @@ try {
   await go('/l2/monitor/compute/fr-svc-5526/performance');
   await page.waitForSelector('body[data-e2="up"]');
   const marks = await page.$$eval('.metric', ms => ms.map(m => [m.querySelector('h4').textContent, m.querySelector('.e2mark') && m.querySelector('.e2mark').getAttribute('aria-label')]));
-  const marksOk = marks.length === 9 && marks.every(([n, l]) => l === `Ask Agent E2 about ${n}`);
+  const marksOk = marks.length === 16 && marks.every(([n, l]) => l === `Ask Agent E2 about ${n}`);
   await page.click('.metric[data-metric="run_queue_per_vcpu"] .e2mark'); await page.waitForSelector('#e2 [data-sugg]');
   await page.waitForTimeout(300);
   const panelBox = await page.$eval('#e2', e => e.getBoundingClientRect().toJSON());
