@@ -84,6 +84,8 @@ api: /api/l2/agent/ask
 - **Docked on the right, 400 px.** It pushes the content; it never covers it. While it is open:
   - the inventory tree folds to a 48 px strip with one button, "Show the inventory"; hover or focus opens it over the content, and a click on a node still navigates;
   - the card asked about has an outline, until another card is asked about or the panel closes.
+- **Fits the window.** The panel is fixed to the window, below the demo bar when it is shown. The answers scroll inside it; the head and the question box stay in view. A long answer never pushes the panel off screen.
+- **One fold per question.** Each question with its answer is a fold: the newest is open, older ones show only the question, one line. A click opens or closes any of them and the choice is kept. The context (object · tab · window) is shown on a question only when it differs from the one above it.
 - **Head:** "Agent E2", the context in one line (object · tab · window, or the case), and Close (×). Esc closes it and returns the focus to the mark that opened it.
 - **The panel stays open across pages** (no page load). Its context follows the page. Each context (object and tab, or case) keeps its own conversation for the browser session.
 - **Suggested questions** when a conversation starts, and again when its context changes (another card or the page itself), three at most, by what was clicked:
@@ -99,7 +101,7 @@ api: /api/l2/agent/ask
   - on the Summary tab: every pillar with its status and headline;
   - on a VM's Performance tab: both layers, each with its status and, per metric, Now, Worst with its time, 95th percentile and which way is better. No points: those go with a question about one metric.
 - **What PCM sends for a layer of a VM:** that layer's status and every metric with its points, Now, Worst, 95th percentile; the other layer's status and figures without points.
-- **What PCM sends with every question: the screen** (D-102), so Agent E2 speaks of what the person sees, never of the data behind it ("the provided JSON"):
+- **What PCM sends with every question: the screen** (D-103), so Agent E2 speaks of what the person sees, never of the data behind it ("the provided JSON"):
   - who asks (an L2 platform engineer) and that they typed only the question;
   - the page: the object, its kind, the tab and the window, as in the panel's context line;
   - what was clicked: the top bar mark (the whole page), or the mark on a chart, layer, finding or case, by its name;

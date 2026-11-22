@@ -379,7 +379,7 @@ story:
       metric_clicked: "the E2 mark on the Run Queue chart, in the Guest OS layer"
       page_clicked: "the E2 mark in the top bar: a question about the whole page"
       no_drop_verdict_from_pcm: true
-    decisions: [D-078, D-102]
+    decisions: [D-078, D-103]
 
 page:
   - id: LPG-1

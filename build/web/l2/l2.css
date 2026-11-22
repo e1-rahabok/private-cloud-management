@@ -202,7 +202,8 @@ body.e2-open aside.tree:hover #tree, body.e2-open aside.tree:focus-within #tree 
   overflow: auto; background: #fff; padding: 14px 12px 24px; border-right: 1px solid var(--line); box-shadow: 8px 0 24px rgba(11,27,43,.12); }
 /* L2 also carries body.desk (noc.css adds a 400px margin to main); the grid already reserves the panel column. */
 body.desk.l2.e2-open main { margin-right: 0; }
-.e2panel { grid-column: 3; position: sticky; top: 0; align-self: start; height: calc(100vh - 66px); }
+/* Fixed to the viewport (noc.css): top and bottom set the height, so the answers scroll inside .e2body. align-self:start would shrink it to its content and push it off screen. */
+.e2panel { grid-column: 3; align-self: stretch; }
 /* Narrow screen: the panel is a sheet over the page, Close at the top */
 @media (max-width: 900px) {
   body.e2-open .frame { grid-template-columns: 1fr; }
