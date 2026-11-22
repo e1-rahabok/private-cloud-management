@@ -206,7 +206,7 @@ try {
   const labels = await page.$$eval('.metric dt', xs => [...new Set(xs.map(x => x.textContent.trim()))]);
   const mainText = await page.innerText('main');
   check('LPG-15', tabsText === 'Summary,Availability,Performance,Capacity,Security,Configuration' && layers.join() === 'guest_os,virtual_motherboard' && names.length === 9
-    && labels.join() === 'Now,Worst,95th percentile' && figs.every(f => /\d(%|\/s| ms| per vCPU| pages\/s)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
+    && labels.join() === 'Now,Worst,95th percentile' && figs.every(f => /\d\+?(%|\/s| ms| per vCPU| pages\/s)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
     && !(await page.$('#grp')) && !/side by side|Just above the line|Children outside green/i.test(mainText) && !/average/i.test(mainText),
     `${tabsText}; ${layers}; ${names.length} charts; ${figs.slice(0, 3)}`);
 
@@ -233,11 +233,11 @@ try {
   await go('/l2/monitor/compute/fr-esx-244/capacity');
   const capFirst = await page.evaluate(() => [...document.querySelectorAll('[data-section="capacity-summary"], [data-verdict]')].map(e => e.dataset.section ? 'summary' : 'verdict'));
   const rem = await page.$$eval('[data-remaining] h3', hs => hs.map(h => h.textContent));
-  const placeholder = await page.innerText('[data-placeholder]');
+  const placeholder = await page.innerText('[data-section="capacity-summary"]');
   const capPillOk = pillsOk(await pills(), k => k !== 'performance');
   check('LPG-23', vmFirst === 'performance-kpis' && vmKpis.join() === 'guest_os_performance,vm_performance' && vmLayerKpis.length === 0 && counterPlain && vmPillOk
     && clKpis.join() === 'Cluster Performance,Cluster Risk' && clPillOk && noCards
-    && capFirst.join() === 'summary,verdict' && rem.join() === 'Capacity Remaining,Time Remaining,VM Remaining' && /Placeholder values.*VCF Operations/.test(placeholder) && capPillOk,
+    && capFirst.join() === 'summary,verdict' && rem.join() === 'Capacity Remaining,Time Remaining,VM Remaining' && !/Placeholder values/.test(placeholder) && capPillOk,
     `VM ${vmKpis}; cluster ${clKpis}; capacity ${capFirst} ${rem}; pills ${vmPillOk}/${clPillOk}/${capPillOk}`);
 
   // LPG-16 moving between pages does not load the page; the window is a drop-down; tabs are tabs with a dot each

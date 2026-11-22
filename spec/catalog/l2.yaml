@@ -265,7 +265,7 @@ entries:
       capacity_remaining: { label: "Capacity Remaining", unit: "%", on: [vm, host, cluster] }
       time_remaining:     { label: "Time Remaining", unit: " days", on: [vm, host, cluster] }
       vm_remaining:       { label: "VM Remaining", unit: " VMs", on: [host, cluster] }
-    release_1_0: "Placeholder values, stable per object, flagged placeholder: true, and labelled as placeholders on the page. Replaced by the read values, with their time, when PCM reads VCF Operations."
+    release_1_0: "Placeholder values, stable per object, flagged placeholder: true, with no label on the page. Replaced by the read values, with their time, when PCM reads VCF Operations."
     to_verify: "D-062: the metric keys of Capacity Remaining, Time Remaining and VM Remaining on VM, host and cluster in VCF Operations 9.1"
     decisions: [D-094, D-100]
 
