@@ -220,7 +220,7 @@ body.desk.l2.e2-open main { margin-right: 0; }
 .bv.yellow { background: #F7EBB5; color: #5C4700; border-color: var(--band-yellow); }
 .bv.orange { background: #F9DCC8; color: #7A2A05; border-color: var(--band-orange); }
 .bv.red { background: #F6D6D1; color: #8F1D13; border-color: var(--band-red); }
-.bv .u { color: inherit; }
+.bv .u, .metric dd .bv .u { color: inherit; }
 section.kpis { margin-bottom: 18px; }
 .cards.remaining .card { min-height: 0; }
 .cards.remaining .big2 .u { font-size: 16px; font-weight: 600; color: var(--text-muted); margin-left: 4px; }

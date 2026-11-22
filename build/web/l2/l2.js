@@ -490,11 +490,16 @@ function metricBlock(m, layer) {
   const top = score ? 100 : m.unit === '%' && hiV > 50 && hiV <= 100 ? 100 : niceMax(hiV * 1.1);  // a percentage near full reads on 0 to 100%, never 200%
   const fmt = (v, tick) => withUnit(v, m, tick);
   const hiw = m.better === 'lower';
+  // A counter with band_ends is drawn like a KPI: tinted zones behind the line, the line in the band of its value (D-108).
+  const ends = !score && m.band_ends ? m.band_ends : null;
+  const zones = ends ? [[0, ends[0], 'green'], [ends[0], ends[1], 'yellow'], [ends[1], ends[2], 'orange'], [ends[2], top, 'red']]
+    .filter(([lo]) => lo < top).map(([lo, hi, b]) => [lo, Math.min(hi, top), b]) : undefined;
   const series = [score ? (hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: riskBand, worse: Math.max }
     : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min })
+    : ends ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: v => endBand(v, ends), worse: Math.max }
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
-    fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? (hiw ? HIGH_BANDS : LOW_BANDS) : undefined });
+    fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? (hiw ? HIGH_BANDS : LOW_BANDS) : zones });
   const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, { p95: fmt(m.percentile_95), worst: fmtPoint(m.worst.t, m.minutes) }) : '';
   return `<div class="metric" data-metric="${m.key}"><div class="mfig"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div>
     <dl><dt>Now</dt><dd>${bandFig(m.now, m, figure(m.now, m))}</dd><dt>Worst</dt><dd>${m.worst ? bandFig(m.worst.v, m, figure(m.worst.v, m)) : '–'}</dd><dt>95th percentile</dt><dd>${bandFig(m.percentile_95, m, figure(m.percentile_95, m))}</dd></dl></div>${chart}</div>`;

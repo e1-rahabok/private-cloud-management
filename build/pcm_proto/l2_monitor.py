@@ -118,19 +118,21 @@ def vm_values(vm: dict, score: float, act: dict) -> dict:
 
 # ---------------------------------------------------------------- a VM's two layers (l2.realms, D-092)
 
-# (key, label, unit, better, decimals, scale). The label never holds the unit; the unit follows the number.
+# (key, label, unit, better, decimals, scale, band_ends). The label never holds the unit; the unit follows the number.
+# band_ends: upper end of green, yellow, orange, from the Agent E2 catalog (thresholds-performance.yaml, VirtualMachine and
+# Guest OS rows). None where the catalog has no row in the same unit (Run Queue is a count there, here per vCPU; Context Switches).
 LAYER_METRICS = (
     ("guest_os", "Guest OS", (
-        ("run_queue_per_vcpu", "Run Queue", " per vCPU", "lower", 2, None),
-        ("context_switches_per_s", "Context Switches", "/s", "lower", 0, None),
-        ("paging_per_s", "Paging", " pages/s", "lower", 0, None),
-        ("guest_os_performance", "Guest OS Performance", "%", "higher", 1, (0, 100)))),
+        ("run_queue_per_vcpu", "Run Queue", " per vCPU", "lower", 2, None, None),
+        ("context_switches_per_s", "Context Switches", "/s", "lower", 0, None, None),
+        ("paging_per_s", "Paging", " pages/s", "lower", 0, None, [1000, 2000, 4000]),
+        ("guest_os_performance", "Guest OS Performance", "%", "higher", 1, (0, 100), None))),
     ("virtual_motherboard", "Virtual Motherboard", (
-        ("cpu_ready_percent", "CPU Ready", "%", "lower", 1, None),
-        ("co_stop_percent", "CPU Co-Stop", "%", "lower", 1, None),
-        ("memory_wait_percent", "Memory Wait", "%", "lower", 1, None),
-        ("disk_latency_ms", "Disk Latency", " ms", "lower", 1, None),
-        ("vm_performance", "VM Performance", "%", "higher", 1, (0, 100)))),
+        ("cpu_ready_percent", "CPU Ready", "%", "lower", 1, None, [2, 4, 8]),
+        ("co_stop_percent", "CPU Co-Stop", "%", "lower", 1, None, [1, 2, 4]),
+        ("memory_wait_percent", "Memory Wait", "%", "lower", 1, None, [0.5, 1, 2]),
+        ("disk_latency_ms", "Disk Latency", " ms", "lower", 1, None, [10, 20, 40]),
+        ("vm_performance", "VM Performance", "%", "higher", 1, (0, 100), None))),
 )
 
 
@@ -159,13 +161,14 @@ def vm_layers(n: dict, now: datetime, window: str, act: dict, own: float) -> lis
     layers = []
     for lk, title, metrics in LAYER_METRICS:
         out = []
-        for key, label, unit, better, dec, scale in metrics:
+        for key, label, unit, better, dec, scale, ends in metrics:
             vals = _series(n["id"], key, values[lk][key], better, dec, scale, count)
             w = max(range(count), key=lambda i: vals[i]) if better == "lower" else min(range(count), key=lambda i: vals[i])
             p95 = P.nearest_rank(vals, 95 if better == "lower" else 5)
             out.append({"key": key, "label": label, "unit": unit, "better": better, "decimals": dec, "scale": scale,
                         "minutes": L // 60, "points": [{"t": t, "v": v} for t, v in zip(times, vals)],
-                        "now": vals[-1], "worst": {"v": vals[w], "t": times[w]}, "percentile_95": p95})
+                        "now": vals[-1], "worst": {"v": vals[w], "t": times[w]}, "percentile_95": p95,
+                        **({"band_ends": ends} if ends else {})})
         status = X.status_of(values[lk]["guest_os_performance"] if lk == "guest_os" else own)
         layers.append({"key": lk, "title": title, "status": status, "metrics": out})
     return layers
@@ -198,15 +201,28 @@ def _kpi(key: str, label: str, better: str, vals: list, times: list, minutes: in
 # catalog (its levels are for 20-second points), so it shows none. Memory tiering parts: only where hosts have a tier.
 # (key, label, unit, decimals, value from the KPI value v: contention is 100 - v for Performance, v for Risk, band_ends)
 PERFORMANCE_PARTS = (
-    ("worst_vcpu_ready", "Worst peak vCPU Ready among all VMs", "%", 1, lambda c: c * 0.18, None),
-    ("worst_vcpu_costop", "Worst peak vCPU Co-stop among all VMs", "%", 1, lambda c: c * 0.08, None),
-    ("worst_memory_wait", "Worst memory wait among all VMs", "%", 1, lambda c: c * 0.04, None),
-    ("worst_disk_latency", "Worst peak read/write disk latency, all VM vDisks", " ms", 1, lambda c: c * 3.2, None),
-    ("p90_vcpu_ready", "90th percentile peak vCPU Ready among VMs", "%", 1, lambda c: c * 0.05, None),
-    ("p90_vcpu_costop", "90th percentile peak vCPU Co-stop among VMs", "%", 1, lambda c: c * 0.02, None),
-    ("p90_memory_wait", "90th percentile memory wait among VMs", "%", 1, lambda c: c * 0.01, None),
-    ("p90_disk_latency", "90th percentile read/write latency among VM virtual disks", " ms", 1, lambda c: c * 1.0, None),
-    ("highest_esxi_packets", "Highest ESXi (error + dropped) network packets", "%", 2, lambda c: c * 0.004, [0.2, 0.4, 0.8]),
+    ("worst_vcpu_ready", "Worst peak vCPU Ready among all VMs", "%", 1, lambda c: c * 0.18, [4, 8, 16]),
+    ("worst_vcpu_costop", "Worst peak vCPU Co-stop among all VMs", "%", 1, lambda c: c * 0.08, [2, 4, 8]),
+    ("worst_memory_wait", "Worst memory wait among all VMs", "%", 1, lambda c: c * 0.04, [1, 2, 4]),
+    ("worst_disk_latency", "Worst peak read/write disk latency, all VM vDisks", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
+    ("p90_vcpu_ready", "90th percentile peak vCPU Ready among VMs", "%", 1, lambda c: c * 0.05, [1, 2, 4]),
+    ("p90_vcpu_costop", "90th percentile peak vCPU Co-stop among VMs", "%", 1, lambda c: c * 0.02, [0.5, 1, 2]),
+    ("p90_memory_wait", "90th percentile memory wait among VMs", "%", 1, lambda c: c * 0.01, [0.5, 1, 2]),
+    ("p90_disk_latency", "90th percentile read/write latency among VM virtual disks", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
+    ("highest_esxi_packets", "Highest ESXi (error + dropped) network packets", "%", 2, lambda c: c * 0.004, [0, 0.2, 0.4]),
+)
+# An ESXi host: the same nine parts over the VMs on the host (HostSystem rows of the same catalog file). Memory wait is
+# "memory latency" there. D-108.
+HOST_PARTS = (
+    ("worst_vcpu_ready", "Worst peak vCPU Ready among VMs on the host", "%", 1, lambda c: c * 0.18, [4, 8, 16]),
+    ("worst_vcpu_costop", "Worst peak vCPU Co-stop among VMs on the host", "%", 1, lambda c: c * 0.08, [2, 4, 8]),
+    ("worst_memory_latency", "Worst memory latency among VMs on the host", "%", 1, lambda c: c * 0.04, [1, 2, 4]),
+    ("worst_disk_latency", "Worst peak read/write disk latency, all vDisks of VMs on the host", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
+    ("p90_vcpu_ready", "90th percentile peak vCPU Ready among VMs on the host", "%", 1, lambda c: c * 0.05, [1, 2, 4]),
+    ("p90_vcpu_costop", "90th percentile peak vCPU Co-stop among VMs on the host", "%", 1, lambda c: c * 0.02, [0.5, 1, 2]),
+    ("p90_memory_latency", "90th percentile memory latency among VMs on the host", "%", 1, lambda c: c * 0.01, [0.5, 1, 2]),
+    ("p90_disk_latency", "90th percentile read/write latency among virtual disks of VMs on the host", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
+    ("esxi_packets", "ESXi (error + dropped) network packets", "%", 2, lambda c: c * 0.004, [0, 0.2, 0.4]),
 )
 RISK_PARTS = (
     ("highest_esxi_cpu_thread_utilization", "Highest ESXi CPU thread utilization", "%", 1, lambda r: min(100.0, 28 + 0.75 * r), [60, 80, 90]),
@@ -223,12 +239,12 @@ RISK_PARTS = (
 )
 
 
-def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int) -> list:
+def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int, host: bool = False) -> list:
     """l2.kpi_details: the parts of Cluster Performance or Cluster Risk over the window, same points as the KPI.
     Each part: points, Now, Worst with its time, 95th percentile (never an average). Lower is better for every part."""
-    perf = kpi_key == "cluster_performance"
+    perf = kpi_key in ("cluster_performance", "esxi_performance")
     out = []
-    for key, label, unit, dec, f, ends in PERFORMANCE_PARTS if perf else RISK_PARTS:
+    for key, label, unit, dec, f, ends in HOST_PARTS if host else PERFORMANCE_PARTS if perf else RISK_PARTS:
         pts = [None if v is None else round(max(0.0, f(100 - v if perf else v) * (0.92 + 0.16 * X._h(cid, key, i))), dec) for i, v in enumerate(vals)]
         if pts and pts[-1] is not None and vals[-1] is not None:
             pts[-1] = round(max(0.0, f(100 - vals[-1] if perf else vals[-1])), dec)
@@ -263,7 +279,11 @@ def object_kpis(E, n: dict, now: datetime, window: str, enable=()) -> list:
         return []
     label = OBJECT_KPI_LABEL.get(n["kind"], "Performance")
     key = label.lower().replace(" ", "_")
-    return [_kpi(key, label, "higher", _series(n["id"], key, round(s, 1), "higher", 1, (0, 100), count), times, L // 60)]
+    vals = _series(n["id"], key, round(s, 1), "higher", 1, (0, 100), count)
+    k = _kpi(key, label, "higher", vals, times, L // 60)
+    if n["kind"] == "host":  # D-108: the parts of ESXi Performance, as for a cluster
+        k["details"] = kpi_details(n["id"], key, vals, times, L // 60, host=True)
+    return [k]
 
 
 # ---------------------------------------------------------------- where an object sits
