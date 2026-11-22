@@ -468,7 +468,7 @@ function metricBlock(m, layer) {
 }
 function layersView(d) {
   return `<p class="muted">Over ${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point per ${fmtDur(d.layers[0].metrics[0].minutes)}. Each point holds the worst value inside it. The 95th percentile is the value that 95% of the points were better than.</p>`
-    + d.layers.map(l => `<section class="persp layer" data-layer="${l.key}"><h2>${esc(l.title)} ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span></h2>${l.metrics.map(m => metricBlock(m, l.key)).join('')}</section>`).join('');
+    + d.layers.map(l => `<section class="persp layer" data-layer="${l.key}"><h2>${esc(l.title)} ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span>${e2mark({ kind: 'vm_layer', layer: l.key, pillar: 'performance' }, `the ${l.title} layer`, { name: `${l.title} layer`, layer: l.title })}</h2>${l.metrics.map(m => metricBlock(m, l.key)).join('')}</section>`).join('');
 }
 function perfTab(p, d) {
   const cls = CLASS_NAME[p.class], m = p.point_minutes, sel = p.selected, C = p.consumer, P = p.provider;
@@ -906,6 +906,7 @@ const winName = w => (WINDOWS.find(x => x[0] === w) || WINDOWS[1])[1];
 function e2Label(c) {
   const where = `${objName()} · ${PNAME[c.pillar] || 'Summary'} · ${winName(c.window)}`;
   if (c.kind === 'metric' || c.kind === 'kpi') return `${c.show.about} · ${where}`;
+  if (c.kind === 'vm_layer') return `${c.show.name} · ${where}`;
   if (c.kind === 'finding') return `Finding: ${c.show.name || ''}`;
   if (c.case) return R.caseId ? `Case: ${objName()}${c.kind === 'link' ? ' · a link' : c.kind === 'layer' ? ` · ${c.show.about.replace(/^the /, '')}` : ''}` : 'Case';
   if (R.activity === 'troubleshoot' || R.activity === 'rules' || R.activity === 'calendar') return `${objName()} · ${R.activity.charAt(0).toUpperCase() + R.activity.slice(1)}`;
@@ -918,8 +919,11 @@ function suggestions(c) {
   const k = kindName().toLowerCase().replace(/^esxi /, 'ESXi ').replace(/^vm$/, 'VM');
   if (c.kind === 'metric' || c.kind === 'kpi') return [`Is ${c.show.p95} a problem for this ${k}?`, c.show.worst ? `Why the worst at ${c.show.worst}?` : null, 'What should I check next?'].filter(Boolean);
   if (c.kind === 'finding') return ['Explain this finding.', 'What should I check next?'];
+  if (c.kind === 'vm_layer') return [`Is the ${c.show.layer} layer the problem?`, 'Which of its metrics matters most here?', 'What should I check next?'];
   if (c.case) return ['Is the VMware platform the cause?', 'What should I check next?'];
-  return [`What needs me on this ${k}?`];
+  // A whole-page question: on a VM's Performance tab PCM sends both layers' figures (frame.md, Agent E2 panel).
+  if (c.pillar === 'performance' && k === 'VM') return [`Is this VM performing well over the ${winName(c.window).replace(/^Last /, 'last ')}?`, 'Which layer is the problem, if any?', 'What should I check next?'];
+  return [`What needs me on this ${k}?`, 'What should I check next?'];
 }
 function linkify(text, links) {
   let h = esc(text).replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -941,7 +945,7 @@ function e2Render() {
   if (!box || !c) return;
   const list = convs()[convKey(c)] || [];
   const thread = list.map(m => `<div class="e2q"><div class="lbl">${esc(m.label)}</div>${esc(m.q)}</div>${e2Answer(m.a)}`).join('');
-  const sugg = !E2.busy && !E2.pending && !list.length ? `<div class="e2sugg" role="group" aria-label="Suggested questions">${suggestions(c).map(q => `<button type="button" class="sugg" data-sugg="${esc(q)}">${esc(q)}</button>`).join('')}</div>` : '';
+  const sugg = !E2.busy && !E2.pending && (!list.length || list[list.length - 1].label !== e2Label(c)) ? `<div class="e2sugg" role="group" aria-label="Suggested questions">${suggestions(c).map(q => `<button type="button" class="sugg" data-sugg="${esc(q)}">${esc(q)}</button>`).join('')}</div>` : '';
   const kept = !E2.busy && box.querySelector('#e2q') ? box.querySelector('#e2q').value : '';
   box.innerHTML = `<div class="e2head"><span class="e2mark big" aria-hidden="true">E2</span><div class="e2who"><h2 id="e2title">Agent E2</h2><div class="ctx" data-e2ctx>${esc(e2Label(c))}</div></div>
       <button type="button" class="e2close" aria-label="Close Agent E2" title="Close (Esc)">×</button></div>
@@ -954,7 +958,7 @@ function e2Render() {
 }
 function e2Mark(el) {
   main.querySelectorAll('.e2-asked').forEach(x => x.classList.remove('e2-asked'));
-  const card = el && el.closest && el.closest('.metric, .finding, .clink, tr, .objhead');
+  const card = el && el.closest && el.closest('.metric, .finding, .clink, tr, .objhead, section.layer');
   if (card && main.contains(card)) card.classList.add('e2-asked');
 }
 function e2Open(ctx, opener) {

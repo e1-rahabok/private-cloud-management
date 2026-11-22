@@ -708,6 +708,10 @@ Source: Cost n Price n Value (in `sources/`).
 - On top of the content, the panel would cover the right half of the chart being asked about.
 - The tree is the menu (D-086). While L2 reads an answer they do not navigate; the tree folds to a strip and opens on hover or focus. The content loses about 50 px, not 400.
 
+**Whole-page questions** (added the same day)
+- The top bar mark asks about the page. On a VM's Performance tab, the page facts carry both layers' figures; on Summary, every pillar's status. Otherwise "Is this VM fine?" is answered without the numbers on screen.
+- A mark on each layer heading sits between one metric and the whole page.
+
 **Facts, not screenshots**
 - PCM owns the data (D-078). It rebuilds the facts from what was clicked (object, tab, window, metric), never from numbers the browser sends.
 - Agent E2 returns its sources, the values its code computed, and at most one round of clarifying questions.

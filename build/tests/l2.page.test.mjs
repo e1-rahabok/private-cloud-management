@@ -1,4 +1,4 @@
-// Page tests LPG-2 to LPG-21 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
+// Page tests LPG-2 to LPG-22 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
 // GENERATED from spec/tests/l2.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/l2.page.test.mjs
 import { spawn } from 'node:child_process';
@@ -264,6 +264,25 @@ try {
     && chips === 2 && boxes === 1 && objLinks.includes('fr-esx-218') && foot.includes('recorded in the action history') && sentFacts.role === 'l2' && sentFacts.facts.asked_about_metric.name === 'Run Queue'
     && stillOpen && /Capacity/.test(ctx2) && closed && focusBack === 'e2top',
     `${e2utils}; ${findRows.length} findings marked; ${marks.length} metric marks; chart right ${Math.round(chartRight)} <= panel ${Math.round(panelBox.x)}; ${ctx}; ${nSugg} suggestions; ${chips} sources; links ${objLinks}; then ${ctx2}; focus ${focusBack}`);
+
+  // LPG-22 a question about a layer, and a question about the whole page
+  await go('/l2/monitor/compute/fr-svc-5526/performance');
+  const layerMarks = await page.$$eval('section.layer > h2 .e2mark', ms => ms.map(m => m.getAttribute('aria-label')));
+  await page.click('section.layer[data-layer="guest_os"] > h2 .e2mark'); await page.waitForSelector('#e2 [data-sugg]');
+  const layerCtx = await page.innerText('[data-e2ctx]');
+  const layerSugg = await page.$$eval('#e2 [data-sugg]', bs => bs.map(b => b.textContent));
+  const layerOutlined = await page.$eval('section.layer[data-layer="guest_os"]', e => e.classList.contains('e2-asked'));
+  await page.keyboard.press('Escape');
+  await page.click('#e2top'); await page.waitForSelector('#e2 [data-sugg]');
+  const pageSugg = await page.$$eval('#e2 [data-sugg]', bs => bs.map(b => b.textContent));
+  const shownBefore = (await page.$$('#e2 .e2a')).length, sentBefore = E2_SEEN.length;
+  await page.click('#e2 [data-sugg]'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, shownBefore);
+  const pageFacts = E2_SEEN[sentBefore] && E2_SEEN[sentBefore].facts;
+  await page.keyboard.press('Escape');
+  check('LPG-22', layerMarks.join() === 'Ask Agent E2 about the Guest OS layer,Ask Agent E2 about the Virtual Motherboard layer' && /Guest OS layer/.test(layerCtx)
+    && layerSugg[0] === 'Is the Guest OS layer the problem?' && layerOutlined && pageSugg[0] === 'Is this VM performing well over the last 24 hours?'
+    && !!pageFacts && pageFacts.layers.length === 2 && pageFacts.layers.every(l => l.metrics.every(m => m.percentile_95 !== undefined && m.values === undefined)),
+    `${layerMarks.length} layer marks; ${layerCtx}; ${layerSugg[0]}; ${pageSugg[0]}; page facts layers ${pageFacts && pageFacts.layers.map(l => l.layer)}`);
 
   // LPG-21 a clarifying round carries the earlier turns; a narrow screen shows the panel as a sheet
   await go('/l2/monitor/compute/fr-svc-5526/performance');
