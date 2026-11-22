@@ -28,6 +28,14 @@
 .e2a .lbl, .e2computed .lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 10px 0 4px; }
 .e2computed .box { display: inline-block; margin: 0 6px 6px 0; padding: 4px 8px; border: 2px solid var(--text); border-radius: 6px; background: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
 .srcchip { display: inline-block; margin: 0 6px 6px 0; padding: 3px 8px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+/* Sources (D-099): closed by default; the summary is the control. */
+.e2src { margin: 10px 0 4px; }
+.e2src summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; padding: 2px 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.e2src summary::-webkit-details-marker { display: none; }
+.e2src summary::before { content: "\25B8"; font-size: 10px; }
+.e2src details[open] summary::before { content: "\25BE"; }
+.e2src summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 4px; }
+.e2src .srcchips { margin-top: 6px; }
 .e2asks ul { margin: 0 0 6px; padding-left: 18px; }
 .e2foot { margin-top: 8px; font-size: 12px; color: var(--text-muted); }
 .e2wait { color: var(--text-muted); padding: 8px 0; }
