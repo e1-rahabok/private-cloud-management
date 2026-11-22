@@ -112,19 +112,16 @@ def vm_values(vm: dict, score: float, act: dict) -> dict:
     lack = max(0.0, 100 - score)
     # The sub-metrics of the VM Performance KPI without a planted value: healthy, a little worse as the score falls.
     base = {"cpu_ready_percent": round(0.3 + lack * 0.12, 1), "co_stop_percent": round(lack * 0.02, 1),
-            "cpu_overlap_percent": round(0.1 + lack * 0.02, 1), "memory_contention_percent": 0.0,
+            "cpu_overlap_percent": round(0.1 + lack * 0.02, 1), "memory_wait_percent": 0.0,
             "disk_latency_ms": round(2 + lack * 0.2, 1), "network_dropped_tx_percent": 0.0,
             "cpu_run_percent": round(40 + X._h(vm["id"], "run") * 40, 1), "memory_ballooned_percent": 0.0,
             "memory_zip_swap_percent": 0.0, "vm_performance": score}
     if act.get("L-2") and vm["id"] == act["L-2"]["objects"]["vm"]:
-        p = dict(act["L-2"]["plant"]["vm"])
-        if "memory_wait_percent" in p:
-            p["memory_contention_percent"] = p.pop("memory_wait_percent")
-        return {**base, **p}
+        return {**base, **act["L-2"]["plant"]["vm"]}
     if act.get("T-1") and vm["id"] == act["T-1"]["objects"]["vm"]:
         c = act["T-1"]["plant"]["vm_counters"]
         return {**base, "cpu_ready_percent": c["cpu_ready_percent"], "co_stop_percent": c["co_stop_percent"],
-                "memory_contention_percent": c["memory_wait_percent"], "disk_latency_ms": c["disk_latency_ms"],
+                "memory_wait_percent": c["memory_wait_percent"], "disk_latency_ms": c["disk_latency_ms"],
                 "cpu_run_percent": c.get("run_percent", base["cpu_run_percent"]), "vm_performance": score}
     return base
 
@@ -146,7 +143,7 @@ LAYER_METRICS = (
         ("cpu_ready_percent", "CPU Ready", "%", "lower", 1, None, [2, 4, 8]),
         ("co_stop_percent", "CPU Co-Stop", "%", "lower", 1, None, [1, 2, 4]),
         ("cpu_overlap_percent", "CPU Overlap", "%", "lower", 1, None, [0.5, 1, 2]),
-        ("memory_contention_percent", "Memory Contention", "%", "lower", 1, None, [0.5, 1, 2]),
+        ("memory_wait_percent", "Memory Wait", "%", "lower", 1, None, [0.5, 1, 2]),
         ("disk_latency_ms", "Disk Latency", " ms", "lower", 1, None, [10, 20, 40]),
         ("network_dropped_tx_percent", "Network Dropped Tx", "%", "lower", 1, None, [0, 0.5, 1]),
         ("cpu_run_percent", "CPU Run", "%", "lower", 1, None, [95, 97, 99]),
@@ -238,39 +235,39 @@ PERFORMANCE_PARTS = (
     ("worst_vcpu_ready", "Worst peak vCPU Ready among all VMs", "%", 1, lambda c: c * 0.18, [4, 8, 16]),
     ("worst_vcpu_costop", "Worst peak vCPU Co-stop among all VMs", "%", 1, lambda c: c * 0.08, [2, 4, 8]),
     ("worst_memory_wait", "Worst memory wait among all VMs", "%", 1, lambda c: c * 0.04, [1, 2, 4]),
-    ("worst_disk_latency", "Worst peak read/write disk latency, all VM vDisks", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
+    ("worst_disk_latency", "Worst peak disk latency among all VM virtual disks", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
     ("p90_vcpu_ready", "90th percentile peak vCPU Ready among VMs", "%", 1, lambda c: c * 0.05, [1, 2, 4]),
     ("p90_vcpu_costop", "90th percentile peak vCPU Co-stop among VMs", "%", 1, lambda c: c * 0.02, [0.5, 1, 2]),
     ("p90_memory_wait", "90th percentile memory wait among VMs", "%", 1, lambda c: c * 0.01, [0.5, 1, 2]),
-    ("p90_disk_latency", "90th percentile read/write latency among VM virtual disks", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
+    ("p90_disk_latency", "90th percentile peak disk latency among VM virtual disks", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
     ("highest_esxi_packets", "Highest ESXi (error + dropped) network packets", "%", 2, lambda c: c * 0.004, [0, 0.2, 0.4]),
 )
-# An ESXi host: the same nine parts over the VMs on the host (HostSystem rows of the same catalog file). Memory wait is
-# "memory latency" there. D-108.
+# An ESXi host: the same nine parts over the VMs on the host (HostSystem rows of the same catalog file). D-108.
+# Memory wait is Memory Contention plus NVMe wait, for a cluster and for a host (D-110).
 HOST_PARTS = (
     ("worst_vcpu_ready", "Worst peak vCPU Ready among VMs on the host", "%", 1, lambda c: c * 0.18, [4, 8, 16]),
     ("worst_vcpu_costop", "Worst peak vCPU Co-stop among VMs on the host", "%", 1, lambda c: c * 0.08, [2, 4, 8]),
-    ("worst_memory_latency", "Worst memory latency among VMs on the host", "%", 1, lambda c: c * 0.04, [1, 2, 4]),
-    ("worst_disk_latency", "Worst peak read/write disk latency, all vDisks of VMs on the host", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
+    ("worst_memory_wait", "Worst memory wait among VMs on the host", "%", 1, lambda c: c * 0.04, [1, 2, 4]),
+    ("worst_disk_latency", "Worst peak disk latency among virtual disks of VMs on the host", " ms", 1, lambda c: c * 3.2, [40, 80, 160]),
     ("p90_vcpu_ready", "90th percentile peak vCPU Ready among VMs on the host", "%", 1, lambda c: c * 0.05, [1, 2, 4]),
     ("p90_vcpu_costop", "90th percentile peak vCPU Co-stop among VMs on the host", "%", 1, lambda c: c * 0.02, [0.5, 1, 2]),
-    ("p90_memory_latency", "90th percentile memory latency among VMs on the host", "%", 1, lambda c: c * 0.01, [0.5, 1, 2]),
-    ("p90_disk_latency", "90th percentile read/write latency among virtual disks of VMs on the host", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
+    ("p90_memory_wait", "90th percentile memory wait among VMs on the host", "%", 1, lambda c: c * 0.01, [0.5, 1, 2]),
+    ("p90_disk_latency", "90th percentile peak disk latency among virtual disks of VMs on the host", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
     ("esxi_packets", "ESXi (error + dropped) network packets", "%", 2, lambda c: c * 0.004, [0, 0.2, 0.4]),
 )
 # Where red ends on a part's chart (the last number of the catalog's red band). The chart gives each of the four bands
 # the same height, so every part reads alike: green, yellow, orange and red each a quarter of the axis.
-BAND_TOP = {"worst_vcpu_ready": 32, "worst_vcpu_costop": 16, "worst_memory_wait": 8, "worst_memory_latency": 8, "worst_disk_latency": 320,
-            "p90_vcpu_ready": 8, "p90_vcpu_costop": 4, "p90_memory_wait": 4, "p90_memory_latency": 4, "p90_disk_latency": 80,
+BAND_TOP = {"worst_vcpu_ready": 32, "worst_vcpu_costop": 16, "worst_memory_wait": 8, "worst_disk_latency": 320,
+            "p90_vcpu_ready": 8, "p90_vcpu_costop": 4, "p90_memory_wait": 4, "p90_disk_latency": 80,
             "highest_esxi_packets": 0.8, "esxi_packets": 0.8,
-            "highest_esxi_cpu_thread_utilization": 95, "worst_esxi_cpu_imbalance": 2, "highest_esxi_memory_consumed": 100,
+            "highest_esxi_cpu_thread_utilization": 95, "worst_esxi_cpu_imbalance": 2,
             "worst_esxi_memory_ballooned": 8, "worst_esxi_swapped_zipped_memory": 2, "highest_esxi_cpu_reservation": 80,
             "highest_esxi_memory_reservation": 80, "highest_esxi_cpu_overcommit": 4, "highest_esxi_memory_overcommit": 2.2,
-            "highest_cpu_monster_vm_host_ratio": 4, "highest_memory_monster_vm_host_ratio": 4}
+            "highest_cpu_monster_vm_host_ratio": 4, "highest_memory_monster_vm_host_ratio": 4,
+            "worst_esxi_active_memory": 100, "worst_esxi_memory_tiering_latency": 800}
 RISK_PARTS = (
     ("highest_esxi_cpu_thread_utilization", "Highest ESXi CPU thread utilization", "%", 1, lambda r: min(100.0, 28 + 0.75 * r), [60, 80, 90]),
     ("worst_esxi_cpu_imbalance", "Worst ESXi CPU imbalance", "", 2, lambda r: 1 + 0.004 * r, [1, 1.3, 1.6]),
-    ("highest_esxi_memory_consumed", "Highest ESXi DRAM Memory Consumed", "%", 1, lambda r: min(100.0, 55 + 0.5 * r), [80, 90, 95]),
     ("worst_esxi_memory_ballooned", "Worst ESXi memory ballooned", "%", 2, lambda r: max(0.0, (r - 45) * 0.12), [1, 2, 4]),
     ("worst_esxi_swapped_zipped_memory", "Worst ESXi swapped + zipped memory", "%", 2, lambda r: max(0.0, (r - 55) * 0.05), [0.25, 0.5, 1]),
     ("highest_esxi_cpu_reservation", "Highest ESXi CPU reservation", "%", 1, lambda r: 0.4 * r, [10, 40, 60]),
@@ -280,14 +277,22 @@ RISK_PARTS = (
     ("highest_cpu_monster_vm_host_ratio", "Highest CPU monster VM : host ratio", "", 1, lambda r: 0.3 + 0.012 * r, [1, 2, 3]),
     ("highest_memory_monster_vm_host_ratio", "Highest memory monster VM : host ratio", "", 1, lambda r: 0.25 + 0.01 * r, [1, 2, 3]),
 )
+# The two Cluster Risk parts of a cluster whose hosts have memory tiering (the adapter publishes them only for those
+# hosts): active memory against DRAM, excluded while green (below 50), and the read latency of the NVMe tier. Cluster
+# Risk has 12 parts in all. The estate of release 1.0 has no tiered host, so the page shows 10 (D-110).
+RISK_TIERED_PARTS = (
+    ("worst_esxi_active_memory", "Worst ESXi active memory, tiered hosts", "%", 1, lambda r: min(100.0, 20 + 0.6 * r), [50, 62.5, 75]),
+    ("worst_esxi_memory_tiering_latency", "Worst ESXi NVMe read latency", " µs", 0, lambda r: 40 + 6 * r, [100, 200, 400]),
+)
 
 
-def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int, host: bool = False, rows: dict | None = None) -> list:
+def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int, host: bool = False, rows: dict | None = None,
+                tiered: bool = False) -> list:
     """l2.kpi_details: the parts of Cluster Performance or Cluster Risk over the window, same points as the KPI.
     Each part: points, Now, Worst with its time, 95th percentile (never an average). Lower is better for every part."""
     perf = kpi_key in ("cluster_performance", "esxi_performance")
     out = []
-    for key, label, unit, dec, f, ends in HOST_PARTS if host else PERFORMANCE_PARTS if perf else RISK_PARTS:
+    for key, label, unit, dec, f, ends in HOST_PARTS if host else PERFORMANCE_PARTS if perf else RISK_PARTS + (RISK_TIERED_PARTS if tiered else ()):
         if rows is not None:  # story M-5: the parts the KPI was computed from, not values derived from it
             pts = [round(v, dec) for v in rows[key]]
         else:

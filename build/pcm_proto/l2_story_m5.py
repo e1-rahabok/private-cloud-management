@@ -70,12 +70,12 @@ PERF_ROWS = [Row("worst_vcpu_ready", 0, 4, 8, 16, 32), Row("worst_vcpu_costop", 
         Row("p90_vcpu_ready", 0, 1, 2, 4, 8), Row("p90_vcpu_costop", 0, .5, 1, 2, 4),
         Row("p90_memory_wait", 0, .5, 1, 2, 4), Row("p90_disk_latency", 0, 20, 40, 60, 80),
         Row("highest_esxi_packets", 0, 0, .2, .4, .8, True)]
-HOST_ROWS = [Row(r.name.replace("memory_wait", "memory_latency").replace("highest_esxi_packets", "esxi_packets"), *r[1:]) for r in PERF_ROWS]
+HOST_ROWS = [Row(r.name.replace("highest_esxi_packets", "esxi_packets"), *r[1:]) for r in PERF_ROWS]
 VMROWS = [Row("co_stop", 0, 1, 2, 4, 8), Row("cpu_ready", 0, 2, 4, 8, 16), Row("cpu_overlap", 0, .5, 1, 2, 4, True),
           Row("memory_wait", 0, .5, 1, 2, 4), Row("disk_latency", 0, 10, 20, 40, 80), Row("dropped_tx", 0, 0, .5, 1, 2, True),
           Row("cpu_run", 0, 95, 97, 99, 100, True), Row("ballooned", 0, 2, 4, 8, 16), Row("zip_swap", 0, .25, .5, 1, 2)]
 RISK_ROWS = [Row("highest_esxi_cpu_thread_utilization", 0, 60, 80, 90, 95, True), Row("worst_esxi_cpu_imbalance", 1, 1, 1.3, 1.6, 2),
-        Row("highest_esxi_memory_consumed", 0, 80, 90, 95, 100, True), Row("worst_esxi_memory_ballooned", 0, 1, 2, 4, 8),
+        Row("worst_esxi_memory_ballooned", 0, 1, 2, 4, 8),
         Row("worst_esxi_swapped_zipped_memory", 0, .25, .5, 1, 2), Row("highest_esxi_cpu_reservation", 0, 10, 40, 60, 80, True),
         Row("highest_esxi_memory_reservation", 0, 10, 40, 60, 80, True), Row("highest_esxi_cpu_overcommit", 0, 1, 2, 3, 4, True),
         Row("highest_esxi_memory_overcommit", 0, 1, 1.4, 1.8, 2.2, True), Row("highest_cpu_monster_vm_host_ratio", 0, 1, 2, 3, 4),
@@ -140,10 +140,10 @@ def _host_rows(vm, s) -> list:
     for v, si in zip(vm, s):  # the other 27 VMs are hit too, less: the host's 90th percentile follows the pressure
         pk = 0.0 if si < 0.62 else (si - 0.62) * 0.95 * (1 + rng.gauss(0, .15))
         out.append({"worst_vcpu_ready": v["cpu_ready"], "worst_vcpu_costop": v["co_stop"],
-                    "worst_memory_latency": v["memory_wait"], "worst_disk_latency": v["disk_latency"],
+                    "worst_memory_wait": v["memory_wait"], "worst_disk_latency": v["disk_latency"],
                     "p90_vcpu_ready": 0.7 + 0.34 * (v["cpu_ready"] - 0.9) + 0.25,
                     "p90_vcpu_costop": 0.15 + 0.30 * (v["co_stop"] - 0.15),
-                    "p90_memory_latency": 0.02 + 0.33 * (v["memory_wait"] - 0.03),
+                    "p90_memory_wait": 0.02 + 0.33 * (v["memory_wait"] - 0.03),
                     "p90_disk_latency": 6 + 0.45 * (v["disk_latency"] - 3.6),
                     "esxi_packets": max(0, pk)})
     return out
@@ -157,12 +157,12 @@ def _cluster_rows(host) -> list:
         out.append({
             "worst_vcpu_ready": max(h["worst_vcpu_ready"], bg(2.2 * day)),
             "worst_vcpu_costop": max(h["worst_vcpu_costop"], bg(.35 * day)),
-            "worst_memory_wait": max(h["worst_memory_latency"], bg(.05)),
+            "worst_memory_wait": max(h["worst_memory_wait"], bg(.05)),
             "worst_disk_latency": max(h["worst_disk_latency"], bg(14 * day)),
             # 28 of 344 VMs sit on the host: just under the 10% that sets the 90th percentile, so it rises a little
             "p90_vcpu_ready": bg(.55 * day) + 0.28 * (h["p90_vcpu_ready"] - .6),
             "p90_vcpu_costop": bg(.08 * day) + 0.28 * (h["p90_vcpu_costop"] - .1),
-            "p90_memory_wait": bg(.01) + 0.28 * (h["p90_memory_latency"] - .02),
+            "p90_memory_wait": bg(.01) + 0.28 * (h["p90_memory_wait"] - .02),
             "p90_disk_latency": bg(5 * day) + 0.28 * (h["p90_disk_latency"] - 6),
             "highest_esxi_packets": h["esxi_packets"]})
     return out
@@ -178,7 +178,6 @@ def _risk_rows(s, m) -> list:
         util = 44 + 6 * math.sin((i / 288 * 2 * math.pi) - 1.2) ** 2 + 36 * (0.5 * mi + 0.5 * si) ** 1.1
         out.append({"highest_esxi_cpu_thread_utilization": min(99, util * n()),
                     "worst_esxi_cpu_imbalance": 1.02 + 0.40 * mi ** 1.2 * n(0.03),
-                    "highest_esxi_memory_consumed": 62 + 30 * mi ** 1.1 * n(0.01),
                     "worst_esxi_memory_ballooned": max(0, 6.0 * mi ** 1.5 * n(0.08)),
                     "worst_esxi_swapped_zipped_memory": max(0, 0 if mi < 0.35 else (mi - 0.35) * 1.5 * n(0.1)),
                     "highest_esxi_cpu_reservation": 8 + 20 * ramp, "highest_esxi_memory_reservation": 9 + 38 * ramp,

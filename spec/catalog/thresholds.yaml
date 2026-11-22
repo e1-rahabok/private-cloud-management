@@ -13,5 +13,5 @@ thresholds:
     unit: score out of 100
     version: 1
     owner: l2
-    description: A cluster below this score is red on the NOC wall and opens an incident.
+    description: A cluster below this score is red on the NOC wall and opens an incident. It is the NOC alert line, not the SP5 red band (red is below 25, orange 25 to 50).
     source: "SP5 KPI bands: red 25 to 0 is the worst band; 50 is the start of orange, used as the alert line"

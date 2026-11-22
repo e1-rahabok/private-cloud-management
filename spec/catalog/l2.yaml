@@ -111,8 +111,8 @@ entries:
       Release 1.0: placeholder values derived from the KPI's series.
     parts:
       cluster_performance: "9: worst and 90th percentile of vCPU Ready, vCPU Co-stop, memory wait, disk latency; highest ESXi network packets (error + dropped)"
-      cluster_risk: "11: highest ESXi CPU thread utilization, worst CPU imbalance, highest memory consumed, worst ballooned, worst swapped + zipped, highest CPU and memory reservation, highest CPU and memory overcommit, highest CPU and memory monster VM : host ratio"
-    host: "9 parts over the VMs on the host, under ESXi Performance (D-108): the same nine as for a cluster, memory wait read as memory latency"
+      cluster_risk: "12 in the adapter, 10 shown in release 1.0: highest ESXi CPU thread utilization, worst CPU imbalance, worst ballooned, worst swapped + zipped, highest CPU and memory reservation, highest CPU and memory overcommit, highest CPU and memory monster VM : host ratio; the two memory tiering parts (worst active memory, worst NVMe read latency) only where the hosts have a tier. There is no memory consumed part (D-110)"
+    host: "9 parts over the VMs on the host, under ESXi Performance (D-108): the same nine as for a cluster, memory wait included (Memory Contention plus NVMe wait, D-110)"
     bands: "Every part: the band ends of the Agent E2 catalog. Risk parts: thresholds-capacity.yaml, cluster-risk rows. Performance parts: thresholds-performance.yaml, the 20-second levels applied to the 5-minute peak (a point is the highest of the 20-second values); the packets row has green equal to yellow, so only 0 is green (D-108)"
     decisions: [D-106, D-108]
 
@@ -491,7 +491,7 @@ entries:
           cpu_ready_percent:      { label: "CPU Ready",              unit: "%",         better: lower,  decimals: 1, band_ends: [2, 4, 8] }
           co_stop_percent:        { label: "CPU Co-Stop",            unit: "%",         better: lower,  decimals: 1, band_ends: [1, 2, 4] }
           cpu_overlap_percent:    { label: "CPU Overlap",            unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
-          memory_contention_percent: { label: "Memory Contention",   unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
+          memory_wait_percent:   { label: "Memory Wait",         unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
           disk_latency_ms:        { label: "Disk Latency",           unit: " ms",       better: lower,  decimals: 1, band_ends: [10, 20, 40] }
           network_dropped_tx_percent: { label: "Network Dropped Tx", unit: "%",         better: lower,  decimals: 1, band_ends: [0, 0.5, 1] }
           cpu_run_percent:        { label: "CPU Run",                unit: "%",         better: lower,  decimals: 1, band_ends: [95, 97, 99] }

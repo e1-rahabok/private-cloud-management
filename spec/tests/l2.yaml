@@ -240,7 +240,7 @@ story:
     expect:
       layer_order: [guest_os, virtual_motherboard]
       guest_os_metrics: [run_queue_per_vcpu, context_switches_per_s, disk_queue, free_memory_mb, paging_per_s, guest_os_performance]
-      virtual_motherboard_metrics: [cpu_ready_percent, co_stop_percent, cpu_overlap_percent, memory_contention_percent, disk_latency_ms, network_dropped_tx_percent, cpu_run_percent, memory_ballooned_percent, memory_zip_swap_percent, vm_performance]
+      virtual_motherboard_metrics: [cpu_ready_percent, co_stop_percent, cpu_overlap_percent, memory_wait_percent, disk_latency_ms, network_dropped_tx_percent, cpu_run_percent, memory_ballooned_percent, memory_zip_swap_percent, vm_performance]
       points: 288
       figures: [now, worst, percentile_95]
       no_average: true
@@ -348,9 +348,9 @@ story:
       figures: [now, worst, percentile_95]
       iceberg_points: 7
       vm_has_kpis: false
-      kpi_details: { cluster_performance: 9, cluster_risk: 11, host: 9 }
+      kpi_details: { cluster_performance: 9, cluster_risk: 10, host: 9 }
       kpi_details_figures: [now, worst, percentile_95]
-    decisions: [D-100, D-106, D-108]
+    decisions: [D-100, D-106, D-108, D-110]
   - id: LST-30
     name: Capacity Remaining, Time Remaining and VM Remaining from VCF Operations, on one VM, host or cluster only
     given: { vm: fr-bat-6839, host: fr-esx-244, cluster: FR-B-04, group: wld-fr-gen, window: 24h }

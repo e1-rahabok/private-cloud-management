@@ -688,7 +688,7 @@ stories:
       The Performance tab's worked example, one object at each of three levels, each with its own parts (monitor.md,
       Details). Cluster Performance, ESXi Performance and VM Performance are computed from their parts with the
       vCommunity scoring (five limits per row, weight 2^((100 - score) / 25), weighted average, rows marked "skip when
-      green" left out while green); Cluster Risk is 100 minus the score of its 11 parts. The three objects are scored
+      green" left out while green); Cluster Risk is 100 minus the score of its 10 parts. The three objects are scored
       separately and share only the story clock and one pressure curve (build/pcm_proto/l2_story_m5.py). Times are
       relative to now: the window opens 24 hours before it. Before the story, and in a longer window, the objects are calm.
     objects: { cluster: SG-S-01, host: sg-esx-110, vm: sg-api-1617 }
