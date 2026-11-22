@@ -5,7 +5,7 @@ role: l2
 cadence: [daily, weekly, monthly]
 vocabulary: catalog/vocabulary/l2.yaml
 design: design/l2-workspace.md
-decisions: [D-039, D-042, D-083, D-086, D-088, D-091, D-092, D-094, D-095, D-097, D-100]
+decisions: [D-039, D-042, D-083, D-086, D-088, D-091, D-092, D-094, D-095, D-097, D-100, D-109]
 ---
 
 # L2 Monitor
@@ -43,6 +43,7 @@ api: /api/l2/monitor/{view}/{object}/{pillar}
   - **Details** (l2.kpi_details, D-106): under the chart of Cluster Performance and of Cluster Risk, a fold named "Details", **closed when the page opens** and left to the reader: a good value needs no explanation. Its header reads "Details", then "What {KPI} is made of. Lower is better for every part." Opened, one chart per part, as the parts of Consumption on the Capacity tab: Now, Worst (with its time), 95th percentile, the same points as the KPI. A fold the person opened stays open when the window or the time changes. **An ESXi host has the same fold under ESXi Performance, with nine parts over the VMs on the host (D-108).** Every part carries the band of its band ends (the Agent E2 catalog rows of the object, 20-second levels applied to the 5-minute peak): the figures are band pills, the chart has the four tinted zones and its line takes the band of each value, as a KPI does. Not on a datastore, resource pool, Guest OS, virtual disk or vNIC. On a VM, the counters with catalog band ends (Paging, CPU Ready, CPU Co-Stop, Memory Wait, Disk Latency) are drawn the same way; Run Queue and Context Switches have none and stay plain.
     - **Cluster Performance, 9 parts** (the contention of the VMs, then the worst host): worst and 90th percentile of vCPU Ready, vCPU Co-stop, memory wait and disk latency (the 90th percentile of the disk is over virtual disks), and the highest ESXi network packets (error + dropped). Bands: none, because the catalog has levels for 20-second points only. The packets part has 5-minute levels (ends 0.2, 0.4, 0.8) and carries its band.
     - **Cluster Risk, 11 parts** (the worst host): CPU thread utilization, CPU imbalance, DRAM memory consumed, memory ballooned, swapped + zipped memory, CPU reservation, memory reservation, CPU overcommit ratio, memory overcommit ratio, CPU monster VM : host ratio, memory monster VM : host ratio. Each carries its band from the catalog's band ends (thresholds-capacity.yaml, cluster-risk rows). Memory tiering parts: only where hosts have a tier, as on the Capacity tab; not in release 1.0.
+    - **Story M-5 (D-109):** for SG-S-01, sg-esx-110 and sg-api-1617 the parts are the rows the KPI was computed from, not values derived from it; on sg-api-1617 the Virtual Motherboard layer also shows the other rows of VM Performance (CPU Overlap, Network Dropped Tx, CPU Run, Memory Ballooned, Memory Zip Swap).
     - **Release 1.0:** the values are placeholders derived from the KPI's series, as the parts of Consumption are, until PCM reads the parts from VCF Operations. Never an average. No cause: what moved, not why (D-084).
   - Under the charts, one sentence: "{n} of {m} children outside green: over the {window}, or in the last hour."
 - **No "Just above the line" section** on the Performance tab (D-105): the chart of VMs between 75 and 80 and its sentence are removed. l2.iceberg is still read for the headline and the Group by counts.

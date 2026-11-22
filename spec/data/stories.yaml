@@ -681,6 +681,34 @@ stories:
       FR-S-02: { state: open, contention_now: true, status: red, note: "N-1: the fall to 22 is 20 minutes old; the check ignores it" }
     decisions: [D-094, D-095]
 
+  M-5:
+    title: One Silver cluster slides for 24 hours, from one host, and the scores can be rebuilt from their parts
+    trigger: monitoring
+    note: >
+      The Performance tab's worked example, one object at each of three levels, each with its own parts (monitor.md,
+      Details). Cluster Performance, ESXi Performance and VM Performance are computed from their parts with the
+      vCommunity scoring (five limits per row, weight 2^((100 - score) / 25), weighted average, rows marked "skip when
+      green" left out while green); Cluster Risk is 100 minus the score of its 11 parts. The three objects are scored
+      separately and share only the story clock and one pressure curve (build/pcm_proto/l2_story_m5.py). Times are
+      relative to now: the window opens 24 hours before it. Before the story, and in a longer window, the objects are calm.
+    objects: { cluster: SG-S-01, host: sg-esx-110, vm: sg-api-1617 }
+    plant:
+      timeline_hours_before_now:
+        - { at: 24, what: "Calm. All three objects green." }
+        - { at: 17.5, what: "A release lands on sg-esx-110: 6 VMs power on, with reservations. CPU and memory reservation and overcommit step up." }
+        - { at: 16, what: "The load builds through the evening. CPU Ready and Co-Stop of sg-api-1617 climb first, then ballooning." }
+        - { at: "14 to 7", what: "The end-of-day batch adds to it." }
+        - { at: 3, what: "The worst point. DRS moves 3 VMs off the host: partial relief, but memory is reclaimed slowly, so Risk does not fall." }
+      cluster: { culprit_host: sg-esx-110, vms: 344, hosts: 12, vms_on_host: 28 }
+    expect:
+      SG-S-01:
+        cluster_performance: { start_about: 90, now_about: 55, worst_about: 42 }
+        cluster_risk: { start_about: 11, start_band: green, now_about: 60, now_band: orange }
+      sg-esx-110: { esxi_performance: { start_about: 92, now_about: 45, worst_about: 31 } }
+      sg-api-1617: { vm_performance: { start_about: 95, now_about: 32, worst_about: 17 }, worst_vm_of: [sg-esx-110, SG-S-01] }
+      one_definition: "every KPI point equals the scoring of its parts at that point (test_story_m5)"
+    decisions: [D-109]
+
   # ---------------------------------------------------------------- Weekly, monthly and inventory stories
 
   L-8:

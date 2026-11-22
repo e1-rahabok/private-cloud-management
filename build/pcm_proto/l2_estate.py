@@ -459,9 +459,18 @@ def in_window(at: datetime, now: datetime, window: str) -> bool:
     return (now - at).total_seconds() <= WINDOW_HOURS[window] * 3600
 
 
+def story_m5_score(key: str, now: datetime, window: str) -> float:
+    """l2.node_score of an object of story M-5, from its own 5-minute points (l2_story_m5)."""
+    from . import l2_performance as P, l2_story_m5 as S
+    start, L, n = P._slots(now, window)
+    return round(S.window_score(S.story()[key], WINDOW_HOURS[window], now.timestamp(), start, L, n), 1)
+
+
 def vm_score(E: Estate, vm: dict, now: datetime, window: str, act: dict) -> float:
     """VM Performance over the window. Planted VMs carry their story's value while the story's time is in the window."""
     name = vm["id"]
+    if act.get("M-5") and name == "sg-api-1617":
+        return story_m5_score("vm_performance", now, window)
     n1 = act.get("N-1")
     if n1:
         o = n1["objects"]
@@ -493,6 +502,8 @@ def vm_score(E: Estate, vm: dict, now: datetime, window: str, act: dict) -> floa
 def cluster_score(E: Estate, c: dict, now: datetime, window: str, act: dict) -> float:
     """Cluster Performance over the window, from the same function as the NOC wall (one definition)."""
     from . import noc
+    if act.get("M-5") and c["id"] == "SG-S-01":
+        return story_m5_score("cluster_performance", now, window)
     story = next((s for s in act.values() if s.get("objects", {}).get("cluster") == c["id"]
                   and "cluster_performance" in s.get("plant", {})), None)
     hours = WINDOW_HOURS[window]
@@ -516,6 +527,8 @@ def _td(hours: float):
 
 def host_score(E: Estate, h: dict, now: datetime, window: str, act: dict) -> float:
     """ESXi Performance: the contention of its VMs, bottom up (the 10th percentile of its VMs)."""
+    if act.get("M-5") and h["id"] == "sg-esx-110":
+        return story_m5_score("esxi_performance", now, window)
     vals = sorted(vm_score(E, E.nodes[v], now, window, act) for v in h["vms"])
     if not vals:
         return 99.0

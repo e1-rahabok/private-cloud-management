@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from functools import lru_cache
 
-from . import generator, l2, l2_capacity as CAP, l2_estate as X, l2_performance as P, noc
+from . import generator, l2, l2_capacity as CAP, l2_estate as X, l2_performance as P, l2_story_m5 as S5, noc
 
 PILLARS = ("availability", "performance", "capacity", "security", "configuration", "inventory")
 # Inventory counts objects and their changes: a provider tab (l2.pillars, D-092).
@@ -45,12 +45,15 @@ def _cluster_scores(enable: tuple, now_iso: str, window: str) -> dict:
 
 @lru_cache(maxsize=32)
 def _host_scores(enable: tuple, now_iso: str, window: str) -> dict:
-    E = X.estate(enable)
+    E, act = X.estate(enable), X.active_stories(enable)
+    now = datetime.fromisoformat(now_iso)
     vs = _vm_scores(enable, now_iso, window)
     out = {}
     for h in (n for n in E.nodes.values() if n["kind"] == "host"):
         vals = sorted(vs[v] for v in h["vms"])
         out[h["id"]] = (vals[max(0, int(len(vals) * 0.1) - 1)] if len(vals) > 3 else vals[0]) if vals else 99.0
+        if act.get("M-5") and h["id"] == "sg-esx-110":
+            out[h["id"]] = X.story_m5_score("esxi_performance", now, window)
     return out
 
 
@@ -158,11 +161,23 @@ def vm_layers(n: dict, now: datetime, window: str, act: dict, own: float) -> lis
     values = {"guest_os": guest_os_values(n, act), "virtual_motherboard": vm_values(n, round(own, 1), act)}
     start, L, count = P._slots(now, window)
     times = [datetime.fromtimestamp(start + (i + 1) * L, tz=now.tzinfo).isoformat() for i in range(count)]
+    m5 = act.get("M-5") and n["id"] == S5.VM  # story M-5: the VM's own rows, and the rows of VM Performance the tab hides
+    rows5 = S5.part_series("vm_rows", now.timestamp(), start, L, count) if m5 else {}
     layers = []
     for lk, title, metrics in LAYER_METRICS:
         out = []
+        if m5 and lk == "virtual_motherboard":
+            metrics = metrics[:-1] + tuple((k, lab, "%", "lower", dec, None, ends) for k, lab, _u, dec, ends, _r in S5.VM_EXTRA_ROWS) + metrics[-1:]
         for key, label, unit, better, dec, scale, ends in metrics:
-            vals = _series(n["id"], key, values[lk][key], better, dec, scale, count)
+            if m5 and key == "vm_performance":
+                vals = S5.slot_values(S5.story()["vm_performance"], now.timestamp(), start, L, count, "higher")
+            elif m5 and lk == "virtual_motherboard":
+                src = S5.VM_LAYER_KEYS.get(key) or next(r for k, *_x, r in S5.VM_EXTRA_ROWS if k == key)
+                vals = rows5[src]
+            else:
+                vals = _series(n["id"], key, values[lk][key], better, dec, scale, count)
+            if m5 and lk == "virtual_motherboard":
+                vals = [int(round(v)) if dec == 0 else round(v, dec) for v in vals]
             w = max(range(count), key=lambda i: vals[i]) if better == "lower" else min(range(count), key=lambda i: vals[i])
             p95 = P.nearest_rank(vals, 95 if better == "lower" else 5)
             out.append({"key": key, "label": label, "unit": unit, "better": better, "decimals": dec, "scale": scale,
@@ -239,14 +254,17 @@ RISK_PARTS = (
 )
 
 
-def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int, host: bool = False) -> list:
+def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int, host: bool = False, rows: dict | None = None) -> list:
     """l2.kpi_details: the parts of Cluster Performance or Cluster Risk over the window, same points as the KPI.
     Each part: points, Now, Worst with its time, 95th percentile (never an average). Lower is better for every part."""
     perf = kpi_key in ("cluster_performance", "esxi_performance")
     out = []
     for key, label, unit, dec, f, ends in HOST_PARTS if host else PERFORMANCE_PARTS if perf else RISK_PARTS:
-        pts = [None if v is None else round(max(0.0, f(100 - v if perf else v) * (0.92 + 0.16 * X._h(cid, key, i))), dec) for i, v in enumerate(vals)]
-        if pts and pts[-1] is not None and vals[-1] is not None:
+        if rows is not None:  # story M-5: the parts the KPI was computed from, not values derived from it
+            pts = [round(v, dec) for v in rows[key]]
+        else:
+            pts = [None if v is None else round(max(0.0, f(100 - v if perf else v) * (0.92 + 0.16 * X._h(cid, key, i))), dec) for i, v in enumerate(vals)]
+        if rows is None and pts and pts[-1] is not None and vals[-1] is not None:
             pts[-1] = round(max(0.0, f(100 - vals[-1] if perf else vals[-1])), dec)
         part = {"key": key, "label": label, "unit": unit, "decimals": dec, "better": "lower", "scale": None, "minutes": minutes,
                 "points": [{"t": t, "v": v} for t, v in zip(times, pts)], **CAP.figures(pts, times, True, dec)}
@@ -271,18 +289,25 @@ def object_kpis(E, n: dict, now: datetime, window: str, enable=()) -> list:
             rv = [None if v is None else round(v, 1) for v in series["risk"]]
             ks = [_kpi("cluster_performance", "Cluster Performance", "higher", pv, times, L // 60),
                   _kpi("cluster_risk", "Cluster Risk", "lower", rv, times, L // 60)]
+            m5 = X.active_stories(enable).get("M-5") and cid == S5.CLUSTER
             for k, vals in zip(ks, (pv, rv)):
-                k["details"] = kpi_details(cid, k["key"], vals, times, L // 60)
+                rows = S5.part_series("cluster_rows" if k["key"] == "cluster_performance" else "risk_rows", now.timestamp(), start, L, count) if m5 else None
+                k["details"] = kpi_details(cid, k["key"], vals, times, L // 60, rows=rows)
             return ks
     s = perf_score(E, n, now, window, enable)
     if s is None:
         return []
     label = OBJECT_KPI_LABEL.get(n["kind"], "Performance")
     key = label.lower().replace(" ", "_")
-    vals = _series(n["id"], key, round(s, 1), "higher", 1, (0, 100), count)
+    m5 = X.active_stories(enable).get("M-5") and n["kind"] == "host" and n["id"] == S5.HOST
+    if m5:  # story M-5: the host's own points and the rows they were computed from
+        vals = [round(v, 1) for v in S5.slot_values(S5.story()["esxi_performance"], now.timestamp(), start, L, count, "higher")]
+    else:
+        vals = _series(n["id"], key, round(s, 1), "higher", 1, (0, 100), count)
     k = _kpi(key, label, "higher", vals, times, L // 60)
     if n["kind"] == "host":  # D-108: the parts of ESXi Performance, as for a cluster
-        k["details"] = kpi_details(n["id"], key, vals, times, L // 60, host=True)
+        rows = S5.part_series("host_rows", now.timestamp(), start, L, count) if m5 else None
+        k["details"] = kpi_details(n["id"], key, vals, times, L // 60, host=True, rows=rows)
     return [k]
 
 
