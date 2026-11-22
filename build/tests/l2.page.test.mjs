@@ -205,7 +205,7 @@ try {
   const figs = await page.$$eval('.metric dd', xs => xs.map(x => x.textContent.trim()));
   const labels = await page.$$eval('.metric dt', xs => [...new Set(xs.map(x => x.textContent.trim()))]);
   const mainText = await page.innerText('main');
-  check('LPG-15', tabsText === 'Summary,Availability,Performance,Capacity,Security,Configuration' && layers.join() === 'guest_os,virtual_motherboard' && names.length === 9
+  check('LPG-15', tabsText === 'Summary,Availability,Performance,Capacity,Security,Configuration' && layers.join() === 'guest_os,virtual_motherboard' && names.length === 16
     && labels.join() === 'Now,Worst,95th percentile' && figs.every(f => /\d\+?(%|\/s| ms| per vCPU| pages\/s)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
     && !(await page.$('#grp')) && !/side by side|Just above the line|Children outside green/i.test(mainText) && !/average/i.test(mainText),
     `${tabsText}; ${layers}; ${names.length} charts; ${figs.slice(0, 3)}`);
@@ -215,7 +215,7 @@ try {
   const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
   const band = v => v >= 75 ? 'green' : v >= 50 ? 'yellow' : v >= 25 ? 'orange' : 'red';
   const pills = async () => page.$$eval('.metric:not(.kpi-details .metric)', ms => ms.map(m => ({ key: m.dataset.metric || m.dataset.kpi, pills: [...m.querySelectorAll('dd')].map(d => { const p = d.querySelector('.bv'); if (!p) return null; const cs = getComputedStyle(p);
-    return { band: p.dataset.band, text: p.textContent.trim(), v: parseFloat(p.textContent), fg: cs.color, bg: cs.backgroundColor }; }) })));
+    return { band: p.dataset.band, text: p.textContent.trim(), v: parseFloat(p.textContent.replace(/,/g, '')), fg: cs.color, bg: cs.backgroundColor }; }) })));
   const pillsOk = (ms, hiw) => ms.every(m => m.pills.every(p => p === null || (p.band === band(hiw(m.key) ? 100 - p.v : p.v) && !/green|yellow|orange|red/i.test(p.text) && ratio(p.fg, p.bg) >= 4.5)));
   await go('/l2/monitor/compute/fr-bat-6839/performance');
   const vmFirst = await page.$eval('section.persp', s => s.dataset.section);
@@ -311,7 +311,7 @@ try {
   await go('/l2/monitor/compute/fr-svc-5526/performance');
   await page.waitForSelector('body[data-e2="up"]');
   const marks = await page.$$eval('.metric', ms => ms.map(m => [m.querySelector('h4').textContent, m.querySelector('.e2mark') && m.querySelector('.e2mark').getAttribute('aria-label')]));
-  const marksOk = marks.length === 9 && marks.every(([n, l]) => l === `Ask Agent E2 about ${n}`);
+  const marksOk = marks.length === 16 && marks.every(([n, l]) => l === `Ask Agent E2 about ${n}`);
   await page.click('.metric[data-metric="run_queue_per_vcpu"] .e2mark'); await page.waitForSelector('#e2 [data-sugg]');
   await page.waitForTimeout(300);
   const panelBox = await page.$eval('#e2', e => e.getBoundingClientRect().toJSON());
