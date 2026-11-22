@@ -280,7 +280,7 @@ async function monitor(msg = '') {
   } else if (R.pillar === 'performance' && d.layers) {
     body += layersView(d) + `<p><a class="link" href="${complaintURL(R.object)}">Log a complaint about this VM</a></p>` + childrenTable(d);
   } else if (R.pillar === 'performance') {
-    body += objectKpis(d, c.iceberg);
+    body += objectKpis(d);
     body += groupBy(d);
     body += childrenTable(d);
   } else if (R.pillar === 'availability') {
@@ -508,18 +508,13 @@ function layersView(d) {
     + d.layers.map(l => `<section class="persp layer" data-layer="${l.key}"><h2>${esc(l.title)} ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span>${e2mark({ kind: 'vm_layer', layer: l.key, pillar: 'performance' }, `the ${l.title} layer`, { name: `${l.title} layer`, layer: l.title })}</h2>${l.metrics.filter(m => !m.scale).map(m => metricBlock(m, l.key)).join('')}</section>`).join('');
 }
 // A cluster and anything under it, but not a VM: its Performance KPI over the window first, then its children (D-100).
-function objectKpis(d, ice) {
+function objectKpis(d) {
   const win = esc(WINDOWS.find(w => w[0] === R.window)[1]).toLowerCase();
   const kpis = d.kpis && d.kpis.length
     ? pointsNote(d.kpis[0].minutes) + d.kpis.map(m => metricBlock(m, 'object')).join('')
     : '<p class="muted">No data for this object in the window.</p>';
   const outside = d.children_total ? `<p data-outside-green>${n0(d.outside_green)} of ${n0(d.children_total)} children outside green: over the ${win}, or in the last hour. They are first in the list below.</p>` : '';
-  const iceChart = ice && ice.vms ? lineChart('iceberg', ice.points_7_days, [{ key: 'v', label: `VMs between ${ice.near_line_from} and ${ice.near_line_to}`, short: 'VMs', color: 'var(--series-1)' }],
-    { label: `VMs just above the line, one point a day for 7 days`, width: 760, height: 140, left: 56, minutes: 1440, noclick: true, nodirect: true, nolegend: true, fmt: (v, tick) => n0(v) }) : '';
-  const iceWords = ice && ice.vms ? `<h3>Just above the line <span class="muted">VMs between ${ice.near_line_from} and ${ice.near_line_to}, last 7 days</span></h3>
-    <p data-iceberg>${n0(ice.near_line)} VMs now, ${esc(ice.direction)} over 7 days. ${n0(ice.below_green)} below green, of ${n0(ice.vms)}.</p>
-    <div data-iceberg-chart>${iceChart}</div>` : '';
-  return `<section class="persp kpis" data-section="performance-kpis"><h2>Performance <span class="muted">0 to 100%</span></h2>${kpis}</section>${outside}${iceWords}`;
+  return `<section class="persp kpis" data-section="performance-kpis"><h2>Performance <span class="muted">0 to 100%</span></h2>${kpis}</section>${outside}`;
 }
 function perfTab(p, d) {
   const cls = CLASS_NAME[p.class], m = p.point_minutes, sel = p.selected, C = p.consumer, P = p.provider;
