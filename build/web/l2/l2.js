@@ -193,16 +193,12 @@ function objHead(o, windowFixed) {
 const CONSUMER_KINDS = ['vm', 'guest_os', 'virtual_disk', 'vnic'];
 // The tabs are the titles of the panel under them: the selected tab and the panel are one shape (frame.md, Tabs).
 function tabbed(statuses, kind, inner) {
-  // Summary takes the worst of the others, never a score of its own (frame.md, Tabs).
-  const rank = { red: 3, amber: 2, no_data: 1, green: 0 };
-  const worst = Object.entries(statuses || {}).filter(([k]) => k !== 'summary').map(([, v]) => v).sort((a, b) => (rank[b] ?? -1) - (rank[a] ?? -1))[0];
-  if (worst) statuses = { ...statuses, summary: worst };
   const list = PILLARS.filter(p => !(p === 'inventory' && CONSUMER_KINDS.includes(kind)));
   return `<div class="tabbed"><nav class="tabs" role="tablist" aria-label="Pillars">${['summary', ...list].map(p => { const on = p === R.pillar;
-    return `<a role="tab" id="tab-${p}" data-pillar="${p}" href="${url({ pillar: p })}" aria-selected="${on}" aria-controls="panel" tabindex="${on ? 0 : -1}">${statuses && statuses[p] ? `<span class="dot ${statuses[p]}" role="img" aria-label="${STATUS[statuses[p]] || ''}"></span>` : ''}${PNAME[p]}</a>`; }).join('')}</nav>
+    return `<a role="tab" id="tab-${p}" data-pillar="${p}" href="${url({ pillar: p })}" aria-selected="${on}" aria-controls="panel" tabindex="${on ? 0 : -1}">${PNAME[p]}</a>`; }).join('')}</nav>
     <section class="tabpanel" id="panel" role="tabpanel" aria-labelledby="tab-${R.pillar}" tabindex="-1">${inner}</section></div>`;
 }
-// Every tab shows its status dot on every page. One read of the Summary per object and window, kept until something is written.
+// Tabs carry no status dot: one dot cannot summarise a pillar. One read of the Summary per object and window, kept until something is written.
 async function pillarStatuses(first) {
   if (first) { const k = `${R.view}|${R.object}|${R.window}|${PASS}`; STATUS_CACHE.set(k, first); return first; }
   const k = `${R.view}|${R.object}|${R.window}|${PASS}`;

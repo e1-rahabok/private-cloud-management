@@ -247,13 +247,13 @@ try {
     && capFirst.join() === 'summary,verdict' && rem.join() === 'Capacity Remaining,Time Remaining,VM Remaining' && !/Placeholder values/.test(placeholder) && capPillOk && partsOk,
     `VM ${vmKpis}; cluster ${clKpis}; capacity ${capFirst} ${rem}; pills ${vmPillOk}/${clPillOk}/${capPillOk}/${partsOk}`);
 
-  // LPG-16 moving between pages does not load the page; the window is a drop-down; tabs are tabs with a dot each
+  // LPG-16 moving between pages does not load the page; the window is a drop-down; tabs are tabs; no dot
   await go('/l2/monitor/compute/estate/summary');
   await page.evaluate(() => { window.__same = 'yes'; });
   const moves = [];
   await page.click('[role="tab"][data-pillar="performance"]'); await page.waitForSelector('body[data-ready="1"]');
   moves.push(new URL(page.url()).pathname);
-  const dots = await page.$$eval('[role="tab"]', ts => ts.map(t => !!t.querySelector('.dot')));
+  const dots = await page.$$eval('[role="tab"]', ts => ts.map(t => !t.querySelector('.dot')));
   const selected = await page.$$eval('[role="tab"][aria-selected="true"]', ts => ts.map(t => t.dataset.pillar));
   const panelBy = await page.$eval('[role="tabpanel"]', p => p.getAttribute('aria-labelledby'));
   await page.click('#winbtn');
