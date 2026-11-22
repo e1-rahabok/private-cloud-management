@@ -5,7 +5,7 @@ role: l1
 cadence: [live]
 vocabulary: catalog/vocabulary/noc.yaml
 design: design/noc-workspace.md
-decisions: [D-031, D-068]
+decisions: [D-031, D-068, D-098]
 ---
 
 # NOC shift handover
@@ -26,6 +26,7 @@ api: /api/noc/shift
   - incidents waiting on L2;
   - limits that expire at the end of this shift.
 - **A handover note box.** Saving it shows the note to the next shift.
+- **Agent E2:** the top bar mark only (desktop.md, Agent E2 mark and panel). Suggestion: "What should the next shift know?". It drafts in the panel; the operator writes the note.
 - **States:**
   - normal;
   - empty: "Nothing open";

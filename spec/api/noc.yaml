@@ -21,6 +21,20 @@ paths:
     get:
       summary: Drill-down from a "Is it fast?" tile, desktop only. Villains and victims with 0-100 scores.
 
+  /api/noc/agent/health:
+    get:
+      summary: Whether the Agent E2 service answers its health check now (D-098). available, model.
+
+  /api/noc/agent/ask:
+    post:
+      summary: >
+        Ask Agent E2 as L1 (D-098). Body: question (required), context, turns (optional). context: kind (page, tile, cluster, incident, step)
+        with page (screens, alerts, alert, shift), screen and location for a tile, cluster, incident, step (its index). PCM rebuilds L1's facts
+        on the server and sends the role l1. The answer is checked against the NOC vocabulary, asked for once more if it fails;
+        source is service, unavailable or vocabulary (not shown). Returns type, content, questions, files_read, computed, model,
+        knowledge_commit, source, label, record (both identity fields). 400 without a question or with an unknown context; 404 for an
+        unknown screen, tile, cluster, incident or step.
+
   /api/noc/incidents:
     get:
       summary: Open incidents, red first, then orange, oldest first within each. Grouped by D-069.

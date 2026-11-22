@@ -1,7 +1,8 @@
-// Page tests NPG-2 to NPG-8 for /noc, in a real browser.
+// Page tests NPG-2 to NPG-11 for /noc, in a real browser.
 // GENERATED from spec/tests/noc.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/noc.page.test.mjs
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const { chromium } = createRequire(import.meta.url)('playwright');
@@ -13,8 +14,21 @@ const vocab = readFileSync(ROOT + 'spec/catalog/vocabulary/noc.yaml', 'utf8');
 const avoided = vocab.split('avoided:')[1].split('labels:')[0].split('\n').map(l => l.trim())
   .filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
 
-// Agent E2 in mock mode: page tests must not depend on the network (D-076).
-const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DEMO_SWITCHER: '0', PCM_AGENT_E2_MODE: 'mock', PCM_DB: ':memory:' } });
+// Agent E2 drafts in mock mode, and a stub Agent E2 service: page tests must not depend on the network (D-076, D-098).
+const E2_PORT = 8767;
+const E2_SEEN = [];
+const stub = createServer((req, res) => {
+  let b = ''; req.on('data', c => { b += c; }); req.on('end', () => {
+    const send = d => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(d)); };
+    if (req.url === '/v1/health') return send({ ok: true, model: 'stub-model', files: 286 });
+    const body = JSON.parse(b || '{}'); E2_SEEN.push(body);
+    // A question about the villain gets an L2 word, twice: the panel must not show it.
+    const content = /villain/i.test(body.question.split('\n')[0]) ? 'The villain fr-bat-017 drives CPU Ready up.' : 'FR-S-02 scores 22 out of 100: its VMs wait. The SOP says to find the villain and escalate a production one.';
+    send({ type: 'answer', content, questions: [], files_read: ['sp5-framework/performance/cluster-performance'], computed: [], model: 'stub-model', knowledge_commit: 'abc1234' });
+  });
+});
+await new Promise(r => stub.listen(E2_PORT, '127.0.0.1', r));
+const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DEMO_SWITCHER: '0', PCM_AGENT_E2_MODE: 'mock', PCM_DB: ':memory:', PCM_AGENT_E2_URL: `http://127.0.0.1:${E2_PORT}` } });
 // Wait until the server answers, not a fixed time: a slow start made the first request fail.
 for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/exec`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -88,12 +102,44 @@ try {
   const why = await page.locator('.why').first().innerText();
   check('NPG-7', disabled && why.includes('Production VM: escalate instead'), why);
 
-  // NPG-9 Agent E2 draft on the incident page
+  // NPG-9 Agent E2 draft on the incident page, from the panel
   await go('/noc/alert/inc-fr-s-02');
-  await page.click('button[data-agent="explain"]');
-  await page.waitForSelector('body[data-agent]');
-  const draftText = await page.innerText('#agent');
-  check('NPG-9', /^Draft by Agent E2, to review/m.test(draftText) && /asked by operator-1/.test(draftText), draftText.split('\n')[0].slice(0, 90));
+  const noSection = !(await page.$('button[data-agent]')) && !(await page.$$eval('main h2', hs => hs.some(h => h.textContent.trim() === 'Agent E2')));
+  await page.click('main h1 .e2mark'); await page.waitForSelector('#e2 [data-sugg]');
+  const firstSugg = await page.innerText('#e2 [data-sugg="0"]');
+  await page.click('#e2 [data-sugg="0"]'); await page.waitForSelector('#e2 [data-draft]', { timeout: 30000 });
+  const draftText = await page.innerText('#e2 [data-draft]');
+  await page.keyboard.press('Escape');
+  check('NPG-9', noSection && firstSugg === 'Explain this incident' && /^Draft by Agent E2, to review/m.test(draftText) && /asked by operator-1/.test(draftText), `${firstSugg}; ${draftText.split('\n')[0].slice(0, 70)}`);
+
+  // NPG-11 the Agent E2 mark and panel on the desk; L1's words only
+  const tops = [];
+  for (const p of ['/noc', '/noc/alerts', '/noc/alert/inc-fr-s-02', '/noc/shift']) { await go(p); tops.push((await page.$$('header.top #e2top')).length); }
+  await page.goto(BASE + '/noc/wall' + q('&screen=fast')); await page.waitForSelector('body[data-ready="1"]');
+  const wallMarks = (await page.$$('.e2mark')).length;
+  await go('/noc/alerts');
+  const rowMarks = await page.$$eval('tr[data-incident]', trs => trs.map(t => !!t.querySelector('.e2mark')));
+  await go('/noc/alert/inc-fr-s-02');
+  const stepMarks = await page.$$eval('li[data-step]', ls => ls.map(l => !!l.querySelector('.e2mark')));
+  await go('/noc');
+  await page.waitForSelector('body[data-e2="up"]');
+  const tileMarks = await page.$$eval('.grid5 .card', cs => cs.map(c => !!c.querySelector('h3 .e2mark')));
+  await page.click('.cellbtn[data-cluster="FR-S-02"]'); await page.waitForSelector('#detail .panel h2 .e2mark');
+  await page.click('#detail .panel h2 .e2mark'); await page.waitForSelector('#e2 [data-sugg]'); await page.waitForTimeout(300);
+  const mainRight = await page.$eval('main', m => m.getBoundingClientRect().right), panelX = await page.$eval('#e2', e => e.getBoundingClientRect().x);
+  const panelTexts = [await page.innerText('#e2')];
+  await page.click('#e2 [data-sugg="0"]'); await page.waitForSelector('#e2 .e2src', { timeout: 30000 });
+  panelTexts.push(await page.innerText('#e2'));
+  const sent = E2_SEEN[E2_SEEN.length - 1];
+  await page.fill('#e2q', 'Who is the villain?'); await page.press('#e2q', 'Enter'); await page.waitForSelector('#e2 [data-vocabulary]', { timeout: 30000 });
+  const vocabText = await page.innerText('#e2 [data-vocabulary]');
+  panelTexts.push(await page.innerText('#e2'));
+  await page.keyboard.press('Escape');
+  const panelBad = avoided.filter(w => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(panelTexts.join('\n')));
+  check('NPG-11', tops.every(n => n === 1) && wallMarks === 0 && rowMarks.length > 0 && rowMarks.every(Boolean) && stepMarks.length > 0 && stepMarks.every(Boolean)
+    && tileMarks.length === 5 && tileMarks.every(Boolean) && mainRight <= panelX && sent.role === 'l1' && sent.facts.cluster.cluster === 'FR-S-02'
+    && vocabText.includes("Agent E2's answer used words that are not used on this screen") && !/CPU Ready/.test(vocabText) && panelBad.length === 0,
+    `top marks ${tops}; wall ${wallMarks}; rows ${rowMarks.length}; steps ${stepMarks.length}; tiles ${tileMarks.length}; main right ${Math.round(mainRight)} <= panel ${Math.round(panelX)}; role ${sent.role}; avoided in panel: ${panelBad.join(', ') || 'none'}`);
 
   // NPG-8 no request leaves the PCM host; contrast on desk and wall
   const contrast = async () => page.evaluate(() => {
@@ -134,10 +180,14 @@ try {
   await desk.goto(BASE + '/noc' + q()); await desk.waitForSelector('body[data-ready="1"]');
   await desk.click('.cellbtn.red'); await desk.waitForTimeout(300);
   await desk.screenshot({ path: ROOT + 'build/screenshots/noc-desk-fast.png', fullPage: true });
+  await desk.goto(BASE + '/noc/alert/inc-fr-s-02' + q()); await desk.waitForSelector('body[data-ready="1"]');
+  await desk.click('main h1 .e2mark'); await desk.waitForSelector('#e2 [data-sugg]');
+  await desk.click('#e2 [data-sugg="0"]'); await desk.waitForSelector('#e2 [data-draft]', { timeout: 30000 }); await desk.waitForTimeout(300);
+  await desk.screenshot({ path: ROOT + 'build/screenshots/noc-agent-e2-panel.png' });
 } finally {
   await browser.close();
   await reset().catch(() => {});
-  server.kill();
+  server.kill(); stub.close();
 }
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length} passed, ${failed.length} failed`);

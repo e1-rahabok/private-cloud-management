@@ -1,12 +1,15 @@
 // GENERATED from spec/workspaces/noc/desktop.md, alerts.md, incident.md, shift.md. Do not edit by hand (D-070).
+// Agent E2: desktop.md, Agent E2 mark and panel (D-098). The mark and the panel are shared with L2 (/e2/panel.js).
 'use strict';
 const page = document.body.dataset.page;
 const main = document.getElementById('main');
 const href = p => `${p}${PASS ? '?' + PASS : ''}`;
 document.getElementById('nav').innerHTML = navBar(page === 'index' ? '/noc' : page === 'alert' ? '/noc/alerts' : `/noc/${page}`);
+let SCREEN = 'fast';  // the screen on show, for a question about the page
 
 // ---------------------------------------------------------------- /noc: five screens with drill-down
 async function screens(selected = 'fast') {
+  SCREEN = selected;
   const [w, inc] = await Promise.all([getJSON('wall'), getJSON('incidents')]);
   document.getElementById('time').textContent = `Updated ${fmtTime(w.updated_at)}`;
   const incFor = (screen, loc) => inc.find(i => (i.location === loc || !i.location) && screenOf(i) === screen);
@@ -14,8 +17,9 @@ async function screens(selected = 'fast') {
   const s = w.screens[selected];
   let body = '';
   const linkTo = (t) => { const i = incFor(selected, t.location); return (t.status === 'red' || t.status === 'amber') && i ? `<p><a class="link" href="${href('/noc/alert/' + i.id)}">Open incident</a></p>` : ''; };
-  const card = (t, inner) => t.status === 'no_data' ? `<div class="card no_data"><h3>${esc(t.name)} ${chip('no_data')}</h3><p class="muted">Last good data ${fmtTime(t.last_good)}</p></div>`
-    : `<div class="card ${t.status}"><h3>${esc(t.name)} ${chip(t.status)}</h3>${inner}${linkTo(t)}</div>`;
+  const tileMark = (loc, name) => E2Panel.mark({ kind: 'tile', screen: selected, location: loc }, name, { name });
+  const card = (t, inner) => t.status === 'no_data' ? `<div class="card no_data"><h3>${esc(t.name)} ${chip('no_data')}${tileMark(t.location, t.name)}</h3><p class="muted">Last good data ${fmtTime(t.last_good)}</p></div>`
+    : `<div class="card ${t.status}"><h3>${esc(t.name)} ${chip(t.status)}${tileMark(t.location, t.name)}</h3>${inner}${linkTo(t)}</div>`;
   if (selected === 'changed') body = `<div class="grid5">${s.tiles.map(t => card(t, Object.entries(t.rows).map(([k, r]) => `<div class="row"><span>${CHANGE[k]}</span><span>${r.count} <span class="muted">(about ${r.expected})</span></span></div>`).join(''))).join('')}</div>`;
   if (selected === 'up') body = `<div class="grid5">${s.tiles.map(t => card(t, Object.entries(t.items || {}).map(([k, v]) => `<div class="row"><span>${UP[k]}</span><span>${v}</span></div>`).join(''))).join('')}</div>`
     + (s.no_data_sources || []).map(n => { const i = inc.find(x => x.root_object_type === 'vcf_operations_instance'); return `<p>${chip('red')} No data from ${esc(n.region)}'s VCF Operations since ${fmtTime(n.last_good)}. ${i ? `<a class="link" href="${href('/noc/alert/' + i.id)}">Open incident</a>` : ''}</p>`; }).join('');
@@ -23,8 +27,8 @@ async function screens(selected = 'fast') {
   if (selected === 'set_right') body = `<div class="grid5">${s.tiles.map(t => card(t, `<div class="row"><span>Risky changes, last hour</span><span>${t.count}</span></div>`)).join('')}</div>`;
   if (selected === 'fast') {
     const g = {};
-    s.tiles.forEach(t => { (g[t.location] = g[t.location] || { name: t.name, cells: [] }).cells.push(t); });
-    body = `<div class="grid5">${Object.values(g).map(x => `<div class="card"><h3>${esc(x.name)}</h3><div class="cells desk">${x.cells.map(c => c.status === 'no_data'
+    s.tiles.forEach(t => { (g[t.location] = g[t.location] || { loc: t.location, name: t.name, cells: [] }).cells.push(t); });
+    body = `<div class="grid5">${Object.values(g).map(x => `<div class="card"><h3>${esc(x.name)}${tileMark(x.loc, x.name)}</h3><div class="cells desk">${x.cells.map(c => c.status === 'no_data'
       ? `<button type="button" class="cellbtn no_data" disabled>No data</button>`
       : `<button type="button" class="cellbtn ${c.status}" data-cluster="${c.cluster}" aria-label="${c.cluster} score ${Math.round(c.score)}">${Math.round(c.score)}<br><small>${esc(c.cluster)}</small></button>`).join('')}</div></div>`).join('')}</div><div id="detail"></div>`;
   }
@@ -38,7 +42,7 @@ async function cluster(id, inc) {
   const d = await getJSON(`clusters/${id}`);
   const i = inc.find(x => x.root_object === id);
   const rows = (list, f) => list.length ? list.map(f).join('') : '<tr><td colspan="4" class="muted">None. The cluster is serving its VMs well.</td></tr>';
-  document.getElementById('detail').innerHTML = `<div class="panel"><h2>${esc(id)} ${chip(d.status)}</h2>
+  document.getElementById('detail').innerHTML = `<div class="panel"><h2>${esc(id)} ${chip(d.status)}${E2Panel.mark({ kind: 'cluster', cluster: id }, id, { name: id })}</h2>
     <p>Score now ${Math.round(d.score)} out of 100, ${Math.round(d.trend[0].v)} an hour ago. ${i ? `<a class="link" href="${href('/noc/alert/' + i.id)}">Open incident</a>` : ''}</p>
     <h3>Villains: using the most</h3><table><thead><tr><th>VM</th><th>Class</th><th>Environment</th><th>Note</th></tr></thead><tbody>${rows(d.villains, v => `<tr><td>${esc(v.vm)}</td><td>${v.class}</td><td>${v.environment.replace('_', '-')}</td><td>${esc(v.note)}</td></tr>`)}</tbody></table>
     <h3>Victims: waiting the most</h3><table><thead><tr><th>VM</th><th>Class</th><th>Environment</th><th>Score out of 100</th></tr></thead><tbody>${rows(d.victims, v => `<tr><td>${esc(v.vm)}</td><td>${v.class}</td><td>${v.environment}</td><td>${v.score}</td></tr>`)}</tbody></table></div>`;
@@ -48,34 +52,31 @@ async function cluster(id, inc) {
 async function alerts() {
   const inc = await getJSON('incidents');
   document.getElementById('time').textContent = '';
-  main.innerHTML = `<h1>Alerts</h1>` + (inc.length ? `<table><thead><tr><th>Severity</th><th>Incident</th><th>Location</th><th>Alerts</th><th>Opened</th><th>State</th></tr></thead><tbody>${inc.map(i => `<tr>
+  main.innerHTML = `<h1>Alerts</h1>` + (inc.length ? `<table><thead><tr><th>Severity</th><th>Incident</th><th>Location</th><th>Alerts</th><th>Opened</th><th>State</th><th><span class="sr">Agent E2</span></th></tr></thead><tbody>${inc.map(i => `<tr data-incident="${esc(i.id)}">
       <td>${chip(i.severity)}</td><td><a class="link" href="${href('/noc/alert/' + i.id)}">${esc(i.title)}: ${esc(i.root_object)}</a></td><td>${esc(i.location_name || 'All')}</td>
-      <td>${i.alert_count}</td><td>${ago(i.opened_at)}</td><td>${i.state}${i.acknowledged_by ? ` by ${esc(i.acknowledged_by)}` : ''}</td></tr>`).join('')}</tbody></table>`
+      <td>${i.alert_count}</td><td>${ago(i.opened_at)}</td><td>${i.state}${i.acknowledged_by ? ` by ${esc(i.acknowledged_by)}` : ''}</td><td class="e2cell">${E2Panel.mark({ kind: 'incident', incident: i.id }, 'this incident', { name: `${i.title}: ${i.root_object}` })}</td></tr>`).join('')}</tbody></table>`
     : '<p>No urgent issues.</p>');
 }
 
 // ---------------------------------------------------------------- /noc/alert/{id}: the SOP is the page
 const KIND = { diagnosis: 'Check', action: 'Action', escalate: 'Escalate', verify: 'Verify' };
-const DONE = { agent_draft: 'Agent E2 draft', acknowledge: 'Acknowledged', escalate: 'Escalated', close: 'Closed', stop_provisioning: 'Stopped new VMs', reopen_provisioning: 'Reopened to new VMs', time_boxed_limit: 'Limited until end of shift', restart_vm: 'Restarted' };
+const DONE = { agent_draft: 'Agent E2 draft', agent_ask: 'Asked Agent E2', acknowledge: 'Acknowledged', escalate: 'Escalated', close: 'Closed', stop_provisioning: 'Stopped new VMs', reopen_provisioning: 'Reopened to new VMs', time_boxed_limit: 'Limited until end of shift', restart_vm: 'Restarted' };
 async function incident(msg = '') {
   const id = location.pathname.split('/').pop();
   const d = await getJSON(`incidents/${id}`);
-  const step = s => {
+  const step = (s, n) => {
     let right = '';
     if (s.kind === 'action') right = `<div><button type="button" class="act" data-action="${s.action}" data-target="${esc(s.target)}" ${s.allowed ? '' : 'disabled'}>${s.action === 'time_boxed_limit' ? `Limit ${esc(s.target)} until end of shift` : s.action === 'stop_provisioning' ? 'Stop new VMs here' : s.action}</button>${s.allowed ? '' : `<div class="why">${esc(s.refusal)}</div>`}</div>`;
     if (s.kind === 'escalate') right = `<button type="button" class="act" data-escalate="1" ${s.applies && d.state !== 'escalated' && d.state !== 'closed' ? '' : 'disabled'}>Escalate to ${s.route[0].toUpperCase() + s.route.slice(1)}</button>`;
     const res = s.result ? `<div class="res">${esc(s.result)} ${s.passed === true ? '· pass' : s.passed === false ? '· fail' : ''}</div>` : '';
-    return `<li><span class="kind">${KIND[s.kind]}</span><div>${esc(s.text)}${res}</div>${right}</li>`;
+    return `<li data-step="${n}"><span class="kind">${KIND[s.kind]}</span><div>${esc(s.text)}${res}</div>${right}${E2Panel.mark({ kind: 'step', incident: id, step: n }, 'this step', { name: `${d.title}: ${d.root_object}`, n: n + 1 })}</li>`;
   };
   main.innerHTML = `<p><a class="link" href="${href('/noc/alerts')}">All alerts</a></p>
-    <h1>${chip(d.severity)} ${esc(d.title)}: ${esc(d.root_object)}</h1>
+    <h1>${chip(d.severity)} ${esc(d.title)}: ${esc(d.root_object)} ${E2Panel.mark({ kind: 'incident', incident: id }, 'this incident', { name: `${d.title}: ${d.root_object}` })}</h1>
     <p>${esc(d.location_name || 'All locations')} · opened ${ago(d.opened_at)} · ${d.alert_count} alerts grouped · state: <strong>${d.state}</strong>${d.acknowledged_by ? ` by ${esc(d.acknowledged_by)}` : ''}</p>
     <p><button type="button" class="act" id="ack" ${d.state === 'new' ? '' : 'disabled'}>Acknowledge</button></p>
     <h2>SOP: ${esc(d.sop.title)} <span class="muted">(version ${d.sop.version})</span></h2>
     <ol class="steps">${d.sop.steps.map(step).join('')}</ol>
-    <h2>Agent E2</h2><p><button type="button" class="act secondary" data-agent="explain">Explain this incident</button>
-      <button type="button" class="act secondary" data-agent="escalation_note">Draft the escalation note</button></p>
-      <div class="draft" id="agent" aria-live="polite"><span class="muted">Agent E2 drafts; you decide.</span></div>
     <h2>Close</h2><p><label for="cause">Root cause</label> <select id="cause"><option value="">Choose a root cause</option>${d.root_causes.map(c => `<option value="${c}">${c.replaceAll('_', ' ')}</option>`).join('')}</select>
       <button type="button" class="act secondary" id="close" disabled>Close incident</button></p>
     <div class="msg" id="msg" role="status">${esc(msg)}</div>
@@ -88,15 +89,6 @@ async function incident(msg = '') {
   main.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', async () => {
     const r = await postJSON(`actions/${b.dataset.action}`, { target: b.dataset.target, incident: id });
     incident(r.status === 200 ? 'Done. Written to the action history.' : r.body.error);
-  }));
-  main.querySelectorAll('[data-agent]').forEach(b => b.addEventListener('click', async () => {
-    const box = document.getElementById('agent');
-    box.innerHTML = '<span class="muted">Agent E2 is drafting…</span>';
-    const r = await postJSON(`incidents/${id}/agent`, { task: b.dataset.agent });
-    const note = r.body.source === 'fallback_unavailable' ? '<p class="why">Agent E2 is not available. Showing the fixed template.</p>'
-      : r.body.source === 'fallback_vocabulary' ? '<p class="why">Agent E2 used words not allowed on this screen. Showing the fixed template.</p>' : '';
-    box.innerHTML = note + `<p>${esc(r.body.text)}</p><p class="muted">Model: ${esc(r.body.model)} · asked by ${esc(r.body.record.actor_human)} · recorded in the action history</p>`;
-    document.body.dataset.agent = r.body.source;
   }));
   main.querySelectorAll('[data-escalate]').forEach(b => b.addEventListener('click', async () => {
     const r = await postJSON(`incidents/${id}/escalate`, {}); incident(r.status === 200 ? `Escalated to ${r.body.to}, with the evidence attached.` : r.body.error);
@@ -114,6 +106,43 @@ async function shift(msg = '') {
     + (s.notes.length ? `<h2>Earlier notes</h2><ul>${s.notes.map(n => `<li>${fmtTime(n.at)} · ${esc(n.by)}: ${esc(n.note)}</li>`).join('')}</ul>` : '');
   document.getElementById('save').addEventListener('click', async () => { await postJSON('shift', { note: document.getElementById('note').value }); shift('Saved.'); });
 }
+
+// ---------------------------------------------------------------- Agent E2 (desktop.md, Agent E2 mark and panel; D-098)
+// L1's facts and L1's words: the server checks every answer against the NOC vocabulary. No action button in the panel.
+const incidentId = () => location.pathname.split('/').pop();
+const pageCtx = () => page === 'alert' ? { kind: 'incident', incident: incidentId(), show: { about: 'this incident', name: (main.querySelector('h1') || {}).textContent || '' } }
+  : { kind: 'page', page: page === 'index' ? 'screens' : page, ...(page === 'index' ? { screen: SCREEN } : {}), show: { about: 'this page' } };
+function e2Label(c) {
+  if (c.kind === 'tile') return `${c.show.name} · ${LABEL[c.screen]}`;
+  if (c.kind === 'cluster') return `${c.cluster} · Is it fast?`;
+  if (c.kind === 'incident') return `Incident: ${c.show.name.trim()}`;
+  if (c.kind === 'step') return `Incident: ${c.show.name} · SOP step ${c.show.n}`;
+  return c.page === 'screens' ? `Screens · ${LABEL[c.screen]}` : c.page === 'shift' ? 'Shift handover' : 'Alerts';
+}
+function e2Suggestions(c) {
+  if (c.kind === 'tile') return ['What does this tile tell me?', 'What does the SOP say I should do?'];
+  if (c.kind === 'cluster') return ['Why is this cluster not serving its VMs well?', 'Who is the villain, and is it production?', 'What does the SOP say I should do?'];
+  if (c.kind === 'incident') return [{ q: 'Explain this incident', draft: 'explain' }, { q: 'Draft the escalation note', draft: 'escalation_note' }, 'What does the SOP say I should do next?'];
+  if (c.kind === 'step') return ['Why does the SOP ask this?', 'What does this result mean?'];
+  return c.page === 'screens' ? ['What needs me first?', 'Explain this screen in plain words.'] : c.page === 'shift' ? ['What should the next shift know?'] : ['Which incident should I take first?'];
+}
+E2Panel.init({
+  store: 'noc.e2',
+  get: p => getJSON(p),
+  post: postJSON,
+  root: () => main,
+  pageCtx,
+  full: c => c,
+  label: e2Label,
+  suggestions: e2Suggestions,
+  convKey: c => c.incident ? `incident:${c.incident}` : c.kind === 'cluster' ? `cluster:${c.cluster}` : c.kind === 'tile' ? `tile:${c.screen}:${c.location}` : `page:${c.page}:${c.screen || ''}`,
+  linkHref: () => '#',
+  outline: '.card, .panel, tr, li[data-step], h1',
+  intro: c => `Ask about ${c.show.about}. Agent E2 answers in plain words, from the SOP and the scores PCM sends. It explains; you follow the SOP.`,
+  draft: (c, task) => postJSON(`incidents/${c.incident}/agent`, { task }),
+});
+document.querySelector('.top .time').insertAdjacentHTML('beforebegin', E2Panel.topMark());
+E2Panel.health();
 
 const RUN = { index: () => screens('fast'), alerts, alert: () => incident(), shift: () => shift() };
 RUN[page]().then(() => { document.body.dataset.ready = '1'; }).catch(e => { main.innerHTML = '<p>Could not load data. Try again later.</p>'; document.body.dataset.ready = 'error'; });

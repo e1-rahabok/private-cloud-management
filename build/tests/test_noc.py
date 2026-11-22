@@ -171,6 +171,31 @@ class AgentE2(unittest.TestCase):
             code, out = noc.act(self.nd, ["incidents", "inc-fr-s-02", "agent"], {"task": "explain"})
         self.assertEqual(out["source"], self.T["NST-11"]["expect"]["source"])
 
+    def test_NST_13_desk_questions_get_l1_facts_and_words(self):
+        from build.pcm_proto import noc_agent
+        t = self.T["NST-13"]; g, e = t["given"], t["expect"]
+        answers, seen = iter(g["model_answers"]), []
+        def fake(url, body, timeout):
+            seen.append(body)
+            return {"type": "answer", "content": next(answers), "files_read": ["x"], "computed": [], "model": "m"}
+        with mock.patch.object(agent_e2, "_post_raw", fake):
+            code, out = noc_agent.ask(self.nd, {"question": "Why is it red?", "context": g["cluster"]})
+        self.assertEqual((code, out["source"]), (200, e["clean_answer"]["source"]))
+        self.assertEqual(seen[0]["role"], e["role"])
+        for k in e["cluster_facts"]:
+            self.assertIn(k, seen[0]["facts"]["cluster"])
+        self.assertNotIn("trend", seen[0]["facts"]["cluster"])
+        self.assertEqual((out["record"]["action"], out["record"]["actor_agent"]), (e["recorded"]["action"], e["recorded"]["actor_agent"]))
+        seen.clear()
+        with mock.patch.object(agent_e2, "_post_raw", fake):
+            code, out = noc_agent.ask(self.nd, {"question": "What does this result mean?", "context": g["step"]})
+        self.assertEqual((out["source"], out["content"], len(seen)), (e["avoided_twice"]["source"], e["avoided_twice"]["content"], e["avoided_twice"]["calls"]))
+        for k in e["step_facts"]:
+            self.assertIn(k, {**seen[0]["facts"]["incident"], **seen[0]["facts"]})
+        self.assertIn("never use these words", seen[0]["question"])
+        self.assertEqual(noc_agent.ask(self.nd, {"question": "x", "context": {"kind": "nope"}})[0], e["unknown_context"])
+        self.assertEqual(noc_agent.ask(self.nd, {"question": "x", "context": {"kind": "incident", "incident": "no-such"}})[0], e["unknown_incident"])
+
     def test_NST_12_done_kept_apart_from_available(self):
         facts = agent_e2.facts_for(noc.incident_detail(self.nd, "inc-fr-s-02"))
         e = self.T["NST-12"]["expect"]

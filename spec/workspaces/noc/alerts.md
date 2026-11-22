@@ -5,7 +5,7 @@ role: l1
 cadence: [live]
 vocabulary: catalog/vocabulary/noc.yaml
 design: design/noc-workspace.md
-decisions: [D-040, D-069]
+decisions: [D-040, D-069, D-098]
 ---
 
 # NOC alerts
@@ -30,6 +30,7 @@ api: /api/noc/incidents
   - who acknowledged it.
 - **Order:** red first, then orange. Oldest first within each.
 - **Yellow never appears.** It is not an alert (NOC design, 3.4).
+- **Agent E2 mark** on each row: "Ask Agent E2 about this incident" (desktop.md, Agent E2 mark and panel). The top bar mark asks about the list: "Which incident should I take first?".
 - **States:**
   - normal;
   - empty: "No urgent issues";

@@ -56,6 +56,7 @@ api: /api/l2/agent/health
 ```
 
 - **The mark:** "E2" in a small rounded square, like a colleague's initials (D-097). Never a sparkle or a robot.
+- **The same mark and panel are on the NOC desk** (D-098). One shared piece of code; each workspace says only what its pages send, name and suggest.
 - **In the top bar:** the mark with a status dot, named "Agent E2" for a screen reader.
   - Available (the service answers its health check): dark mark, green dot, tooltip "Agent E2 is available. Ask about this page."
   - Not available: grey mark, grey dot, tooltip "Agent E2 is not available".

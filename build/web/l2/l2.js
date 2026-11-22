@@ -879,27 +879,13 @@ async function calendar(msg = '') {
 }
 
 // ---------------------------------------------------------------- Agent E2: the mark and the panel (frame.md; D-097)
-// The mark says who answers. The panel is docked right and pushes the content; the tree folds to a strip while it is open.
-// PCM rebuilds the facts on the server from the context; the browser sends only what was clicked.
+// The mark and the panel are shared with the NOC desk (/e2/panel.js, D-098). Here: what L2's pages send, name and suggest.
+// The panel is docked right and pushes the content; the tree folds to a strip while it is open.
 const E2_LAYERS = ['guest_os', 'virtual_motherboard'];
-const E2 = { up: null, model: null, open: false, ctx: null, opener: null, busy: false, timer: null, pending: null };
-const e2mark = (ctx, name, show = {}) => `<button type="button" class="e2mark" data-e2="${esc(JSON.stringify({ ...ctx, show: { about: name, ...show } }))}" aria-label="Ask Agent E2 about ${esc(name)}" title="Ask Agent E2 about ${esc(name)}">E2</button>`;
-function e2TopMark() {
-  const label = E2.up === false ? 'Agent E2 is not available' : E2.up ? 'Agent E2 is available. Ask about this page.' : 'Agent E2';
-  return `<button type="button" class="e2mark top${E2.up === false ? ' off' : ''}" id="e2top" aria-label="${label}" title="${label}" aria-expanded="${E2.open}" aria-controls="e2">E2<span class="dot ${E2.up ? 'green' : 'no_data'}" aria-hidden="true"></span></button>`;
-}
-async function e2Health() {
-  const h = await getJSON('agent/health', '', null).catch(() => ({ available: false }));
-  E2.up = !!h.available; E2.model = h.model || null;
-  const t = document.getElementById('e2top');
-  if (t) t.outerHTML = e2TopMark();
-  document.body.dataset.e2 = E2.up ? 'up' : 'down';
-  return E2.up;
-}
+const e2mark = E2Panel.mark, e2TopMark = E2Panel.topMark, e2Health = E2Panel.health, e2Follow = E2Panel.follow;
 // The context of the page itself: the case, or the object with its tab and window.
 const pageCtx = () => R.caseId ? { kind: 'case', case: R.caseId, show: { about: 'this case' } }
   : { kind: 'page', show: { about: 'this page' } };
-const e2Full = c => c.case || c.kind === 'finding' ? c : { view: R.view, object: R.object, window: R.window || '24h', pillar: R.pillar || 'summary', ...c };
 const objName = () => (main.querySelector('.objhead h1') || {}).textContent || R.object;
 const kindName = () => ((main.querySelector('.objhead .kind') || {}).textContent || 'object').replace(/^Case.*/, 'case');
 const winName = w => (WINDOWS.find(x => x[0] === w) || WINDOWS[1])[1];
@@ -912,9 +898,6 @@ function e2Label(c) {
   if (R.activity === 'troubleshoot' || R.activity === 'rules' || R.activity === 'calendar') return `${objName()} · ${R.activity.charAt(0).toUpperCase() + R.activity.slice(1)}`;
   return where;
 }
-const convKey = c => c.case ? `case:${c.case}` : c.kind === 'finding' ? `finding:${c.finding}` : `${c.object}|${c.pillar}`;
-const convs = () => { try { return JSON.parse(sessionStorage.getItem('l2.e2') || '{}'); } catch (e) { return {}; } };
-const saveConv = (k, list) => { try { const all = convs(); all[k] = list.slice(-12); sessionStorage.setItem('l2.e2', JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
 function suggestions(c) {
   const k = kindName().toLowerCase().replace(/^esxi /, 'ESXi ').replace(/^vm$/, 'VM');
   if (c.kind === 'metric' || c.kind === 'kpi') return [`Is ${c.show.p95} a problem for this ${k}?`, c.show.worst ? `Why the worst at ${c.show.worst}?` : null, 'What should I check next?'].filter(Boolean);
@@ -925,120 +908,24 @@ function suggestions(c) {
   if (c.pillar === 'performance' && k === 'VM') return [`Is this VM performing well over the ${winName(c.window).replace(/^Last /, 'last ')}?`, 'Which layer is the problem, if any?', 'What should I check next?'];
   return [`What needs me on this ${k}?`, 'What should I check next?'];
 }
-function linkify(text, links) {
-  let h = esc(text).replace(/`([^`]+)`/g, '<code>$1</code>');
-  for (const l of links || []) h = h.replace(new RegExp(`(^|[^\\w-])(${l.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?![\\w-])`, 'g'), `$1<a class="link" data-obj="${esc(l.id)}" data-view="${esc(l.view)}" href="${objURL(l.id, l.view)}">$2</a>`);
-  return h.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
-}
-function e2Answer(a) {
-  if (a.error) return `<div class="e2a err"><p class="why">${esc(a.error)}</p></div>`;
-  if (a.source !== 'service') return '<div class="e2a"><p class="why">The Agent E2 service is not available.</p></div>';
-  const comp = a.computed && a.computed.length ? `<div class="e2computed"><div class="lbl">Computed, not written by the model</div>${a.computed.map(x => `<span class="box">${esc(x)}</span>`).join('')}</div>` : '';
-  const asks = a.type === 'clarify' && a.questions && a.questions.length ? `<div class="e2asks"><div class="lbl">Agent E2 asks</div><ul>${a.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul><p class="muted">Your next question is the reply.</p></div>` : '';
-  const src = a.files_read && a.files_read.length ? `<div class="e2src"><div class="lbl">Sources</div>${a.files_read.map(f => `<span class="srcchip" title="Knowledge file">${esc(f)}</span>`).join('')}</div>` : '';
-  const trouble = a.finding && a.finding.outcome === 'problem' ? `<div class="toolbar"><button type="button" class="act secondary" data-e2trouble="${esc(a.finding.id)}">Troubleshoot this</button></div>` : '';
-  return `<div class="e2a">${a.content ? linkify(a.content, a.links) : ''}${asks}${comp}${src}${trouble}
-    <div class="e2foot">Model: ${esc(a.model || '–')} · knowledge ${esc((a.knowledge_commit || '–').slice(0, 7))} · asked by ${esc(a.record ? a.record.actor_human : '–')} · recorded in the action history</div></div>`;
-}
-function e2Render() {
-  const box = document.getElementById('e2'), c = E2.ctx;
-  if (!box || !c) return;
-  const list = convs()[convKey(c)] || [];
-  const thread = list.map(m => `<div class="e2q"><div class="lbl">${esc(m.label)}</div>${esc(m.q)}</div>${e2Answer(m.a)}`).join('');
-  const sugg = !E2.busy && !E2.pending && (!list.length || list[list.length - 1].label !== e2Label(c)) ? `<div class="e2sugg" role="group" aria-label="Suggested questions">${suggestions(c).map(q => `<button type="button" class="sugg" data-sugg="${esc(q)}">${esc(q)}</button>`).join('')}</div>` : '';
-  const kept = !E2.busy && box.querySelector('#e2q') ? box.querySelector('#e2q').value : '';
-  box.innerHTML = `<div class="e2head"><span class="e2mark big" aria-hidden="true">E2</span><div class="e2who"><h2 id="e2title">Agent E2</h2><div class="ctx" data-e2ctx>${esc(e2Label(c))}</div></div>
-      <button type="button" class="e2close" aria-label="Close Agent E2" title="Close (Esc)">×</button></div>
-    ${E2.up === false ? '<p class="why e2down">The Agent E2 service is not available.</p>' : ''}
-    <div class="e2body" aria-live="polite">${thread || `<p class="muted">Ask about ${esc(c.show.about)}. Agent E2 reads the knowledge base and the facts PCM sends; it explains, you decide.</p>`}
-      ${E2.busy && E2.waiting && E2.waiting.key === convKey(c) ? `<div class="e2q"><div class="lbl">${esc(E2.waiting.label)}</div>${esc(E2.waiting.q)}</div><div class="e2wait" role="status">Agent E2 is reading the knowledge base and the facts PCM sent. <span data-secs>0</span> s</div>` : ''}${sugg}</div>
-    <form class="e2form" id="e2form"><label class="sr" for="e2q">Question for Agent E2</label><textarea id="e2q" rows="2" placeholder="${E2.pending ? 'Your reply to Agent E2…' : 'Ask Agent E2…'}">${esc(kept)}</textarea>
-      <button type="submit" class="act"${E2.busy ? ' disabled' : ''}>Ask</button></form>`;
-  const body = box.querySelector('.e2body'); body.scrollTop = body.scrollHeight;
-}
-function e2Mark(el) {
-  main.querySelectorAll('.e2-asked').forEach(x => x.classList.remove('e2-asked'));
-  const card = el && el.closest && el.closest('.metric, .finding, .clink, tr, .objhead, section.layer');
-  if (card && main.contains(card)) card.classList.add('e2-asked');
-}
-function e2Open(ctx, opener) {
-  E2.ctx = e2Full(ctx); E2.opener = opener || document.getElementById('e2top');
-  const k = convKey(E2.ctx);
-  if (E2.pending && E2.pending.key !== k) E2.pending = null;
-  e2Mark(opener);
-  const box = document.getElementById('e2');
-  E2.open = true; box.hidden = false; document.body.classList.add('e2-open');
-  const t = document.getElementById('e2top'); if (t) t.setAttribute('aria-expanded', 'true');
-  e2Render(); refit();
-  document.getElementById('e2q').focus({ preventScroll: true });
-  // Re-checked on every open; only the note changes, so a question being typed is never lost.
-  e2Health().then(up => { const box = document.getElementById('e2'), note = box.querySelector('.e2down');
-    if (up && note) note.remove();
-    if (!up && !note) box.querySelector('.e2head').insertAdjacentHTML('afterend', '<p class="why e2down">The Agent E2 service is not available.</p>'); });
-}
-function e2Close() {
-  const box = document.getElementById('e2');
-  E2.open = false; box.hidden = true; document.body.classList.remove('e2-open');
-  main.querySelectorAll('.e2-asked').forEach(x => x.classList.remove('e2-asked'));
-  const t = document.getElementById('e2top'); if (t) t.setAttribute('aria-expanded', 'false');
-  refit();
-  const back = E2.opener && document.contains(E2.opener) ? E2.opener : document.getElementById('e2top');
-  if (back) back.focus({ preventScroll: true });
-}
-// After a move the panel stays; its context becomes the new page's.
-function e2Follow() {
-  if (!E2.open) return;
-  E2.ctx = e2Full(pageCtx()); E2.opener = document.getElementById('e2top');
-  e2Render(); refit();
-}
 // Charts measure their box: re-fit them when the panel opens or closes.
 function refit() { requestAnimationFrame(() => main.querySelectorAll('[data-chartbox]').forEach(b => { if (CHARTS[b.dataset.chartbox]) mountChart(b); })); }
-async function e2Ask(q) {
-  q = (q || '').trim();
-  if (!q || E2.busy || !E2.ctx) return;
-  const c = E2.ctx, k = convKey(c), label = e2Label(c);
-  const { show, ...context } = c;
-  const body = { question: q, context };
-  if (E2.pending && E2.pending.key === k) body.turns = [E2.pending.first, E2.pending.questions.join('\n'), q];
-  const list = convs()[k] || [];
-  E2.busy = true; E2.started = Date.now(); E2.waiting = { q, label, key: k };
-  e2Render(); document.getElementById('e2q').focus({ preventScroll: true });
-  const ta0 = document.getElementById('e2q'); if (ta0) ta0.value = '';
-  clearInterval(E2.timer);
-  E2.timer = setInterval(() => { const s = document.querySelector('#e2 [data-secs]'); if (s) s.textContent = Math.round((Date.now() - E2.started) / 1000); }, 1000);
-  let r;
-  try { r = await postJSON('agent/ask', body); } catch (e) { r = { status: 0, body: { error: 'Could not reach PCM. Try again.' } }; }
-  clearInterval(E2.timer); E2.busy = false; E2.waiting = null;
-  if (r.status !== 200) {
-    saveConv(k, list);
-    e2Render();
-    const ta = document.getElementById('e2q'); if (ta) ta.value = q;
-    const b = document.querySelector('#e2 .e2body'); if (b) b.insertAdjacentHTML('beforeend', e2Answer({ error: r.body.error || 'Agent E2 could not answer.' }));
-    document.body.dataset.e2ask = 'error';
-    return;
-  }
-  const a = r.body;
-  E2.pending = a.type === 'clarify' && a.questions && a.questions.length && a.source === 'service' ? { key: k, first: body.turns ? body.turns[0] : q, questions: a.questions } : null;
-  saveConv(k, [...list, { q, label, a }]);
-  const keep = document.activeElement === document.body || (document.activeElement && document.activeElement.closest('#e2'));
-  if (E2.open && convKey(E2.ctx) === k) e2Render();
-  if (keep && E2.open) document.getElementById('e2q').focus({ preventScroll: true });
-  document.body.dataset.e2ask = a.source;
-}
-document.addEventListener('click', async e => {
-  const m = e.target.closest('.e2mark[data-e2], #e2top');
-  if (m) { e.preventDefault(); return e2Open(m.id === 'e2top' ? pageCtx() : JSON.parse(m.dataset.e2), m); }
-  if (e.target.closest('#e2 .e2close')) return e2Close();
-  const s = e.target.closest('#e2 [data-sugg]');
-  if (s) return e2Ask(s.dataset.sugg);
-  const t = e.target.closest('#e2 [data-e2trouble]');
-  if (t) { const r = await postJSON('cases', { trigger: 'finding', finding: t.dataset.e2trouble }); if (r.status === 200) go(url({ activity: 'troubleshoot', caseId: r.body.id })); }
-});
-document.addEventListener('submit', e => { if (e.target.id === 'e2form') { e.preventDefault(); e2Ask(document.getElementById('e2q').value); } });
-document.addEventListener('keydown', e => {
-  if (e.target.id === 'e2q' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e2Ask(e.target.value); return; }
-  const l = document.getElementById('winlist');
-  if (e.key === 'Escape' && E2.open && !(l && !l.hidden)) { e.preventDefault(); e2Close(); }
+E2Panel.init({
+  store: 'l2.e2',
+  get: p => getJSON(p, '', null),
+  post: postJSON,
+  root: () => main,
+  pageCtx,
+  full: c => c.case || c.kind === 'finding' ? c : { view: R.view, object: R.object, window: R.window || '24h', pillar: R.pillar || 'summary', ...c },
+  label: e2Label,
+  suggestions,
+  convKey: c => c.case ? `case:${c.case}` : c.kind === 'finding' ? `finding:${c.finding}` : `${c.object}|${c.pillar}`,
+  linkHref: l => objURL(l.id, l.view),
+  outline: '.metric, .finding, .clink, tr, .objhead, section.layer',
+  onToggle: refit,
+  answerExtra: a => a.finding && a.finding.outcome === 'problem' ? `<div class="toolbar"><button type="button" class="act secondary" data-e2act="trouble" data-id="${esc(a.finding.id)}">Troubleshoot this</button></div>` : '',
+  onAction: async el => { if (el.dataset.e2act !== 'trouble') return; const r = await postJSON('cases', { trigger: 'finding', finding: el.dataset.id }); if (r.status === 200) go(url({ activity: 'troubleshoot', caseId: r.body.id })); },
+  escBlocked: () => { const l = document.getElementById('winlist'); return !!(l && !l.hidden); },
 });
 
 // ---------------------------------------------------------------- navigation without a page load
