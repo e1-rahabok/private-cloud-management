@@ -35,7 +35,7 @@
     body.wall{height:calc(100vh - 44px)}
     @media (max-width:700px){#demo-switcher{height:auto;min-height:44px;flex-wrap:wrap;padding:6px 12px}html{--demo-bar:84px;padding-top:84px}}
     /* The bar is fixed at the top: the Agent E2 panel starts below it, not behind it. */
-    .e2panel{top:var(--demo-bar)!important;height:calc(100vh - 66px - var(--demo-bar))!important}
+    .e2panel{top:var(--demo-bar)!important;height:calc(100vh - var(--demo-bar))!important}
     body.desk .e2panel{top:var(--demo-bar)!important;bottom:0!important;height:auto!important}
     @media (max-width:900px){.e2panel{top:var(--demo-bar)!important;bottom:0!important;height:auto!important}}`;
   document.head.appendChild(css);

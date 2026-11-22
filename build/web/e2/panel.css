@@ -23,6 +23,13 @@
 .e2body p { margin: 0 0 14px; line-height: 1.6; }
 .e2q { margin: 6px 0 10px auto; max-width: 88%; background: var(--text); color: #fff; padding: 9px 12px; border-radius: 12px 12px 2px 12px; }
 .e2q .lbl { font-size: 11px; opacity: .75; margin-bottom: 3px; }
+.e2turn { margin: 0 0 10px; }
+.e2turn > summary.e2q { display: block; position: relative; padding-right: 28px; list-style: none; cursor: pointer; margin: 6px 0 8px auto; }
+.e2turn > summary.e2q::-webkit-details-marker { display: none; }
+.e2turn > summary.e2q::after { content: "\25BE"; position: absolute; right: 10px; top: 10px; font-size: 11px; opacity: .75; }
+.e2turn:not([open]) > summary.e2q::after { content: "\25B8"; }
+.e2turn:not([open]) > summary.e2q .qt { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e2turn > summary.e2q:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .e2a { background: var(--page-bg); border-radius: 12px 12px 12px 2px; padding: 11px 13px; margin-bottom: 14px; overflow-wrap: anywhere; line-height: 1.6; }
 .e2a ul, .e2a ol { margin: 0 0 14px; padding-left: 22px; }
 .e2a li { margin: 0 0 6px; line-height: 1.6; }
