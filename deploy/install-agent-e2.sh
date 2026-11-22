@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Install the Agent E2 service next to PCM on a lab Linux VM, in one go (deploy/README.md, Agent E2).
-# Run as root after PCM is installed:  sudo bash /opt/pcm/deploy/install-agent-e2.sh
+# Run as root after PCM is installed:  sudo bash install-agent-e2.sh
+# Self-contained: it writes the systemd unit itself (the same as deploy/agent-e2.service), so it needs no git pull of PCM.
 # It asks for the AI gateway key without showing it, stores it in /etc/pcm/pcm.env (root and group pcm only),
 # starts the service, and checks a real question through PCM. Safe to run again: it updates and restarts.
 set -euo pipefail
@@ -8,14 +9,12 @@ set -euo pipefail
 ENV_FILE=/etc/pcm/pcm.env
 E2_DIR=/opt/agent-e2
 E2_REPO=https://github.com/e1-rahabok/agent-e2
-UNIT_SRC=/opt/pcm/deploy/agent-e2.service
 
 say() { printf '\n== %s\n' "$*"; }
 fail() { printf '\nSTOPPED: %s\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || fail "run it as root: sudo bash $0"
 [ -d /opt/pcm ] && id pcm >/dev/null 2>&1 || fail "PCM is not installed here. Install it first (deploy/README.md, Install)."
-[ -f "$UNIT_SRC" ] || fail "$UNIT_SRC is missing. Update PCM first: cd /opt/pcm && git pull"
 [ -f "$ENV_FILE" ] || fail "$ENV_FILE is missing. Install PCM first (deploy/README.md, Install)."
 
 # Set or replace one KEY=value line in the env file. The value never goes through sed or the command line.
@@ -54,7 +53,38 @@ set_env PCM_AGENT_E2_URL "http://127.0.0.1:8090"
 chown root:pcm "$ENV_FILE"; chmod 640 "$ENV_FILE"
 
 say "4/6 Start the service"
-cp "$UNIT_SRC" /etc/systemd/system/agent-e2.service
+cat > /etc/systemd/system/agent-e2.service <<'UNIT'
+# systemd unit for the Agent E2 service next to PCM on a lab VM (deploy/README.md, Agent E2; D-078).
+# PCM calls it on 127.0.0.1:8090 (setting agent_e2.service_url, or PCM_AGENT_E2_URL in /etc/pcm/pcm.env).
+[Unit]
+Description=Agent E2 service for PCM (knowledge base, reading plan, model call)
+After=network-online.target
+Wants=network-online.target
+Before=pcm.service
+
+[Service]
+Type=simple
+User=pcm
+Group=pcm
+WorkingDirectory=/opt/agent-e2
+# AI_GATEWAY_API_KEY: the model and the embeddings go through the AI gateway in the lab (D-076). Same file as PCM.
+EnvironmentFile=-/etc/pcm/pcm.env
+# The repository is owned by root; let git name its commit for the "knowledge" line of each answer.
+Environment=GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0=/opt/agent-e2
+# Listens on the loopback only: PCM is its only caller.
+ExecStart=/usr/bin/python3 harness/answer_service.py --host 127.0.0.1 --port 8090
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# The embeddings cache, built on the first start (about 50 s), reused after.
+ReadWritePaths=/opt/agent-e2/harness/.cache
+
+[Install]
+WantedBy=multi-user.target
+UNIT
 systemctl daemon-reload
 systemctl enable -q agent-e2
 systemctl restart agent-e2

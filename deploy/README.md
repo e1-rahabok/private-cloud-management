@@ -68,7 +68,7 @@ Without this section, the E2 mark is grey and the Agent E2 panel says "The Agent
 **One command** does all of the steps below and checks a real question. It asks for the key without showing it:
 
 ```bash
-sudo bash /opt/pcm/deploy/install-agent-e2.sh
+sudo bash /opt/pcm/deploy/install-agent-e2.sh   # or a saved copy: sudo bash install-agent-e2.sh
 ```
 
 The same steps, by hand:
