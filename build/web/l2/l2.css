@@ -126,6 +126,8 @@ svg.lc .direct { fill: var(--text); font-weight: 700; }
 svg.lc .series line, svg.lc .series path { stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 svg.lc .series.dashed line, svg.lc .series.dashed path { stroke-dasharray: 5 4; stroke-width: 1.25; }
 svg.lc .area { opacity: .22; }
+svg.lc .vgrid { stroke: var(--line); stroke-width: 1; }
+svg.lc .axisline, svg.lc .tick { stroke: var(--text-muted); stroke-width: 1; opacity: .6; }
 svg.lc .sel { stroke: var(--text); stroke-width: 1; stroke-dasharray: 3 3; }
 svg.lc .cross { stroke: var(--text-muted); stroke-width: 1; opacity: .5; }
 svg.lc .dots circle { fill: #fff; stroke-width: 2; }
