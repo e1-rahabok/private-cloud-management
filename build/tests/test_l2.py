@@ -374,9 +374,18 @@ class Troubleshoot(Base):
         self.assertIn(f"one point every {e['kpi_point_minutes']} minutes", s["card_shows"])
         self.assertIn(e["kpi_belongs_to"], s["kpi_belongs_to"])
         self.assertEqual(s["drill_down"]["page"], e["kpi_drill_down_page"])
-        self.assertIn(e["kpi_not_shown_yet"], s["drill_down"]["not_shown_yet"])
+        self.assertIn(e["kpi_drill_down_shows"], s["drill_down"]["shows"])
+        self.assertEqual("not_shown_yet" not in s["drill_down"], e["kpi_nothing_not_shown"])
+        # D-111: the parts at the KPI's worst point, the values the Details fold shows, no score or ranking.
+        m5 = A.facts_for(NOW, g["kpi_m5"])[1]["facts"]["asked_about_kpi"]
+        pw, x = m5["parts_at_worst"], e["kpi_parts_at_worst"]
+        self.assertEqual((len(pw["parts"]), pw["time"], pw["kpi_value"], pw["parts"][0]["name"]),
+                         (x["count"], x["time"], x["kpi_value"], x["first_part"]))
+        self.assertEqual(pw["time"], m5["worst"]["t"])
+        self.assertTrue(all(set(e["kpi_part_fields"]) <= set(p) for p in pw["parts"]))
+        self.assertFalse(any(k in p for p in pw["parts"] for k in ("score", "band", "rank")))
         flat = json.dumps(got["facts"]).lower()
-        self.assertEqual(not any(w in flat for w in ("verdict", "steady", "drop")), e["no_drop_verdict_from_pcm"])
+        self.assertEqual(not re.search(r"\b(?:verdict|steady|drop)\b", flat), e["no_drop_verdict_from_pcm"])  # "dropped" packets is a part name
         self.assertEqual(A.facts_for(NOW, g["metric"])[1]["facts"]["screen"]["clicked"], e["metric_clicked"])
         self.assertEqual(A.facts_for(NOW, g["page"])[1]["facts"]["screen"]["clicked"], e["page_clicked"])
 
