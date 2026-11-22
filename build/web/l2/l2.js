@@ -360,8 +360,12 @@ function chartSvg(id, W) {
   const H = o.height ?? 240, L = o.left ?? 56, Rt = (o.nodirect || o.bands) ? 16 : 140, T = 12, B = 32, iw = W - L - Rt, ih = H - T - B, n = pts.length;
   const fmt = o.fmt || ((v) => o.max === 100 ? v + '%' : n0(v));
   const max = o.max ?? Math.max(4, ...pts.flatMap(p => series.map(s => p[s.key] ?? 0))) * 1.1;
-  const x = i => L + (n === 1 ? iw / 2 : i / (n - 1) * iw), y = v => T + ih - v / max * ih;
-  const ticks = o.ticks ?? (o.max === 100 ? [0, 25, 50, 75, 100] : [0, Math.round(max / 2), Math.round(max)]);
+  // o.edges: five ascending values, the foot of the axis, the three band limits and the top. Each band gets a quarter of the
+  // height, so green, yellow, orange and red are as tall on every chart; inside a band the scale is linear. A value past the ends sits on them.
+  const E = o.edges, quarter = ih / 4;
+  const yEdge = v => { const c = Math.min(Math.max(v, E[0]), E[4]); let k = 0; while (k < 3 && c > E[k + 1]) k++; return T + ih - (k + (E[k + 1] === E[k] ? 0 : (c - E[k]) / (E[k + 1] - E[k]))) * quarter; };
+  const x = i => L + (n === 1 ? iw / 2 : i / (n - 1) * iw), y = E ? yEdge : v => T + ih - v / max * ih;
+  const ticks = E ? E : o.ticks ?? (o.max === 100 ? [0, 25, 50, 75, 100] : [0, Math.round(max / 2), Math.round(max)]);
   const t0 = new Date(pts[0].t).getTime(), tn = new Date(pts[n - 1].t).getTime();
   const xt = niceTicks(t0, tn, Math.max(3, Math.floor(iw / 85))), xAt = t => L + (tn === t0 ? iw / 2 : (t - t0) / (tn - t0) * iw);
   CHARTS[id].g = { x, y, L, T, iw, ih };
@@ -371,7 +375,8 @@ function chartSvg(id, W) {
   if (area.length) svg += `<defs><linearGradient id="fg-${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <mask id="fm-${id}" maskUnits="userSpaceOnUse" x="${L}" y="${T}" width="${iw}" height="${ih}"><rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="url(#fg-${id})"/></mask></defs>`;
   // The four bands are tinted zones behind the line, so no band names are written on the chart.
-  if (o.bands) svg += `<g class="zones">${o.bands.map(([lo, hi, b]) => `<rect x="${L}" y="${f(y(hi))}" width="${iw}" height="${f(y(lo) - y(hi))}" fill="var(--band-${b})"/>`).join('')}</g>`;
+  if (E) svg += `<g class="zones">${o.edgeBands.map((b, k) => `<rect x="${L}" y="${f(T + ih - (k + 1) * quarter)}" width="${iw}" height="${f(quarter)}" fill="var(--band-${b})"/>`).join('')}</g>`;
+  else if (o.bands) svg += `<g class="zones">${o.bands.map(([lo, hi, b]) => `<rect x="${L}" y="${f(y(hi))}" width="${iw}" height="${f(y(lo) - y(hi))}" fill="var(--band-${b})"/>`).join('')}</g>`;
   svg += xt.map(k => `<line class="vgrid" x1="${f(xAt(k.t))}" x2="${f(xAt(k.t))}" y1="${T}" y2="${T + ih}"/>`).join('');
   svg += ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rt}" y1="${f(y(v))}" y2="${f(y(v))}"/><line class="tick" x1="${L - 5}" x2="${L}" y1="${f(y(v))}" y2="${f(y(v))}"/><text class="axis" x="${L - 10}" y="${f(y(v) + 4)}" text-anchor="end">${fmt(v, true)}</text>`).join('');
   svg += `<line class="axisline" x1="${L}" x2="${L}" y1="${T}" y2="${T + ih}"/><line class="axisline" x1="${L}" x2="${W - Rt}" y1="${T + ih}" y2="${T + ih}"/>`;
@@ -492,17 +497,23 @@ function metricBlock(m, layer) {
   const fmt = (v, tick) => withUnit(v, m, tick);
   const hiw = m.better === 'lower';
   // A counter with band_ends is drawn like a KPI: tinted zones behind the line, the line in the band of its value (D-108).
+  // The four bands are equally tall on every such chart (edges), whatever their width in the metric's own unit.
   const ends = !score && m.band_ends ? m.band_ends : null;
-  const zones = ends ? (hiw ? [[0, ends[0], 'green'], [ends[0], ends[1], 'yellow'], [ends[1], ends[2], 'orange'], [ends[2], top, 'red']]
-    : [[ends[0], top, 'green'], [ends[1], ends[0], 'yellow'], [ends[2], ends[1], 'orange'], [0, ends[2], 'red']])
-    .filter(([lo]) => lo < top).map(([lo, hi, b]) => [lo, Math.min(hi, top), b]) : undefined;
+  let edges, edgeBands;
+  if (ends) {
+    const hiV2 = Math.max(0, hiV), given = m.band_top ?? (m.unit === '%' ? Math.min(100, 2 * ends[2] - ends[1]) : 2 * ends[2] - ends[1]);
+    const lim = hiw ? Math.max(given, hiV2) : Math.max(given, niceMax(hiV2 * 1.1));
+    edges = hiw ? [0, ends[0], ends[1], ends[2], lim] : [0, ends[2], ends[1], ends[0], lim];
+    edgeBands = hiw ? ['green', 'yellow', 'orange', 'red'] : ['red', 'orange', 'yellow', 'green'];
+  }
+  const zones = ends ? edgeBands : undefined;
   const series = [score ? (hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: riskBand, worse: Math.max }
     : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: perfBand, worse: Math.min })
     : ends ? (hiw ? { key: 'v', label: 'Highest in each point', short: 'Highest', band: v => endBand(v, ends, m.better), worse: Math.max }
       : { key: 'v', label: 'Lowest in each point', short: 'Lowest', band: v => endBand(v, ends, m.better), worse: Math.min })
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
-    fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? (hiw ? HIGH_BANDS : LOW_BANDS) : zones });
+    fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? (hiw ? HIGH_BANDS : LOW_BANDS) : zones, edges, edgeBands });
   const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, { p95: fmt(m.percentile_95), worst: fmtPoint(m.worst.t, m.minutes) }) : '';
   return `<div class="metric" data-metric="${m.key}"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div><div class="mfig">
     <dl><dt>Now</dt><dd>${bandFig(m.now, m, figure(m.now, m))}</dd><dt>Worst</dt><dd>${m.worst ? bandFig(m.worst.v, m, figure(m.worst.v, m)) : '–'}</dd><dt>95th percentile</dt><dd>${bandFig(m.percentile_95, m, figure(m.percentile_95, m))}</dd></dl></div>${chart}</div>`;

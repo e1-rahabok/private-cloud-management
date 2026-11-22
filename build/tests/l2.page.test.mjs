@@ -257,7 +257,7 @@ try {
   await page.click('details[data-details="cluster_risk"] summary');
   await page.click('details[data-details="cluster_performance"] summary');
   const detsOpen = await page.$$eval('details.kpi-details', ds => ds.map(d => ({ open: d.open, parts: d.querySelectorAll('.metric').length, charts: d.querySelectorAll('svg.lc').length, w: Math.round(d.querySelector('svg.lc').getBoundingClientRect().width) })));
-  const RISK_END = { highest_esxi_cpu_thread_utilization: [60, 80, 90], worst_esxi_memory_ballooned: [1, 2, 4], highest_esxi_cpu_overcommit: [2, 3, 4] };
+  const RISK_END = { highest_esxi_cpu_thread_utilization: [60, 80, 90], worst_esxi_memory_ballooned: [1, 2, 4], highest_esxi_cpu_overcommit: [1, 2, 3] };
   const riskPills = await page.$$eval('details[data-details="cluster_risk"] .metric', ms => ms.map(m => ({ key: m.dataset.metric, pills: [...m.querySelectorAll('dd .bv')].map(p => ({ band: p.dataset.band, v: parseFloat(p.textContent) })) })));
   const riskBandOk = riskPills.filter(m => RISK_END[m.key]).length === 3 && riskPills.filter(m => RISK_END[m.key]).every(m => m.pills.every(p => p.band === (['green', 'yellow', 'orange'].find((_, i) => p.v <= RISK_END[m.key][i]) || 'red')));
   const PERF_END = { worst_vcpu_ready: [4, 8, 16], p90_disk_latency: [20, 40, 60], highest_esxi_packets: [0, 0.2, 0.4] };

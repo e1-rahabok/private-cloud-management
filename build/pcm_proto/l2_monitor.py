@@ -258,18 +258,27 @@ HOST_PARTS = (
     ("p90_disk_latency", "90th percentile read/write latency among virtual disks of VMs on the host", " ms", 1, lambda c: c * 1.0, [20, 40, 60]),
     ("esxi_packets", "ESXi (error + dropped) network packets", "%", 2, lambda c: c * 0.004, [0, 0.2, 0.4]),
 )
+# Where red ends on a part's chart (the last number of the catalog's red band). The chart gives each of the four bands
+# the same height, so every part reads alike: green, yellow, orange and red each a quarter of the axis.
+BAND_TOP = {"worst_vcpu_ready": 32, "worst_vcpu_costop": 16, "worst_memory_wait": 8, "worst_memory_latency": 8, "worst_disk_latency": 320,
+            "p90_vcpu_ready": 8, "p90_vcpu_costop": 4, "p90_memory_wait": 4, "p90_memory_latency": 4, "p90_disk_latency": 80,
+            "highest_esxi_packets": 0.8, "esxi_packets": 0.8,
+            "highest_esxi_cpu_thread_utilization": 95, "worst_esxi_cpu_imbalance": 2, "highest_esxi_memory_consumed": 100,
+            "worst_esxi_memory_ballooned": 8, "worst_esxi_swapped_zipped_memory": 2, "highest_esxi_cpu_reservation": 80,
+            "highest_esxi_memory_reservation": 80, "highest_esxi_cpu_overcommit": 4, "highest_esxi_memory_overcommit": 2.2,
+            "highest_cpu_monster_vm_host_ratio": 4, "highest_memory_monster_vm_host_ratio": 4}
 RISK_PARTS = (
     ("highest_esxi_cpu_thread_utilization", "Highest ESXi CPU thread utilization", "%", 1, lambda r: min(100.0, 28 + 0.75 * r), [60, 80, 90]),
     ("worst_esxi_cpu_imbalance", "Worst ESXi CPU imbalance", "", 2, lambda r: 1 + 0.004 * r, [1, 1.3, 1.6]),
     ("highest_esxi_memory_consumed", "Highest ESXi DRAM Memory Consumed", "%", 1, lambda r: min(100.0, 55 + 0.5 * r), [80, 90, 95]),
     ("worst_esxi_memory_ballooned", "Worst ESXi memory ballooned", "%", 2, lambda r: max(0.0, (r - 45) * 0.12), [1, 2, 4]),
     ("worst_esxi_swapped_zipped_memory", "Worst ESXi swapped + zipped memory", "%", 2, lambda r: max(0.0, (r - 55) * 0.05), [0.25, 0.5, 1]),
-    ("highest_esxi_cpu_reservation", "Highest ESXi CPU reservation", "%", 1, lambda r: 0.4 * r, [40, 60, 80]),
-    ("highest_esxi_memory_reservation", "Highest ESXi memory reservation", "%", 1, lambda r: 0.5 * r, [40, 60, 80]),
-    ("highest_esxi_cpu_overcommit", "Highest ESXi CPU overcommit ratio", "", 1, lambda r: 0.9 + 0.025 * r, [2, 3, 4]),
-    ("highest_esxi_memory_overcommit", "Highest ESXi memory overcommit ratio", "", 2, lambda r: 0.8 + 0.012 * r, [1.4, 1.8, 2.2]),
-    ("highest_cpu_monster_vm_host_ratio", "Highest CPU monster VM : host ratio", "", 1, lambda r: 0.3 + 0.012 * r, [2, 3, 4]),
-    ("highest_memory_monster_vm_host_ratio", "Highest memory monster VM : host ratio", "", 1, lambda r: 0.25 + 0.01 * r, [2, 3, 4]),
+    ("highest_esxi_cpu_reservation", "Highest ESXi CPU reservation", "%", 1, lambda r: 0.4 * r, [10, 40, 60]),
+    ("highest_esxi_memory_reservation", "Highest ESXi memory reservation", "%", 1, lambda r: 0.5 * r, [10, 40, 60]),
+    ("highest_esxi_cpu_overcommit", "Highest ESXi CPU overcommit ratio", "", 1, lambda r: 0.9 + 0.025 * r, [1, 2, 3]),
+    ("highest_esxi_memory_overcommit", "Highest ESXi memory overcommit ratio", "", 2, lambda r: 0.8 + 0.012 * r, [1, 1.4, 1.8]),
+    ("highest_cpu_monster_vm_host_ratio", "Highest CPU monster VM : host ratio", "", 1, lambda r: 0.3 + 0.012 * r, [1, 2, 3]),
+    ("highest_memory_monster_vm_host_ratio", "Highest memory monster VM : host ratio", "", 1, lambda r: 0.25 + 0.01 * r, [1, 2, 3]),
 )
 
 
@@ -289,6 +298,7 @@ def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int, h
                 "points": [{"t": t, "v": v} for t, v in zip(times, pts)], **CAP.figures(pts, times, True, dec)}
         if ends:
             part["band_ends"] = ends
+            part["band_top"] = BAND_TOP[key]
         out.append(part)
     return out
 
