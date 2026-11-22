@@ -117,7 +117,7 @@ A page is where four dimensions meet. The navigation shows each dimension in its
 ### 3.3 Pillar: the tabs
 
 - **What:** in Monitor and Improve, the tabs are the L2 pillars. The first tab, **Summary**, shows one line per pillar for the selected object. There is never one combined score.
-- **Tabs, not pills (D-093).** The selected tab and the panel under it are one shape, so the tab reads as the title of the page below it. Every tab shows its status dot.
+- **Tabs, not pills (D-093).** The selected tab and the panel under it are one shape, so the tab reads as the title of the page below it. A tab has no status dot: one dot cannot summarise a pillar.
 
 | Pillar | Monitor | Troubleshoot | Improve |
 |---|---|---|---|

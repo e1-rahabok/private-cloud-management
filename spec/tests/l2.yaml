@@ -418,7 +418,7 @@ page:
   - id: LPG-16
     rule: >
       Moving between pages does not load the page. A click on a tab, on the window, on a tree node and the browser's Back button change the address
-      and the content, and a marker set on the page survives. The window is a drop-down that names the chosen window and lists five. Every tab shows a status dot
+      and the content, and a marker set on the page survives. The window is a drop-down that names the chosen window and lists five. No tab shows a status dot
       on a pillar page. The tab list has the tab role and exactly one selected tab; the panel is named by it.
     decisions: [D-093]
   - id: LPG-15

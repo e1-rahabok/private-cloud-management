@@ -175,7 +175,7 @@ reads: [l2.pillars]
 - **Troubleshoot has no tabs.** A case crosses pillars.
 - **No tab for compliance, cost or price.**
 - **The tabs are the titles of the panel under them.** The selected tab and the panel are one shape: the tab has the panel's colour, a dark top edge, and no line between it and the panel. The other tabs are flat and grey. Everything the tab owns (message, notes, tables, charts, findings) is inside the panel; the object's name and the window are outside it.
-- **Every tab shows its status dot,** on every page, not only the selected one. Summary shows the worst of the others. The dot is named for a screen reader.
+- **A tab has no status dot.** One dot cannot summarise a pillar: the rule that reduces it to a colour is debatable and hides what matters. The status of each pillar is read on the Summary page.
 - **Roles:** tab list, tab, tab panel. The arrow keys move between tabs; Enter opens one.
 
 ## Moving between pages
