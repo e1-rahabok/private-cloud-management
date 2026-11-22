@@ -198,6 +198,8 @@ body.e2-open aside.tree #tree { display: none; }
 body.e2-open .treefold { display: block; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; font-size: 16px; color: var(--text); }
 body.e2-open aside.tree:hover #tree, body.e2-open aside.tree:focus-within #tree { display: block; position: absolute; left: 0; top: 0; z-index: 40; width: 300px; min-height: 100%; max-height: calc(100vh - 66px);
   overflow: auto; background: #fff; padding: 14px 12px 24px; border-right: 1px solid var(--line); box-shadow: 8px 0 24px rgba(11,27,43,.12); }
+/* L2 also carries body.desk (noc.css adds a 400px margin to main); the grid already reserves the panel column. */
+body.desk.l2.e2-open main { margin-right: 0; }
 .e2panel { grid-column: 3; position: sticky; top: 0; align-self: start; height: calc(100vh - 66px); }
 /* Narrow screen: the panel is a sheet over the page, Close at the top */
 @media (max-width: 900px) {
