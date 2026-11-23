@@ -155,14 +155,16 @@ try {
   const cells = await page.$$eval('[data-strip] .cell', xs => xs.map(x => x.className.replace('cell', '').trim()));
   const refs = await page.$$eval('[data-kpi] .legend, [data-kpi] .ref', xs => xs.length);
   const whyText = await page.innerText('[data-why]');
+  const diag = await page.evaluate(() => ({ out: document.querySelector('[data-cd-out]')?.dataset.cdOut, hit: [...document.querySelectorAll('[data-cd-node].hit')].map(e => e.dataset.cdNode).join(), off: [...document.querySelectorAll('[data-cd-node].off')].map(e => e.dataset.cdNode).join() }));
   const capText = await page.innerText('main');
   const chipsCap = await page.$$eval('[data-section="capacity-cluster"] .chip', xs => xs.map(x => x.textContent.trim()));
   const capFindings = await page.$$eval('.finding', xs => xs.length) + await page.$$eval('[data-daily-finding] a', xs => xs.length);
   check('LPG-17', capOrder.join() === 'verdict,consumption,performance,risk,strip' && /^Closed for new VMs/.test(verdictText) && /Consumption 82% is above 80%\./.test(whyText)
+    && diag.out === 'closed' && diag.hit === 'consumption' && diag.off === 'risk' && /above by 2 points/.test(whyText)
     && checkLabels.length === 0
     && ['Now', 'Worst', '95th percentile'].every(k => kpiLabels.includes(k)) && cells.length === 7 && cells[6] === 'closed'
     && refs === 0 && !/average/i.test(capText) && chipsCap.includes('Closed for new VMs') && capFindings >= 1 && !/Nothing needs you under this object/.test(capText),
-    `${capOrder}; ${verdictText.slice(0, 80)}; cells ${cells.length}; findings ${capFindings}`);
+    `${capOrder}; ${verdictText.slice(0, 80)}; diagram ${JSON.stringify(diag)}; cells ${cells.length}; findings ${capFindings}`);
 
   // LPG-18 no forecast word on any Capacity tab; one link to the Capacity workspace
   const capBad = [];

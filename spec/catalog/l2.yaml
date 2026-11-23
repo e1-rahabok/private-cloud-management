@@ -326,6 +326,14 @@ entries:
         - { performance: 90, risk: 10, consumption: 30, close: 0 }
     decisions: [D-094, D-095]
 
+  l2.cluster_check_diagram:
+    description: >
+      The Periodic Cluster Check drawn as its rule: three paths (Consumption, Performance, "Both orange?" then Risk)
+      into Open or Closed. Each node holds the check's published value, its closure level and the distance to it. The page
+      compares published values with published levels to draw the path; it never decides (D-094). The last hour is not in it.
+    reads: [l2.cluster_check]
+    decisions: [D-094, D-121]
+
   l2.contention_now:
     description: >
       "Contention now": the cluster's Cluster Performance over the last hour is orange or red on the display bands
@@ -334,6 +342,7 @@ entries:
       queued for deployment, and placement never waits on a closed cluster; it picks another.
     window: "last hour"
     below: "th-cluster-perf-red (50): the NOC's red line, the start of orange"
+    chip: "the band colour of the value: orange (25 to 50), red (below 25)"
     decisions: [D-040, D-094]
 
   l2.consumption_parts:

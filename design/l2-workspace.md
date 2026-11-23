@@ -257,6 +257,9 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
   - "Open for new VMs at the check of the 24 hours to 08:00 GMT+8."
   - "Closed for new VMs since the check of 17 Oct (3 checks). Consumption 84% is above 80%."
   - Beside it, when it applies: "Contention now: Cluster Performance 22% at 10:05."
+- **How the check decides, as a diagram (D-121):** under the verdict, the rule drawn with the check's own values, not a paragraph. Three paths into Open or Closed; each node shows the value, its closure level and how far it is. "Both orange?" gates Risk, so Risk shows "not checked" when the gate fails.
+  - Why: a sentence of three thresholds with "orange" in it was read as the display band (orange from 50) while the rule's orange is 60 (40 for Performance). "Nothing is red" beside three orange values read as a contradiction. The diagram puts each value next to the level that counts.
+  - The last hour is not in it: "Contention now" is the chip beside the verdict, in the band colour of its value.
 - **Three charts, one per KPI, in the rule's order:** Consumption, Performance, Risk. Same time axis, one above the other.
   - Each draws the display bands as background, and the two closure levels as lines.
   - Beside each: Now, Worst (with its time), 95th percentile, and the check's value named as its percentile.
