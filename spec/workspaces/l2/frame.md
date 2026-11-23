@@ -95,13 +95,18 @@ api: /api/l2/agent/ask
   - layer of a VM: "Is the {layer} layer the problem?", "Which of its metrics matters most here?", "What should I check next?";
   - finding: "Explain this finding.", "What should I check next?";
   - case, chain link or case layer: "Is the VMware platform the cause?", "What should I check next?";
-  - page, on a VM's Performance tab: "Is this VM performing well over the {window}?", "Which layer is the problem, if any?", "What should I check next?";
+  - page, on the four pages of release 1.0 (a cluster's Performance and Capacity tabs, an ESXi host's and a VM's Performance tab): the three questions Agent E2 chooses by the page's situation (D-124). PCM sends the page's KPI series (`POST /v1/suggest`: object kind, tab, window, each KPI's points) and shows what comes back. Agent E2 reads the situation, not PCM: a level (good, medium, bad) and a movement (declining, dip, rising). The questions are Agent E2's (`harness/user_suggestions.yaml`), e.g. on SG-S-01, falling all morning: "Why is performance declining?", "When did the decline start, and what changed then?", "Which VMs are hit hardest, and on which resource?";
+    - while they load, no suggestion shows; they arrive in a moment and the panel redraws, keeping what is typed;
+    - kept for the browser session per object, tab and window;
+    - when Agent E2 has none for the page or does not answer, the general ones below;
+  - page, on a VM's Performance tab when Agent E2 has none: "Is this VM performing well over the {window}?", "Which layer is the problem, if any?", "What should I check next?";
   - page, anywhere else: "What needs me on this {kind}?", "What should I check next?".
   - A click sends it. The question box under them takes any question; Enter sends.
 - **What PCM sends for a whole-page question** (the top bar mark), so an overall question is answered from the numbers on screen:
   - always: the object and its path, the tab, the window, the tab's status and score, the findings under the object (ten at most), the worst children (ten at most), the calendar entries in the window;
   - on the Summary tab: every pillar with its status and headline;
   - on a VM's Performance tab: both layers, each with its status and, per metric, Now, Worst with its time, 95th percentile and which way is better. No points: those go with a question about one metric.
+  - on the four pages of release 1.0 (a cluster's Performance and Capacity tabs, an ESXi host's and a VM's Performance tab): the page's KPI series with their points, the same ones the suggested questions are chosen from (D-124), so a question such as "Why is performance declining?" is answered from the numbers.
 - **What PCM sends for a layer of a VM:** that layer's status and every metric with its points, Now, Worst, 95th percentile; the other layer's status and figures without points.
 - **What PCM sends with every question: the screen** (D-103), so Agent E2 speaks of what the person sees, never of the data behind it ("the provided JSON"):
   - who asks (an L2 platform engineer) and that they typed only the question;

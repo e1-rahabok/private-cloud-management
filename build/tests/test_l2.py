@@ -286,6 +286,35 @@ class Troubleshoot(Base):
             code, out = C.act(NOW, ["case-sg-app-117", "draft"], {})
         self.assertEqual((code, out["record"]["actor_agent"]), (200, "agent-e2"))
 
+    def test_suggest_sends_the_page_kpis_to_agent_e2(self):
+        """D-124: on a release 1.0 page PCM sends the KPI series, points only, and shows Agent E2's questions; elsewhere no call."""
+        seen = {}
+        def fake(url, body, timeout):
+            seen["url"], seen["body"] = url, body
+            return {"situation": {"level": "bad", "movement": "declining"}, "questions": ["Why is performance declining?", "a", "b", "c"]}
+        cl = E.nodes["SG-S-01"]
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            code, out = A.suggest(NOW, {"context": {"kind": "page", "object": cl["id"], "pillar": "performance", "window": "24h"}})
+        self.assertEqual((code, out["source"], len(out["questions"])), (200, "service", 3))
+        self.assertTrue(seen["url"].endswith("/v1/suggest"))
+        f = seen["body"]["facts"]
+        self.assertEqual((f["object"]["kind"], f["pillar"]), ("cluster", "Performance"))
+        self.assertEqual([k["label"] for k in f["kpis"]], ["Cluster Performance", "Cluster Risk"])
+        self.assertTrue(all(set(k) == {"label", "better", "unit", "first_point", "point_minutes", "values"} for k in f["kpis"]))  # no band, no verdict
+        self.assertEqual(set(f), {"object", "pillar", "window", "kpis"})
+        seen.clear()
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            code, out = A.suggest(NOW, {"context": {"kind": "page", "object": cl["id"], "pillar": "security", "window": "24h"}})
+        self.assertEqual((out["source"], out["questions"], seen), ("not_in_release", [], {}))
+        code, _ = A.suggest(NOW, {"context": {"kind": "kpi", "object": cl["id"]}})
+        self.assertEqual(code, 400)
+
+    def test_suggest_without_agent_e2(self):
+        cl = E.nodes["SG-S-01"]
+        with mock.patch.dict(os.environ, {"PCM_AGENT_E2_URL": "http://127.0.0.1:9"}):
+            code, out = A.suggest(NOW, {"context": {"kind": "page", "object": cl["id"], "pillar": "capacity", "window": "24h"}})
+        self.assertEqual((code, out["source"], out["questions"]), (200, "unavailable", []))
+
     def test_LST_27_agent_e2_facts_rebuilt_by_pcm(self):
         """LST-27 (D-097): the facts come from PCM, never from the browser; the question is recorded with both identity fields."""
         t, seen = T["LST-27"], {}

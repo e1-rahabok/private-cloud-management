@@ -136,6 +136,13 @@ const E2Panel = (() => {
     S.ctx = H.full(H.pageCtx()); S.opener = $('e2top');
     render(); if (H.onToggle) H.onToggle();
   }
+  // The workspace's suggestions arrived after the panel was drawn (D-124): draw it again, keeping the typing and the focus.
+  function refresh() {
+    if (!S.open || S.busy) return;
+    const q = $('e2q'), had = q && document.activeElement === q, at = had ? q.selectionStart : 0;
+    render();
+    if (had) { const n = $('e2q'); n.focus({ preventScroll: true }); n.setSelectionRange(at, at); }
+  }
   // Says what failed and what to do (the page is up; it is the answer that did not arrive). status 0: the browser got no reply.
   // A gateway status, or a reply that is not JSON (status set, empty body), means PCM or the proxy in front cut the wait.
   function failure(status) {
@@ -201,5 +208,5 @@ const E2Panel = (() => {
       if (e.key === 'Escape' && S.open && !(H.escBlocked && H.escBlocked())) { e.preventDefault(); close(); }
     });
   }
-  return { init, mark, topMark, health, open, close, follow, state: S };
+  return { init, mark, topMark, health, open, close, follow, refresh, state: S };
 })();
