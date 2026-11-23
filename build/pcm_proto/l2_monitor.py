@@ -128,27 +128,28 @@ def vm_values(vm: dict, score: float, act: dict) -> dict:
 
 # ---------------------------------------------------------------- a VM's two layers (l2.realms, D-092)
 
-# (key, label, unit, better, decimals, scale, band_ends). The label never holds the unit; the unit follows the number.
+# (key, label, unit, better, decimals, scale, band_ends). The label is the Agent E2 catalog name (D-115) and never holds
+# the unit; the unit follows the number. Context Switches has no catalog line and keeps its name.
 # band_ends: upper end of green, yellow, orange, from the Agent E2 catalog (thresholds-performance.yaml, VirtualMachine and
 # Guest OS rows; Run Queue per vCPU from the adapter's Guest OS Performance table: 2, 4, 8). None where there is no row (Context Switches).
 LAYER_METRICS = (
     ("guest_os", "Guest OS", (
-        ("run_queue_per_vcpu", "Run Queue", " per vCPU", "lower", 2, None, [2, 4, 8]),
+        ("run_queue_per_vcpu", "Peak vCPU run queue length", " per vCPU", "lower", 2, None, [2, 4, 8]),
         ("context_switches_per_s", "Context Switches", "/s", "lower", 0, None, None),
-        ("disk_queue", "Disk Queue", " IOs", "lower", 0, None, [20, 40, 80]),
-        ("free_memory_mb", "Free Memory", " MB", "higher", 0, None, [512, 256, 128]),
-        ("paging_per_s", "Page-Out Rate", " pages/s", "lower", 0, None, [1000, 2000, 4000]),
+        ("disk_queue", "Peak disk queue length", " IOs", "lower", 0, None, [20, 40, 80]),
+        ("free_memory_mb", "Free memory", " MB", "higher", 0, None, [512, 256, 128]),
+        ("paging_per_s", "Memory page-out rate", " pages/s", "lower", 0, None, [1000, 2000, 4000]),
         ("guest_os_performance", "Guest OS Performance", "%", "higher", 1, (0, 100), None))),
     ("virtual_motherboard", "Virtual Motherboard", (
-        ("cpu_ready_percent", "CPU Ready", "%", "lower", 1, None, [2, 4, 8]),
-        ("co_stop_percent", "CPU Co-Stop", "%", "lower", 1, None, [1, 2, 4]),
-        ("cpu_overlap_percent", "CPU Overlap", "%", "lower", 1, None, [0.5, 1, 2]),
-        ("memory_wait_percent", "Memory Wait", "%", "lower", 1, None, [0.5, 1, 2]),  # Memory Contention + NVMe wait (D-114)
-        ("disk_latency_ms", "Disk Latency", " ms", "lower", 1, None, [10, 20, 40]),
-        ("network_dropped_tx_percent", "Network Dropped Tx", "%", "lower", 1, None, [0, 0.5, 1]),
-        ("cpu_run_percent", "CPU Run", "%", "lower", 1, None, [95, 97, 99]),
-        ("memory_ballooned_percent", "Memory Ballooned", "%", "lower", 1, None, [2, 4, 8]),
-        ("memory_zip_swap_percent", "Memory Zip Swap", "%", "lower", 1, None, [0.25, 0.5, 1]),
+        ("cpu_ready_percent", "Peak CPU Ready among any vCPU", "%", "lower", 1, None, [2, 4, 8]),
+        ("co_stop_percent", "Peak CPU Co-stop among any vCPU", "%", "lower", 1, None, [1, 2, 4]),
+        ("cpu_overlap_percent", "Peak CPU Overlap", "%", "lower", 1, None, [0.5, 1, 2]),
+        ("memory_wait_percent", "Memory wait", "%", "lower", 1, None, [0.5, 1, 2]),  # Memory Contention + NVMe wait (D-114)
+        ("disk_latency_ms", "Peak read/write latency among vDisks", " ms", "lower", 1, None, [10, 20, 40]),
+        ("network_dropped_tx_percent", "Peak network TX dropped packets", "%", "lower", 1, None, [0, 0.5, 1]),
+        ("cpu_run_percent", "CPU Net Run", "%", "lower", 1, None, [95, 97, 99]),
+        ("memory_ballooned_percent", "VM Memory Ballooned", "%", "lower", 1, None, [2, 4, 8]),
+        ("memory_zip_swap_percent", "VM swapped + zipped memory", "%", "lower", 1, None, [0.25, 0.5, 1]),
         ("vm_performance", "VM Performance", "%", "higher", 1, (0, 100), None))),
 )
 

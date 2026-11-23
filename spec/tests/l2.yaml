@@ -382,7 +382,7 @@ story:
       kpi_nothing_not_shown: true
       kpi_parts_at_worst: { count: 9, time: "2026-10-19T08:30:00+08:00", kpi_value: 41.9, first_part: "Worst peak vCPU Ready among all VMs" }
       kpi_part_fields: [name, unit, value, median, worst, worst_time]
-      metric_clicked: "the E2 mark on the Run Queue chart, in the Guest OS layer"
+      metric_clicked: "the E2 mark on the Peak vCPU run queue length chart, in the Guest OS layer"
       page_clicked: "the E2 mark in the top bar: a question about the whole page"
       no_drop_verdict_from_pcm: true
     decisions: [D-078, D-103, D-111]
@@ -456,9 +456,9 @@ page:
   - id: LPG-20
     rule: >
       Every L2 page shows the Agent E2 mark in the top bar, before Rules. On fr-svc-5526's Performance tab every metric has a mark named
-      "Ask Agent E2 about {metric}"; every finding row has one, and no "Explain this finding" button remains. A click on the Run Queue mark
+      "Ask Agent E2 about {metric}"; every finding row has one, and no "Explain this finding" button remains. A click on the Peak vCPU run queue length mark
       opens the panel on the right: the content is pushed, not covered (the chart's right edge stays left of the panel), the tree folds to a strip,
-      the Run Queue metric is outlined, the context names fr-svc-5526, Performance and the window, and up to three suggested questions show.
+      the Peak vCPU run queue length metric is outlined, the context names fr-svc-5526, Performance and the window, and up to three suggested questions show.
       With the service running, a suggested question returns an answer with a closed "Sources (2)" control, the computed values boxed, an object of the
       estate named in it as a link, and the footer "recorded in the action history". A click on "Sources" opens it and shows the two files as chips.
       A move to another tab keeps the panel open with the new context; Esc closes it, the tree comes back, and the focus returns to the mark.
@@ -474,7 +474,7 @@ page:
       The KPI comes first (D-100). On fr-bat-6839's Performance tab the first section is "Performance" with Guest OS Performance
       then VM Performance, and neither layer repeats them. On FR-B-04's Performance tab the first charts are Cluster Performance and
       Cluster Risk, and no card "This object", "Trend" or "Children outside green" remains. Every figure of a 0 to 100% KPI is a band
-      pill whose band matches its value and names it; its text is at least 4.5:1 on its background. A counter's figure has a pill only where the catalog has band ends (D-108): on a VM, every counter of the two KPIs (Run Queue, Disk Queue, Free Memory, Page-Out Rate; the nine VM Performance sub-metrics); Context Switches has none. Free Memory, higher is better, takes its band from lower limits. A metric title is on one line, in a row above the figures and chart; the Guest OS Performance and VM Performance cards have the same height.
+      pill whose band matches its value and names it; its text is at least 4.5:1 on its background. A counter's figure has a pill only where the catalog has band ends (D-108): on a VM, every counter of the two KPIs (Peak vCPU run queue length, Peak disk queue length, Free memory, Memory page-out rate; the nine VM Performance sub-metrics); Context Switches has none. Free memory, higher is better, takes its band from lower limits. A metric title is on one line, in a row above the figures and chart; the Guest OS Performance and VM Performance cards have the same height.
       On fr-esx-244's Capacity tab the first section is the summary with Capacity Remaining, Time Remaining and VM Remaining, and
       says the values are placeholders from VCF Operations; then the verdict.
     decisions: [D-100, D-108]

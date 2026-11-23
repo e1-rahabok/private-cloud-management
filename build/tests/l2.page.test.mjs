@@ -337,7 +337,7 @@ try {
   const focusBack = await page.evaluate(() => document.activeElement && document.activeElement.id);
   check('LPG-20', e2utils[0] === 'e2top' && e2utils.slice(1).join() === 'Rules,Calendar' && findRows.length > 0 && findRows.every(Boolean) && noExplain && marksOk
     && chartRight <= panelBox.x && folded && outlined && /fr-svc-5526/.test(ctx) && /Performance/.test(ctx) && /Last 24 hours/.test(ctx) && nSugg >= 1 && nSugg <= 3
-    && srcLabel === 'Sources (2)' && srcClosed && srcOpened && chips === 2 && boxes === 1 && objLinks.includes('fr-esx-218') && foot.includes('recorded in the action history') && sentFacts.role === 'l2' && sentFacts.facts.asked_about_metric.name === 'Run Queue'
+    && srcLabel === 'Sources (2)' && srcClosed && srcOpened && chips === 2 && boxes === 1 && objLinks.includes('fr-esx-218') && foot.includes('recorded in the action history') && sentFacts.role === 'l2' && sentFacts.facts.asked_about_metric.name === 'Peak vCPU run queue length'
     && stillOpen && /Capacity/.test(ctx2) && closed && focusBack === 'e2top',
     `${e2utils}; ${findRows.length} findings marked; ${marks.length} metric marks; chart right ${Math.round(chartRight)} <= panel ${Math.round(panelBox.x)}; ${ctx}; ${nSugg} suggestions; ${chips} sources; links ${objLinks}; then ${ctx2}; focus ${focusBack}`);
 
