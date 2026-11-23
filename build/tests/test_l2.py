@@ -388,6 +388,15 @@ class Troubleshoot(Base):
         self.assertEqual(not re.search(r"\b(?:verdict|steady|drop)\b", flat), e["no_drop_verdict_from_pcm"])  # "dropped" packets is a part name
         self.assertEqual(A.facts_for(NOW, g["metric"])[1]["facts"]["screen"]["clicked"], e["metric_clicked"])
         self.assertEqual(A.facts_for(NOW, g["page"])[1]["facts"]["screen"]["clicked"], e["page_clicked"])
+        # D-117: the KPIs at the top of a cluster's and an ESXi host's Performance tab, with their parts at the worst point.
+        for ctx, n in zip(g["perf_kpis"], e["perf_kpi_parts"]):
+            code, pk = A.facts_for(NOW, ctx)
+            self.assertEqual(code, 200, ctx)
+            k, s = pk["facts"]["asked_about_kpi"], pk["facts"]["screen"]
+            self.assertEqual(s["clicked"], e["perf_kpi_clicked"].format(label=k["label"]))
+            self.assertIn(e["perf_kpi_page_tab"], s["page"])
+            self.assertEqual(len(k["parts_at_worst"]["parts"]), n)
+            self.assertEqual(k["parts_at_worst"]["time"], k["worst"]["t"])
 
 
 class Improve(Base):

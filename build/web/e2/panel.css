@@ -2,8 +2,8 @@
    One mark and one panel for every workspace (D-097, D-098). Each workspace's own CSS places the panel in its layout. */
 .e2panel { display: flex; flex-direction: column; background: #fff; border-left: 1px solid var(--line); min-width: 0; }
 .e2mark { font: inherit; font-size: 11px; font-weight: 800; letter-spacing: .02em; line-height: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-  min-width: 26px; height: 22px; padding: 0 5px; border-radius: 6px; border: 1px solid var(--line); background: #fff; color: var(--text); cursor: pointer; }
-.e2mark:hover, .e2mark:focus-visible { background: var(--text); color: #fff; border-color: var(--text); }
+  min-width: 26px; height: 22px; padding: 0 5px; border-radius: 6px; border: 1px solid var(--text); background: var(--text); color: #fff; cursor: pointer; }
+.e2mark:hover { box-shadow: 0 0 0 3px var(--accent-soft); }
 .e2mark:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .e2mark.e2-top { height: 30px; min-width: 44px; padding: 0 8px; font-size: 13px; background: var(--text); color: #fff; border-color: var(--text); align-self: center; }
 .e2mark.e2-top .dot { width: 8px; height: 8px; }

@@ -370,7 +370,14 @@ story:
       kpi_m5: { kind: kpi, object: SG-S-01, pillar: capacity, metric: performance, window: 24h }
       metric: { kind: metric, object: fr-svc-5526, layer: guest_os, metric: run_queue_per_vcpu, window: 24h }
       page: { kind: page, object: fr-svc-5526, pillar: performance, window: 24h }
+      perf_kpis:
+        - { kind: kpi, object: SG-S-01, pillar: performance, metric: cluster_performance, window: 24h }
+        - { kind: kpi, object: SG-S-01, pillar: performance, metric: cluster_risk, window: 24h }
+        - { kind: kpi, object: sg-esx-110, pillar: performance, metric: esxi_performance, window: 24h }
     expect:
+      perf_kpi_clicked: "the E2 mark on the {label} chart"
+      perf_kpi_page_tab: "Performance tab"
+      perf_kpi_parts: [9, 10, 9]
       first_key: screen
       asked_by: "an L2 platform engineer, who typed only the question"
       kpi_page: "fr-bat-6839 (vm) · Capacity tab · Last 24 hours"
@@ -385,7 +392,7 @@ story:
       metric_clicked: "the E2 mark on the Peak vCPU run queue length chart, in the Guest OS layer"
       page_clicked: "the E2 mark in the top bar: a question about the whole page"
       no_drop_verdict_from_pcm: true
-    decisions: [D-078, D-103, D-111]
+    decisions: [D-078, D-103, D-111, D-117]
 
 page:
   - id: LPG-1
@@ -490,6 +497,12 @@ page:
       Charts keep their own height (D-108). On a cluster's Capacity tab no chart overlaps the heading, table or chart under it: the box of
       every chart is as tall as its drawing. The NOC wall's chart rules apply only inside the wall's panels.
     decisions: [D-108]
+  - id: LPG-26
+    rule: >
+      On SG-S-01's Performance tab, Cluster Performance and Cluster Risk each have an Agent E2 mark named "Ask Agent E2 about {KPI}";
+      on sg-esx-110's, ESXi Performance has one. The parts in a Details fold have none. A question from the Cluster Performance mark
+      sends the KPI and its parts at the worst point. Every small mark is dark with white "E2", as the top bar mark, and has no status dot.
+    decisions: [D-117]
   - id: LPG-21
     rule: >
       A clarifying answer shows its questions under "Agent E2 asks"; the next question sent carries the earlier turns. On a narrow screen
