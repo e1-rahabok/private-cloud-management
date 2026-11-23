@@ -34,7 +34,8 @@
 .e2a ul, .e2a ol { margin: 0 0 14px; padding-left: 22px; }
 .e2a li { margin: 0 0 6px; line-height: 1.6; }
 .e2a code { font-size: 12px; background: #fff; padding: 1px 4px; border-radius: 4px; }
-.e2a .lbl, .e2computed .lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 10px 0 4px; }
+.e2a .lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 10px 0 4px; }
+.e2computed { margin: 0 0 8px; }
 .e2computed .box { display: inline-block; margin: 0 6px 6px 0; padding: 4px 8px; border: 2px solid var(--text); border-radius: 6px; background: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
 .srcchip { display: inline-block; margin: 0 6px 6px 0; padding: 3px 8px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 /* Sources (D-099): closed by default; the summary is the control. */
