@@ -131,7 +131,7 @@ Install nginx and put the certificate and key where the lab VM has them (the lab
 apt-get install -y nginx
 ```
 
-Create `/etc/nginx/sites-available/pcm`. The `listen`, `ssl_certificate*` and `proxy_pass` lines are the lab VM's. The headers and the timeout are recommended; they are not confirmed on the VM:
+Create `/etc/nginx/sites-available/pcm`. The `listen`, `ssl_certificate*` and `proxy_pass` lines are the lab VM's. The headers and the timeout are recommended; they are not confirmed on the VM. The timeout must exceed the 180 s PCM waits for Agent E2; a shorter one cuts the wait and the panel shows a gateway error:
 
 ```nginx
 server {
@@ -147,7 +147,7 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
-        proxy_read_timeout 120s;
+        proxy_read_timeout 200s;
     }
 }
 ```
