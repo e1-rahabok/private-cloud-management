@@ -491,7 +491,7 @@ entries:
           cpu_ready_percent:      { label: "CPU Ready",              unit: "%",         better: lower,  decimals: 1, band_ends: [2, 4, 8] }
           co_stop_percent:        { label: "CPU Co-Stop",            unit: "%",         better: lower,  decimals: 1, band_ends: [1, 2, 4] }
           cpu_overlap_percent:    { label: "CPU Overlap",            unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
-          memory_contention_percent: { label: "Memory Contention",   unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
+          memory_wait_percent:   { label: "Memory Wait",         unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
           disk_latency_ms:        { label: "Disk Latency",           unit: " ms",       better: lower,  decimals: 1, band_ends: [10, 20, 40] }
           network_dropped_tx_percent: { label: "Network Dropped Tx", unit: "%",         better: lower,  decimals: 1, band_ends: [0, 0.5, 1] }
           cpu_run_percent:        { label: "CPU Run",                unit: "%",         better: lower,  decimals: 1, band_ends: [95, 97, 99] }
