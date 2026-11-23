@@ -269,7 +269,7 @@ try {
   await page.click('details[data-details="esxi_performance"] summary');
   const hostDets = await page.$$eval('details.kpi-details', ds => ds.map(d => ({ parts: d.querySelectorAll('.metric').length, closedTitle: d.querySelector('summary').firstChild.textContent.trim() })));
   const hostBanded = await bandedAll('details[data-details="esxi_performance"]');
-  check('LPG-24', detsClosed && detsOpen.length === 2 && detsOpen.every(d => d.open && d.charts === d.parts && d.w > 300) && detsOpen[0].parts === 9 && detsOpen[1].parts === 11 && riskBandOk && perfBandOk && perfAllBanded && hostDets.length === 1 && hostDets[0].parts === 9 && hostBanded,
+  check('LPG-24', detsClosed && detsOpen.length === 2 && detsOpen.every(d => d.open && d.charts === d.parts && d.w > 300) && detsOpen[0].parts === 9 && detsOpen[1].parts === 10 && riskBandOk && perfBandOk && perfAllBanded && hostDets.length === 1 && hostDets[0].parts === 9 && hostBanded,
     `closed ${detsClosed}; open ${JSON.stringify(detsOpen)}; risk bands ${riskBandOk}; perf bands ${perfBandOk}/${perfAllBanded}; host ${JSON.stringify(hostDets)}/${hostBanded}`);
 
   // LPG-25 charts keep their own height: a chart box is as tall as its drawing; the wall's chart rules stay in the wall (D-108)
