@@ -298,7 +298,53 @@ def _facts(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
         facts["pillars"] = [{k: x.get(k) for k in ("pillar", "status", "headline", "findings")} for x in sm.get("pillars", [])]
     if (pv or {}).get("layers"):
         facts["layers"] = [_layer(x) for x in pv["layers"]]
+    sf = suggest_facts(now, ctx, enable)  # the page's KPI series: a suggested question asks how they moved (D-123)
+    if sf and sf["kpis"]:
+        facts["kpis"] = sf["kpis"]
     return 200, {"facts": facts, "label": where}
+
+
+# ---------------------------------------------------------------- suggested questions for the whole page (D-123)
+
+SUGGEST_PAGES = {("cluster", "performance"), ("cluster", "capacity"), ("host", "performance"), ("vm", "performance")}
+VM_KPIS = ("vm_performance", "guest_os_performance")
+
+
+def suggest_facts(now: datetime, ctx: dict, enable=()) -> dict | None:
+    """The page's KPI series, as the page draws them, for Agent E2 to read the situation from. None for a page outside
+    release 1.0 (SUGGEST_PAGES). PCM sends the points only: no band, no verdict, no rule (D-078, D-123)."""
+    E = X.estate(tuple(enable))
+    window = ctx.get("window") if ctx.get("window") in X.WINDOWS else "24h"
+    o = _obj(E, ctx.get("view") or "compute", ctx.get("object") or "estate")
+    pillar = ctx.get("pillar")
+    if o is None or (o["kind"], pillar) not in SUGGEST_PAGES:
+        return None
+    if pillar == "capacity":
+        if X.node(E, o["id"]).get("class") not in X.WORKLOADS:  # no Periodic Cluster Check on this cluster
+            return None
+        cap = (M.pillar_view(now, ctx.get("view") or "compute", o["id"], "capacity", window, enable=enable) or {}).get("capacity") or {}
+        ks = [{"label": k["label"], "better": k["better"], "unit": "%", "points": [[p["t"], p["v"]] for p in k.get("points", [])]}
+              for k in cap.get("kpis") or []]
+    elif o["kind"] == "vm":
+        pv = M.pillar_view(now, ctx.get("view") or "compute", o["id"], "performance", window, enable=enable) or {}
+        ks = [{"label": m["label"], "better": m.get("better", "higher"), "unit": "%", "points": [[p["t"], p["v"]] for p in m.get("points", [])]}
+              for layer in pv.get("layers") or [] for m in layer.get("metrics", []) if m.get("key") in VM_KPIS]
+    else:
+        ks = [{"label": k["label"], "better": k["better"], "unit": "%", "points": [[p["t"], p["v"]] for p in k.get("points", [])]}
+              for k in M.object_kpis(E, X.node(E, o["id"]), now, window, enable)]
+    return {"object": {"name": o["name"], "kind": o["kind"]}, "pillar": PNAME[pillar], "window": WNAME[window], "kpis": ks}
+
+
+def suggest(now: datetime, body: dict, enable=()) -> tuple[int, dict]:
+    """POST /api/l2/agent/suggest: Agent E2's three questions for the page, by its situation. Not recorded: nothing is asked."""
+    ctx = body.get("context") or {}
+    if not isinstance(ctx, dict) or (ctx.get("kind") or "page") != "page":
+        return 400, {"error": "context kind must be page"}
+    facts = suggest_facts(now, ctx, enable)
+    if facts is None:
+        return 200, {"questions": [], "situation": None, "source": "not_in_release"}
+    settings = generator.load_spec()["settings"]
+    return 200, agent_e2.suggest_service(service_url(settings), facts)
 
 
 # ---------------------------------------------------------------- object names in the answer become links

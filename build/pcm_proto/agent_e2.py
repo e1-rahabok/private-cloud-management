@@ -125,6 +125,18 @@ def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 
                 "knowledge_commit": None, "source": "unavailable"}
 
 
+def suggest_service(url: str, facts: dict, timeout: int = 5) -> dict:
+    """Agent E2's suggested questions for a whole page, chosen by the page's situation (D-123). No model call on its side,
+    so a short wait. Returns {questions, situation, source}; questions is empty when Agent E2 has none for the page or does
+    not answer, and the panel then keeps the general questions."""
+    try:
+        out = _post_raw(url.rstrip("/") + "/v1/suggest", {"facts": facts}, timeout)
+        return {"questions": [q for q in out.get("questions") or [] if isinstance(q, str)][:3], "situation": out.get("situation"),
+                "source": "service"}
+    except (urllib.error.URLError, TimeoutError, ConnectionError, ValueError, KeyError):
+        return {"questions": [], "situation": None, "source": "unavailable"}
+
+
 def _post_raw(url: str, body: dict, timeout: int) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body, default=str).encode(), headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:

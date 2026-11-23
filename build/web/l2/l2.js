@@ -1033,9 +1033,29 @@ function suggestions(c) {
   if (c.kind === 'finding') return ['Explain this finding.', 'What should I check next?'];
   if (c.kind === 'vm_layer') return [`Is the ${c.show.layer} layer the problem?`, 'Which of its metrics matters most here?', 'What should I check next?'];
   if (c.case) return ['Is the VMware platform the cause?', 'What should I check next?'];
-  // A whole-page question: on a VM's Performance tab PCM sends both layers' figures (frame.md, Agent E2 panel).
+  // A whole-page question. Agent E2 chooses three by the page's situation (D-123); none while they load; the general ones
+  // when Agent E2 has none for this page or does not answer.
+  const ask = pageSuggestions(c);
+  if (ask === null) return [];
+  if (ask.length) return ask;
   if (c.pillar === 'performance' && k === 'VM') return [`Is this VM performing well over the ${winName(c.window).replace(/^Last /, 'last ')}?`, 'Which layer is the problem, if any?', 'What should I check next?'];
   return [`What needs me on this ${k}?`, 'What should I check next?'];
+}
+// Agent E2's questions for a page, kept for the browser session per object, tab and window. null: still asking.
+const SUGG = new Map();
+function pageSuggestions(c) {
+  if (c.kind !== 'page' || !['performance', 'capacity'].includes(c.pillar)) return [];
+  const key = `${c.view}|${c.object}|${c.pillar}|${c.window}`;
+  if (SUGG.has(key)) return SUGG.get(key);
+  SUGG.set(key, null);
+  // A read, not an action: plain fetch, so the status cache stays (postJSON clears it).
+  fetch(apiURL('agent/suggest'), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ context: { kind: 'page', view: c.view, object: c.object, pillar: c.pillar, window: c.window } }) })
+    .then(r => r.ok ? r.json() : {})
+    .then(b => SUGG.set(key, Array.isArray(b.questions) ? b.questions : []))
+    .catch(() => SUGG.set(key, []))
+    .finally(() => E2Panel.refresh());
+  return null;
 }
 // Charts measure their box: re-fit them when the panel opens or closes.
 function refit() { requestAnimationFrame(() => main.querySelectorAll('[data-chartbox]').forEach(b => { if (CHARTS[b.dataset.chartbox]) mountChart(b); })); }
