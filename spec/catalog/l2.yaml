@@ -111,8 +111,8 @@ entries:
       Release 1.0: placeholder values derived from the KPI's series.
     parts:
       cluster_performance: "9: worst and 90th percentile of vCPU Ready, vCPU Co-stop, memory wait, disk latency; highest ESXi network packets (error + dropped)"
-      cluster_risk: "11: highest ESXi CPU thread utilization, worst CPU imbalance, highest memory consumed, worst ballooned, worst swapped + zipped, highest CPU and memory reservation, highest CPU and memory overcommit, highest CPU and memory monster VM : host ratio"
-    host: "9 parts over the VMs on the host, under ESXi Performance (D-108): the same nine as for a cluster, memory wait read as memory latency"
+      cluster_risk: "the 12 of the Agent E2 catalog (thresholds-risk.yaml, D-113): highest ESXi CPU thread utilization, worst CPU imbalance, worst ballooned, worst swapped + zipped, worst active memory and worst NVMe read latency (tiered hosts only: 10 on a cluster without one), highest CPU and memory reservation, highest CPU and memory overcommit, highest CPU and memory monster VM : host ratio"
+    host: "9 parts over the VMs on the host, under ESXi Performance (D-108): the same nine as for a cluster"
     bands: "Every part: the band ends of the Agent E2 catalog. Risk parts: thresholds-capacity.yaml, cluster-risk rows. Performance parts: thresholds-performance.yaml, the 20-second levels applied to the 5-minute peak (a point is the highest of the 20-second values); the packets row has green equal to yellow, so only 0 is green (D-108)"
     decisions: [D-106, D-108]
 

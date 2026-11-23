@@ -75,7 +75,7 @@ VMROWS = [Row("co_stop", 0, 1, 2, 4, 8), Row("cpu_ready", 0, 2, 4, 8, 16), Row("
           Row("memory_wait", 0, .5, 1, 2, 4), Row("disk_latency", 0, 10, 20, 40, 80), Row("dropped_tx", 0, 0, .5, 1, 2, True),
           Row("cpu_run", 0, 95, 97, 99, 100, True), Row("ballooned", 0, 2, 4, 8, 16), Row("zip_swap", 0, .25, .5, 1, 2)]
 RISK_ROWS = [Row("highest_esxi_cpu_thread_utilization", 0, 60, 80, 90, 95, True), Row("worst_esxi_cpu_imbalance", 1, 1, 1.3, 1.6, 2),
-        Row("highest_esxi_memory_consumed", 0, 80, 90, 95, 100, True), Row("worst_esxi_memory_ballooned", 0, 1, 2, 4, 8),
+        Row("worst_esxi_memory_ballooned", 0, 1, 2, 4, 8),
         Row("worst_esxi_swapped_zipped_memory", 0, .25, .5, 1, 2), Row("highest_esxi_cpu_reservation", 0, 10, 40, 60, 80, True),
         Row("highest_esxi_memory_reservation", 0, 10, 40, 60, 80, True), Row("highest_esxi_cpu_overcommit", 0, 1, 2, 3, 4, True),
         Row("highest_esxi_memory_overcommit", 0, 1, 1.4, 1.8, 2.2, True), Row("highest_cpu_monster_vm_host_ratio", 0, 1, 2, 3, 4),
@@ -178,7 +178,6 @@ def _risk_rows(s, m) -> list:
         util = 44 + 6 * math.sin((i / 288 * 2 * math.pi) - 1.2) ** 2 + 36 * (0.5 * mi + 0.5 * si) ** 1.1
         out.append({"highest_esxi_cpu_thread_utilization": min(99, util * n()),
                     "worst_esxi_cpu_imbalance": 1.02 + 0.40 * mi ** 1.2 * n(0.03),
-                    "highest_esxi_memory_consumed": 62 + 30 * mi ** 1.1 * n(0.01),
                     "worst_esxi_memory_ballooned": max(0, 6.0 * mi ** 1.5 * n(0.08)),
                     "worst_esxi_swapped_zipped_memory": max(0, 0 if mi < 0.35 else (mi - 0.35) * 1.5 * n(0.1)),
                     "highest_esxi_cpu_reservation": 8 + 20 * ramp, "highest_esxi_memory_reservation": 9 + 38 * ramp,
