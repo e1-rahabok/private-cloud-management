@@ -152,6 +152,22 @@ def _parts(n: dict, k: dict | None) -> dict | None:
             "shown_in": f"{n['name']} ({kind}) · Performance tab · Details under {k['label']}", "parts": parts}
 
 
+def _hourly_parts(k: dict) -> dict | None:
+    """The parts of a KPI once an hour over the window, the value at the end of each hour (D-125): the same parts as the
+    Details fold, so Agent E2 can score them before and after the moment the KPI changed level, not only at its worst
+    point. Values only, no score: scoring is Agent E2's."""
+    det = k.get("details") or []
+    pts = k.get("points") or []
+    m = _minutes([p["t"] for p in pts[:2]])
+    if not det or not m:
+        return None
+    every = max(1, 60 // m)
+    idx = list(range(every - 1, len(pts), every))
+    return {"times": [pts[i]["t"] for i in idx],
+            "rows": [{"name": d["label"], "unit": d["unit"].strip(), "hourly": [d["points"][i]["v"] for i in idx if i < len(d["points"])]}
+                     for d in det]}
+
+
 def _minutes(times: list) -> int | None:
     try:
         return int((datetime.fromisoformat(times[1]) - datetime.fromisoformat(times[0])).total_seconds() // 60)
@@ -268,8 +284,13 @@ def _facts(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
         parts = _parts(X.node(E, o["id"]), k)
         if parts:
             kpi["parts_at_worst"] = parts
+        hourly = _hourly_parts(k)
+        if hourly:
+            kpi["parts_hourly"] = hourly
+        # The other KPIs with their series, compact: a question such as "Risk rose but Performance did not drop: why?"
+        # needs to see both lines (D-125).
         facts = {**base, "pillar": "Performance", "asked_about_kpi": kpi,
-                 "other_kpis": [{key: x.get(key) for key in ("label", "now", "worst", "percentile_95")} for x in ks if x is not k]}
+                 "other_kpis": [{**{key: x.get(key) for key in ("now", "worst", "percentile_95")}, **_compact(x)} for x in ks if x is not k]}
         return 200, {"facts": facts, "label": f"{k['label']} · {o['name']} · Performance · {WNAME[window]}"}
     if kind == "kpi":
         pv = M.pillar_view(now, view, o["id"], "capacity", window, enable=enable)

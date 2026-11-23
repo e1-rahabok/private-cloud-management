@@ -700,6 +700,8 @@ stories:
         - { at: "14 to 7", what: "The end-of-day batch adds to it." }
         - { at: 3, what: "The worst point. DRS moves 3 VMs off the host: partial relief, but memory is reclaimed slowly, so Risk does not fall." }
       cluster: { culprit_host: sg-esx-110, vms: 344, hosts: 12, vms_on_host: 28 }
+      calendar:  # the release, as the change team put it on the calendar (D-125)
+        - { kind: release, location: sg, hours_before_now: 17.5, hours: 1.5, note: "Release of the payments API on SG-S-01: 6 new VMs on sg-esx-110, with CPU and memory reservations" }
     expect:
       SG-S-01:
         cluster_performance: { start_about: 90, now_about: 55, worst_about: 42 }

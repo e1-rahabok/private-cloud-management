@@ -115,6 +115,12 @@ def calendar(now: datetime, enable=()) -> list:
             when = next_quarter_end(now, "Asia/Singapore") if c["when"] == "next_quarter_end" else next_25th(now, "Asia/Singapore")
             out.append({"id": f"cal-{i + 1}", "kind": c["kind"], "location": c["location"], "starts_at": when.isoformat(),
                         "ends_at": (when + timedelta(hours=12)).isoformat(), "note": c["note"], "added_by": "l2-engineer-1"})
+    m5 = stories(enable).get("M-5")
+    if m5:  # the release that starts story M-5, on the calendar as a change L2 knew of (D-125)
+        for i, c in enumerate(m5["plant"].get("calendar", [])):
+            start = now - timedelta(hours=c["hours_before_now"])
+            out.append({"id": f"cal-m5-{i + 1}", "kind": c["kind"], "location": c["location"], "starts_at": start.isoformat(),
+                        "ends_at": (start + timedelta(hours=c["hours"])).isoformat(), "note": c["note"], "added_by": "l2-engineer-1"})
     return out + STATE.calendar_added
 
 

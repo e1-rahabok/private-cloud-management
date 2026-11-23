@@ -309,6 +309,18 @@ class Troubleshoot(Base):
         code, _ = A.suggest(NOW, {"context": {"kind": "kpi", "object": cl["id"]}})
         self.assertEqual(code, 400)
 
+    def test_kpi_question_sends_hourly_parts_and_the_other_kpi_series(self):
+        """D-125: Agent E2 needs the parts over time and the other KPI's line to explain a change of level."""
+        code, got = A.facts_for(NOW, {"kind": "kpi", "view": "compute", "object": "SG-S-01", "pillar": "performance", "window": "24h",
+                                      "metric": "cluster_risk"}, ("M-5",))
+        f = got["facts"]
+        h = f["asked_about_kpi"]["parts_hourly"]
+        self.assertEqual(len(h["times"]), 24)
+        self.assertTrue(all(len(r["hourly"]) == 24 and "score" not in r for r in h["rows"]))
+        o = f["other_kpis"][0]
+        self.assertEqual((o["label"], len(o["values"]), o["point_minutes"]), ("Cluster Performance", 288, 5))
+        self.assertEqual([c["kind"] for c in f["calendar_in_window"]], ["release"])
+
     def test_suggest_without_agent_e2(self):
         cl = E.nodes["SG-S-01"]
         with mock.patch.dict(os.environ, {"PCM_AGENT_E2_URL": "http://127.0.0.1:9"}):
