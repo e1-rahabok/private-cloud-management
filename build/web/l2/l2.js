@@ -526,7 +526,6 @@ function metricBlock(m, layer, askKpi = false) {
   return `<div class="metric" data-metric="${m.key}"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div><div class="mfig">
     <dl><dt>Now</dt><dd>${bandFig(m.now, m, figure(m.now, m))}</dd><dt>Worst</dt><dd>${m.worst ? bandFig(m.worst.v, m, figure(m.worst.v, m)) : '–'}</dd><dt>95th percentile</dt><dd>${bandFig(m.percentile_95, m, figure(m.percentile_95, m))}</dd></dl></div>${chart}</div>`;
 }
-const pointsNote = minutes => `<p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(minutes)}. Each point shows the worst value in that interval. 95% of points were better than the 95th percentile.</p>`;
 const OPEN_DETAILS = new Set();
 // The Performance (%) KPIs come first: they say whether anything is wrong; the counters under them say where (D-100).
 function layersView(d) {
@@ -552,10 +551,10 @@ function kpiDetails(k) {
 function objectKpis(d) {
   const win = esc(WINDOWS.find(w => w[0] === R.window)[1]).toLowerCase();
   const kpis = d.kpis && d.kpis.length
-    ? pointsNote(d.kpis[0].minutes) + d.kpis.map(m => metricBlock(m, 'object', true) + kpiDetails(m)).join('')
+    ? d.kpis.map(m => metricBlock(m, 'object', true) + kpiDetails(m)).join('')
     : '<p class="muted">No data for this object in the window.</p>';
   const outside = d.children_total ? `<p data-outside-green>${n0(d.outside_green)} of ${n0(d.children_total)} children outside green: over the ${win}, or in the last hour. They are first in the list below.</p>` : '';
-  return `<section class="persp kpis" data-section="performance-kpis"><h2>Performance <span class="muted">0 to 100%</span></h2>${kpis}</section>${outside}`;
+  return `<section class="persp kpis" data-section="performance-kpis">${kpis}</section>${outside}`;
 }
 function perfTab(p, d) {
   const cls = CLASS_NAME[p.class], m = p.point_minutes, sel = p.selected, C = p.consumer, P = p.provider;

@@ -116,6 +116,7 @@ decisions: [D-092]
 On a VM, the tab shows detail. The Guest OS runs on top of the Virtual Motherboard, so the page is two layers, one over the other, never side by side.
 
 - **No Group by, no "Just above the line", no "Children outside green", no trend card.** They describe a group; this is one VM.
+- **Cluster and ESXi host Performance tabs start with the KPI charts too, with no title and no note.**
 - **The page starts with the two Performance (%) charts** (D-100): Guest OS Performance, then VM Performance, stacked, each with its figures. No title above them and no note about the window or the 95th percentile. They say whether anything is wrong; the layers say where.
 - **Each layer is a closed "Details" fold** under its Performance chart, as on a cluster KPI: Guest OS Details under Guest OS Performance, Virtual Motherboard Details under VM Performance. The summary holds the layer's status chip; the Ask Agent E2 mark for the layer is inside the fold.
 - **Tabs:** Summary, Availability, Performance, Capacity, Security, Configuration. No Inventory (D-092).
