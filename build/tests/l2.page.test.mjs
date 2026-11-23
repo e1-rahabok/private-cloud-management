@@ -245,7 +245,9 @@ try {
   await go('/l2/monitor/compute/FR-B-04/capacity?class=bronze');
   const END = { cpu_thread_utilization: [55, 70, 85], memory_consumed: [70, 80, 90], memory_ballooned: [1, 2, 4], memory_zip_swap: [0.25, 0.5, 1] };
   const partBand = (k, v) => ['green', 'yellow', 'orange'].find((_, i) => v <= END[k][i]) || 'red';
-  const partPills = (await pills()).filter(m => END[m.key]);
+  await page.click('details[data-details="consumption-parts"] > summary');  // the parts sit in a closed fold under the Consumption chart (D-122)
+  const partPills = (await page.$$eval('details[data-details="consumption-parts"] .metric', ms => ms.map(m => ({ key: m.dataset.metric, pills: [...m.querySelectorAll('dd')].map(d => { const p = d.querySelector('.bv'); if (!p) return null; const cs = getComputedStyle(p);
+    return { band: p.dataset.band, text: p.textContent.trim(), v: parseFloat(p.textContent.replace(/,/g, '')), fg: cs.color, bg: cs.backgroundColor }; }) })))).filter(m => END[m.key]);
   const partsOk = partPills.length === 4 && partPills.every(m => m.pills.every(p => p !== null && p.band === partBand(m.key, p.v) && !/green|yellow|orange|red/i.test(p.text) && ratio(p.fg, p.bg) >= 4.5));
   check('LPG-23', vmFirst === 'performance-kpis' && vmKpis.join() === 'guest_os_performance,vm_performance' && vmLayerKpis.length === 0 && counterPlain && vmPillOk
     && clKpis.join() === 'Cluster Performance,Cluster Risk' && clPillOk && noCards
@@ -276,6 +278,7 @@ try {
 
   // LPG-25 charts keep their own height: a chart box is as tall as its drawing; the wall's chart rules stay in the wall (D-108)
   await go('/l2/monitor/compute/LD-B-01/capacity');
+  await page.$$eval('details.kpi-details', ds => ds.forEach(d => { d.open = true; }));  // charts in a closed fold have no width
   const chartBoxes = await page.$$eval('[data-chartbox]', cs => cs.map(c => ({ plot: c.querySelector('.plot').getBoundingClientRect().height, svg: c.querySelector('svg.lc').getBoundingClientRect().height })));
   const stacked = await page.$$eval('[data-chartbox], h2, h3, table.data', els => { const r = els.map(e => e.getBoundingClientRect()).sort((a, b) => a.top - b.top); return r.every((x, i) => i === 0 || x.top >= r[i - 1].bottom - 1 || x.left >= r[i - 1].right - 1); });
   check('LPG-25', chartBoxes.length >= 9 && chartBoxes.every(b => b.plot >= b.svg - 1) && stacked, `${chartBoxes.length} charts; boxes ${chartBoxes.every(b => b.plot >= b.svg - 1)}; no overlap ${stacked}`);
