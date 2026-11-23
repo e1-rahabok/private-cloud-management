@@ -187,6 +187,7 @@ svg.lc .ref { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 2 3;
 .cd-node.pass .cd-d { color: #0A5E54; }
 .cd-node.hit { border-color: var(--band-red); background: #F6D6D1; }
 .cd-node.hit .cd-d { color: var(--band-red); font-weight: 700; }
+.cd-node.hit .cd-l, .cd-node.gate .cd-l { color: #4A3531; }
 .cd-node.off { opacity: .5; border-style: dashed; background: #fff; }
 .cd-node.gate { width: 220px; background: #FBF3EC; }
 .cd-node.gate.pass { border-color: var(--line); }
