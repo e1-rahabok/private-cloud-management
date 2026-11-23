@@ -632,7 +632,7 @@ const KIND_WORD = { vm: 'VM', host: 'ESXi host', cluster: 'cluster' };
 function remainingSummary(r, kind) {
   if (!r) return '';
   const val = x => `${n0(x.value)}${x.unit === '%' ? '%' : `<span class="u">${esc(x.unit)}</span>`}`;
-  return `<section class="persp" data-section="capacity-summary"><h2>Summary <span class="muted">this ${esc(KIND_WORD[kind] || kind)}</span></h2>
+  return `<section class="persp" data-section="capacity-summary">${kind === 'cluster' ? '' : `<h2>Summary <span class="muted">this ${esc(KIND_WORD[kind] || kind)}</span></h2>`}
     <div class="cards remaining">${r.values.map(x => `<div class="card" data-remaining="${x.key}"><h3>${esc(x.label)}</h3><div class="big2">${val(x)}</div></div>`).join('')}</div>
     ${r.placeholder ? '' : `<p class="muted">From ${esc(r.source)}, ${esc(fmtTime(r.time))}.</p>`}</section>`;
 }
@@ -673,11 +673,15 @@ function capCluster(c, d) {
   const why = ck.state === 'closed' ? `${ck.reason} Based on ${period}.` : `Based on ${period}.`;
   const verdict = ck.state === 'no_check' ? `<span class="chip no_data">No check</span> <span class="muted">A metric has no data for ${esc(period)}.</span>`
     : `<button type="button" class="chip vbtn ${ck.state === 'closed' ? (ck.rule === 2 || ck.performance_red ? 'red' : 'amber') : 'green'}" data-why-toggle aria-expanded="${ck.state === 'closed'}" aria-controls="why-verdict">${ck.state === 'closed' ? 'Closed for new VMs' : 'Open for new VMs'}</button>${ck.state === 'closed' ? ` <span class="muted">since ${esc(fmtDay(ck.since))}</span>` : ''}`;
-  const cn = c.contention_now ? ` <a class="chip ${perfBand(c.contention_now.value)}" data-contention-now href="${url({ pillar: 'performance', cls: undefined })}">Contention now</a> Cluster Performance ${pct(c.contention_now.value)} at ${esc(fmtTime(c.contention_now.t))}.` : '';
   const strip = c.strip_as_words
     ? `<p data-strip-words>Latest check, ${esc(checkPeriod(ck))}: ${ck.state === 'closed' ? 'Closed' : ck.state === 'open' ? 'Open' : 'No check'}. The check before, to ${esc(fmtTime(ck.previous.end))}: ${ck.previous.state === 'closed' ? 'Closed' : 'Open'}, Consumption ${pct(ck.previous.consumption)}, Performance ${pct(ck.previous.performance)}, Risk ${pct(ck.previous.risk)}.</p>`
     : `<div class="strip" data-strip role="img" aria-label="One cell per check: closed or open">${c.strip.map(x => `<span class="cell ${x.state}" title="Check to ${esc(fmtTime(x.end))}: ${x.state === 'closed' ? 'Closed' : x.state === 'open' ? 'Open' : 'No check'}">${x.state === 'closed' ? 'Closed' : ''}</span>`).join('')}</div>
       <div class="stripaxis muted"><span>${esc(fmtDay(c.strip[0].end))}</span><span>${esc(fmtDay(c.strip[c.strip.length - 1].end))}</span></div>`;
+  // What makes up Consumption: a fold under the Cluster Consumption chart, closed until opened (state kept like kpiDetails).
+  const partsId = `${R.object}|consumption-parts`;
+  const partsFold = `<details class="kpi-details" data-details="consumption-parts"${OPEN_DETAILS.has(partsId) ? ' open' : ''} data-details-id="${esc(partsId)}"><summary>Details <span class="muted">What makes up Consumption, each part as % of usable capacity</span></summary>
+    ${c.parts.map(p => metricBlock({ ...p, better: 'lower', decimals: p.key.startsWith('memory_b') || p.key.startsWith('memory_z') ? 2 : 1, scale: null, minutes: m }, 'part')).join('')}
+    <p class="muted">These hosts have no memory tiering.</p></details>`;
   const u = c.usable;
   const usable = `<table class="data" data-usable><thead><tr><th></th><th class="num">Total</th><th class="num">HA</th><th class="num">Buffer</th><th class="num">Usable</th></tr></thead><tbody>
     ${[['cpu', 'CPU'], ['memory', 'Memory']].map(([k, l]) => `<tr><td>${l} <span class="muted">${esc(u[k].unit)}</span></td><td class="num">${n0(u[k].total)}</td><td class="num">−${n0(u[k].ha)}</td><td class="num">−${n0(u[k].buffer)} <span class="muted">(${u[k].buffer_percent}%)</span></td><td class="num"><strong>${n0(u[k].usable)}</strong></td></tr>`).join('')}</tbody></table>
@@ -691,15 +695,11 @@ function capCluster(c, d) {
     <td class="num">${pct(h.memory_consumed.percentile_95)}</td><td class="num">${pct(h.memory_consumed.worst.v)}</td><td>${spark(h.spark)}</td>
     <td class="num">${n0(h.running_vms)}</td><td class="num">${h.cpu_overcommit}</td><td class="num">${h.memory_overcommit}</td><td>${h.state === 'running' ? 'Running' : esc(h.state.replace('_', ' '))}</td></tr>`).join('');
   return remainingSummary(c.remaining, d.object.kind) + `${c.remaining && d.object.kind !== 'cluster' ? `<h2>Its cluster, ${esc(c.cluster)}</h2>` : ''}<section class="persp" data-section="capacity-cluster">
-    <div class="verdict" data-verdict="${ck.state}"><p>${verdict}${cn}</p>${ck.state === 'no_check' ? '' : `<div class="why-panel" id="why-verdict" data-why${ck.state === 'closed' ? '' : ' hidden'}><p>${esc(why)} The worst ${ck.worst_percent}% of samples are left out.</p>${checkDiagram(ck, c.kpis)}</div>`}</div>
+    <div class="verdict" data-verdict="${ck.state}"><p>${verdict}</p>${ck.state === 'no_check' ? '' : `<div class="why-panel" id="why-verdict" data-why${ck.state === 'closed' ? '' : ' hidden'}><p>${esc(why)} The worst ${ck.worst_percent}% of samples are left out.</p>${checkDiagram(ck, c.kpis)}</div>`}</div>
     ${c.marked_host ? `<p class="muted">This is the cluster's capacity. ${esc(c.marked_host)} is highlighted in the host list below.</p>` : ''}
     <h2>Key Trends</h2>
-    <p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(m)}. Each point shows the worst value in that interval.</p>
-    ${c.kpis.map(k => kpiBlock(k, ck, m)).join('')}
+    ${c.kpis.map(k => kpiBlock(k, ck, m) + (k.key === 'consumption' ? partsFold : '')).join('')}
     <h3>Past checks</h3>${strip}
-    <h2>What makes up Consumption <span class="muted">as % of usable capacity</span></h2>
-    ${c.parts.map(p => metricBlock({ ...p, better: 'lower', decimals: p.key.startsWith('memory_b') || p.key.startsWith('memory_z') ? 2 : 1, scale: null, minutes: m }, 'part')).join('')}
-    <p class="muted">These hosts have no memory tiering.</p>
     <h2>Usable capacity <span class="muted">hosts that are running</span></h2>${usable}
     <h2>Host balance</h2><p class="muted">A wide gap means some hosts are working harder than others.</p>
     ${spreadChart('cpu_thread_utilization', 'CPU Thread Utilization')}${spreadChart('memory_consumed', 'Memory Consumed')}
