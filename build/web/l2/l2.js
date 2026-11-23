@@ -636,16 +636,44 @@ function remainingSummary(r, kind) {
     <div class="cards remaining">${r.values.map(x => `<div class="card" data-remaining="${x.key}"><h3>${esc(x.label)}</h3><div class="big2">${val(x)}</div></div>`).join('')}</div>
     ${r.placeholder ? '' : `<p class="muted">From ${esc(r.source)}, ${esc(fmtTime(r.time))}.</p>`}</section>`;
 }
+// The Periodic Cluster Check as a diagram, with the check's own values (l2.cluster_check_diagram, D-121).
+// Three paths to Closed, as vCommunity's capacity model draws them. Each node: the value, its closure level, the distance to it.
+// PCM compares the published values with the published levels; it names the path, it never decides (D-094).
+function checkDiagram(ck, kpis) {
+  const lv = Object.fromEntries(kpis.map(k => [k.key, k.closure_levels]));
+  const above = (v, l) => v != null && v > l, below = (v, l) => v != null && v < l;
+  const gap = (v, l) => `${Math.abs(l - Math.round(v))} points`; // from the value as shown, so the sum reads right
+  const node = (label, v, l, hi, on = true) => {
+    const hit = on && (hi ? above(v, l) : below(v, l));
+    const dist = v == null ? 'no data' : !on ? 'not checked' : hit ? `${hi ? 'above' : 'below'} by ${gap(v, l)}` : `${gap(v, l)} away`;
+    return `<div class="cd-node ${!on ? 'off' : hit ? 'hit' : 'pass'}" data-cd-node="${label.toLowerCase()}"><b>${esc(label)}</b> <span class="cd-v">${pct(v)}</span>
+      <span class="cd-l">${hi ? 'closes above' : 'closes below'} ${l}%</span><span class="cd-d">${hit ? '✕' : on && v != null ? '✓' : '–'} ${dist}</span></div>`;
+  };
+  const cR = lv.consumption.red, pR = lv.performance.red, cO = lv.consumption.orange, pO = lv.performance.orange, rO = lv.risk.orange;
+  const cHit = above(ck.consumption, cR), pHit = below(ck.performance, pR);
+  const cOr = above(ck.consumption, cO), pOr = below(ck.performance, pO), gate = cOr && pOr, rHit = gate && above(ck.risk, rO);
+  const tick = ok => ok ? '✓' : '✕';
+  const gateNode = `<div class="cd-node gate ${gate ? 'hit' : 'pass'}" data-cd-node="both"><b>Both orange?</b>
+      <span class="cd-l">Consumption ${pct(ck.consumption)} above ${cO}% ${tick(cOr)}</span><span class="cd-l">Performance ${pct(ck.performance)} below ${pO}% ${tick(pOr)}</span>
+      <span class="cd-d">${gate ? 'Yes: Risk decides' : 'No: Risk is not checked'}</span></div>`;
+  const closed = ck.state === 'closed';
+  const line = hit => `<div class="cd-line${hit ? ' hit' : ''}" aria-hidden="true"></div>`;
+  return `<div class="cd" data-check-diagram role="group" aria-label="How the check decides: three ways to close">
+    <div class="cd-paths">
+      <div class="cd-row">${node('Consumption', ck.consumption, cR, true)}${line(cHit)}</div>
+      <div class="cd-row">${node('Performance', ck.performance, pR, false)}${line(pHit)}</div>
+      <div class="cd-row">${gateNode}<div class="cd-arrow${gate ? ' hit' : ''}" aria-hidden="true"></div>${node('Risk', ck.risk, rO, true, gate)}${line(rHit)}</div>
+    </div>
+    <div class="cd-out ${closed ? 'closed' : 'open'}" data-cd-out="${ck.state}">${closed ? 'Closed' : 'Open'}</div></div>`;
+}
 function capCluster(c, d) {
   if (!c.applies) return '<p class="muted">Capacity is tracked on workload clusters. Management and edge clusters run the platform\'s own appliances.</p>';
   const m = c.point_minutes, ck = c.check;
   const period = `the ${checkPeriod(ck)}`;
-  const rule = 'A cluster closes when Consumption goes above 80%, when Performance drops below 20%, or when both are orange and Risk is above 60%.';
-  const why = ck.state === 'closed' ? `${ck.reason} Based on ${period}.`
-    : `Nothing is red. Consumption is ${pct(ck.consumption)}, Performance is ${pct(ck.performance)} and Risk is ${pct(ck.risk)}. ${rule} Based on ${period}.`;
+  const why = ck.state === 'closed' ? `${ck.reason} Based on ${period}.` : `Based on ${period}.`;
   const verdict = ck.state === 'no_check' ? `<span class="chip no_data">No check</span> <span class="muted">A metric has no data for ${esc(period)}.</span>`
     : `<button type="button" class="chip vbtn ${ck.state === 'closed' ? (ck.rule === 2 || ck.performance_red ? 'red' : 'amber') : 'green'}" data-why-toggle aria-expanded="${ck.state === 'closed'}" aria-controls="why-verdict">${ck.state === 'closed' ? 'Closed for new VMs' : 'Open for new VMs'}</button>${ck.state === 'closed' ? ` <span class="muted">since ${esc(fmtDay(ck.since))}</span>` : ''}`;
-  const cn = c.contention_now ? ` <a class="chip red" data-contention-now href="${url({ pillar: 'performance', cls: undefined })}">Contention now</a> Cluster Performance ${pct(c.contention_now.value)} at ${esc(fmtTime(c.contention_now.t))}.` : '';
+  const cn = c.contention_now ? ` <a class="chip ${perfBand(c.contention_now.value)}" data-contention-now href="${url({ pillar: 'performance', cls: undefined })}">Contention now</a> Cluster Performance ${pct(c.contention_now.value)} at ${esc(fmtTime(c.contention_now.t))}.` : '';
   const strip = c.strip_as_words
     ? `<p data-strip-words>Latest check, ${esc(checkPeriod(ck))}: ${ck.state === 'closed' ? 'Closed' : ck.state === 'open' ? 'Open' : 'No check'}. The check before, to ${esc(fmtTime(ck.previous.end))}: ${ck.previous.state === 'closed' ? 'Closed' : 'Open'}, Consumption ${pct(ck.previous.consumption)}, Performance ${pct(ck.previous.performance)}, Risk ${pct(ck.previous.risk)}.</p>`
     : `<div class="strip" data-strip role="img" aria-label="One cell per check: closed or open">${c.strip.map(x => `<span class="cell ${x.state}" title="Check to ${esc(fmtTime(x.end))}: ${x.state === 'closed' ? 'Closed' : x.state === 'open' ? 'Open' : 'No check'}">${x.state === 'closed' ? 'Closed' : ''}</span>`).join('')}</div>
@@ -663,7 +691,7 @@ function capCluster(c, d) {
     <td class="num">${pct(h.memory_consumed.percentile_95)}</td><td class="num">${pct(h.memory_consumed.worst.v)}</td><td>${spark(h.spark)}</td>
     <td class="num">${n0(h.running_vms)}</td><td class="num">${h.cpu_overcommit}</td><td class="num">${h.memory_overcommit}</td><td>${h.state === 'running' ? 'Running' : esc(h.state.replace('_', ' '))}</td></tr>`).join('');
   return remainingSummary(c.remaining, d.object.kind) + `${c.remaining && d.object.kind !== 'cluster' ? `<h2>Its cluster, ${esc(c.cluster)}</h2>` : ''}<section class="persp" data-section="capacity-cluster">
-    <div class="verdict" data-verdict="${ck.state}"><p>${verdict}${cn}</p>${ck.state === 'no_check' ? '' : `<p class="why-panel" id="why-verdict" data-why${ck.state === 'closed' ? '' : ' hidden'}>${esc(why)}</p>`}</div>
+    <div class="verdict" data-verdict="${ck.state}"><p>${verdict}${cn}</p>${ck.state === 'no_check' ? '' : `<div class="why-panel" id="why-verdict" data-why${ck.state === 'closed' ? '' : ' hidden'}><p>${esc(why)} The worst ${ck.worst_percent}% of samples are left out.</p>${checkDiagram(ck, c.kpis)}</div>`}</div>
     ${c.marked_host ? `<p class="muted">This is the cluster's capacity. ${esc(c.marked_host)} is highlighted in the host list below.</p>` : ''}
     <h2>Key Trends</h2>
     <p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(m)}. Each point shows the worst value in that interval.</p>

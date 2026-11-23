@@ -158,7 +158,15 @@ On a cluster. On a host, VM or Guest OS, the tab shows its cluster's page with t
   - Closed: "Closed for new VMs since the check of {date} ({n} checks). {Reason}."
     - Reason, by the rule that matched: "Consumption {v}% is above 80%"; "Performance {v}% is below 20%"; "Consumption {c}% and Performance {p}% are both orange, and Risk {r}% is above 60%".
   - No data: "No check for the {period} to {end time}: {KPI} has no data." Never "Open".
-  - Beside it, when Performance over the last hour is orange or red: a chip "Contention now", with the value and its time.
+  - Beside it, when Performance over the last hour is orange or red: a chip "Contention now" in the band colour of its value (orange or red), with the value and its time.
+  - **How the check decides, as a diagram** (l2.cluster_check_diagram, D-121), under the verdict chip, which opens and closes it (open when the cluster is closed). One line first: "{Reason}. Based on the {period} to {end time}. The worst {n}% of samples are left out." (no reason when open).
+    - Three paths into one outcome, as vCommunity's capacity model draws them: Consumption; Performance; "Both orange?" then Risk. The outcome is a circle: Open or Closed.
+    - Each KPI node holds the check's value, its closure level ("closes above 80%") and the distance to it, in whole points from the value as shown: "✓ 29 points away" or "✕ above by 2 points". A node past its level is red, and its arrow to the outcome is red.
+    - "Both orange?" holds its two tests with their values ("Consumption 51% above 60% ✕"). When both pass it turns orange and Risk is checked; else Risk is greyed and reads "not checked". Risk alone never closes a cluster.
+    - One Risk level for every cluster: orange (above 60%), as vCommunity. No production and non-production split.
+    - Not in the diagram: the last hour. "Contention now" stays the chip beside the verdict.
+    - The values and levels are the published ones (l2.cluster_check); the page compares them to draw the path and never decides.
+    - Phone width: the nodes stack, no arrows, the outcome is a full-width bar.
   - The tab's status is the worse of the check and the last hour.
 - **Three charts, one per KPI** (l2.cluster_kpi_series): Cluster Consumption, Cluster Performance, Cluster Risk, in that order, one above the other, one time axis.
   - 0 to 100%. Display bands as background. The two closure levels as dashed lines, labelled "Closes above 80%" and "Orange for closure above 60%" (Performance: below 20% and below 40%).
