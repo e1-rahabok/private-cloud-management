@@ -125,6 +125,17 @@ def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 
                 "knowledge_commit": None, "source": "unavailable"}
 
 
+def card_service(url: str, facts: dict, card: dict, timeout: int = 5) -> dict:
+    """Agent E2's showcase question for one card (D-127), chosen from the card's figures. Returns {questions, source}:
+    one question, or none when Agent E2 has none for the card or does not answer."""
+    try:
+        out = _post_raw(url.rstrip("/") + "/v1/suggest", {"facts": facts, "card": card}, timeout)
+        q = out.get("question")
+        return {"questions": [q] if isinstance(q, str) and q else [], "source": "service"}
+    except (urllib.error.URLError, TimeoutError, ConnectionError, ValueError, KeyError):
+        return {"questions": [], "source": "unavailable"}
+
+
 def suggest_service(url: str, facts: dict, timeout: int = 5) -> dict:
     """Agent E2's suggested questions for a whole page, chosen by the page's situation (D-124). No model call on its side,
     so a short wait. Returns {questions, situation, source}; questions is empty when Agent E2 has none for the page or does

@@ -1037,9 +1037,13 @@ function e2Label(c) {
 }
 function suggestions(c) {
   const k = kindName().toLowerCase().replace(/^esxi /, 'ESXi ').replace(/^vm$/, 'VM');
-  if (c.kind === 'metric' || c.kind === 'kpi') return [`Is ${c.show.p95} a problem for this ${k}?`, c.show.worst ? `Why the worst at ${c.show.worst}?` : null, 'What should I check next?'].filter(Boolean);
+  // A card's showcase question comes from Agent E2, first (D-127); then the card's own questions, three at most.
+  const first = list => { const sc = cardSuggestion(c); if (sc === null) return []; const seen = new Set(sc.map(x => x.toLowerCase()));
+    return [...sc, ...list.filter(x => !seen.has(String(x).toLowerCase()))].slice(0, 3); };
+  if (c.kind === 'metric' || c.kind === 'kpi') return first([`Is ${c.show.p95} a problem for this ${k}?`, c.show.worst ? `Why the worst at ${c.show.worst}?` : null, 'What should I check next?'].filter(Boolean));
   if (c.kind === 'finding') return ['Explain this finding.', 'What should I check next?'];
   if (c.kind === 'vm_layer') return [`Is the ${c.show.layer} layer the problem?`, 'Which of its metrics matters most here?', 'What should I check next?'];
+  if (c.kind === 'link' || c.kind === 'layer') return first(['Is the VMware platform the cause?', 'What should I check next?']);
   if (c.case) return ['Is the VMware platform the cause?', 'What should I check next?'];
   // A whole-page question. Agent E2 chooses three by the page's situation (D-124); none while they load; the general ones
   // when Agent E2 has none for this page or does not answer.
@@ -1048,6 +1052,19 @@ function suggestions(c) {
   if (ask.length) return ask;
   if (c.pillar === 'performance' && k === 'VM') return [`Is this VM performing well over the ${winName(c.window).replace(/^Last /, 'last ')}?`, 'Which layer is the problem, if any?', 'What should I check next?'];
   return [`What needs me on this ${k}?`, 'What should I check next?'];
+}
+// Agent E2's showcase question for a card, kept for the browser session per card. null: still asking (D-127).
+function cardSuggestion(c) {
+  const ctx = { kind: c.kind, view: c.view, object: c.object, pillar: c.pillar, window: c.window, metric: c.metric, layer: c.layer, case: c.case, link: c.link };
+  const key = JSON.stringify(ctx);
+  if (SUGG.has(key)) return SUGG.get(key);
+  SUGG.set(key, null);
+  fetch(apiURL('agent/suggest'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ context: ctx }) })
+    .then(r => r.ok ? r.json() : {})
+    .then(b => SUGG.set(key, Array.isArray(b.questions) ? b.questions : []))
+    .catch(() => SUGG.set(key, []))
+    .finally(() => E2Panel.refresh());
+  return null;
 }
 // Agent E2's questions for a page, kept for the browser session per object, tab and window. null: still asking.
 const SUGG = new Map();

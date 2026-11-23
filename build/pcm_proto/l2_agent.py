@@ -306,6 +306,7 @@ def _facts(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
             kpi["parts_at_worst"] = parts
         facts = {**base, "pillar": "Capacity", "cluster": cap.get("cluster"), "check": cap.get("check"),
                  "contention_now": cap.get("contention_now"), "asked_about_kpi": kpi,
+                 "consumption_parts": [_figures(p) for p in cap.get("parts") or []],  # what Consumption is made of (D-127)
                  "other_kpis": [{key: x.get(key) for key in ("label", "now", "worst", "percentile_95", "check_value")} for x in cap["kpis"] if x is not k]}
         return 200, {"facts": facts, "label": f"{k['label']} · {o['name']} · Capacity · {WNAME[window]}"}
     # page: what the page shows, so an overall question is answered from the numbers on screen (frame.md, Agent E2 panel)
@@ -329,6 +330,7 @@ def _facts(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
 
 SUGGEST_PAGES = {("cluster", "performance"), ("cluster", "capacity"), ("host", "performance"), ("vm", "performance")}
 VM_KPIS = ("vm_performance", "guest_os_performance")
+CARD_KINDS = ("kpi", "metric", "link", "layer")  # cards with a showcase question from Agent E2 (D-127)
 
 
 def _compact(k: dict) -> dict:
@@ -377,8 +379,17 @@ def suggest_facts(now: datetime, ctx: dict, enable=()) -> dict | None:
 def suggest(now: datetime, body: dict, enable=()) -> tuple[int, dict]:
     """POST /api/l2/agent/suggest: Agent E2's three questions for the page, by its situation. Not recorded: nothing is asked."""
     ctx = body.get("context") or {}
-    if not isinstance(ctx, dict) or (ctx.get("kind") or "page") != "page":
-        return 400, {"error": "context kind must be page"}
+    kind = (ctx.get("kind") or "page") if isinstance(ctx, dict) else None
+    if kind in CARD_KINDS:  # one card: its showcase question, from the facts a question about it would send (D-127)
+        code, got = facts_for(now, ctx, enable)
+        if code != 200:
+            return code, got
+        f = got["facts"]
+        name = (f.get("asked_about_kpi") or {}).get("label") or (f.get("asked_about_metric") or {}).get("name")
+        settings = generator.load_spec()["settings"]
+        return 200, agent_e2.card_service(service_url(settings), f, {"kind": kind, "name": name})
+    if kind != "page":
+        return 400, {"error": "context kind must be page, " + ", ".join(CARD_KINDS)}
     facts = suggest_facts(now, ctx, enable)
     if facts is None:
         return 200, {"questions": [], "situation": None, "source": "not_in_release"}

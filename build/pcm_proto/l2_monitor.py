@@ -154,7 +154,7 @@ LAYER_METRICS = (
 )
 
 
-def _series(vm_id: str, key: str, now_value: float, better: str, decimals: int, scale, n: int) -> list:
+def _series(vm_id: str, key: str, now_value: float, better: str, decimals: int, scale, n: int, pct: bool = False) -> list:
     """One metric's points over the window, ending at the value the page already knows. Deterministic noise;
     the worst value inside a point is the point (D-091)."""
     out = []
@@ -167,6 +167,8 @@ def _series(vm_id: str, key: str, now_value: float, better: str, decimals: int, 
             v = min(scale[1], max(scale[0], v))
         else:
             v = now_value * (0.55 + 0.9 * h) * (1.8 + spike if spike > 0.97 else 1)
+            if pct:  # a share of time or capacity: never above 100 (CPU Net Run showed 299%)
+                v = min(100.0, v)
         out.append(v)
     out[-1] = now_value
     return [int(round(v)) if decimals == 0 else round(v, decimals) for v in out]
@@ -192,7 +194,7 @@ def vm_layers(n: dict, now: datetime, window: str, act: dict, own: float) -> lis
                 src = S5.VM_LAYER_KEYS.get(key) or next(r for k, *_x, r in S5.VM_EXTRA_ROWS if k == key)
                 vals = rows5[src]
             else:
-                vals = _series(n["id"], key, values[lk][key], better, dec, scale, count)
+                vals = _series(n["id"], key, values[lk][key], better, dec, scale, count, unit.strip() == "%")
             if m5 and lk == "virtual_motherboard":
                 vals = [int(round(v)) if dec == 0 else round(v, dec) for v in vals]
             w = max(range(count), key=lambda i: vals[i]) if better == "lower" else min(range(count), key=lambda i: vals[i])
