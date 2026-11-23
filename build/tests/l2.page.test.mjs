@@ -1,4 +1,4 @@
-// Page tests LPG-2 to LPG-23 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
+// Page tests LPG-2 to LPG-27 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
 // GENERATED from spec/tests/l2.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/l2.page.test.mjs
 import { spawn } from 'node:child_process';
@@ -401,6 +401,22 @@ try {
   await page.keyboard.press('Escape'); await page.setViewportSize({ width: 1440, height: 1000 });
   check('LPG-21', /Agent E2 asks/i.test(asks) && Array.isArray(turns) && turns.length === 3 && turns[0] === 'Which counter do I read?' && turns[2] === 'The VM one'
     && sheet.x === 0 && sheet.width === 800 && closeTop < 60, `${asks.split('\n')[0]}; turns ${turns && turns.length}; sheet ${sheet.x},${sheet.width}; close at ${Math.round(closeTop)}`);
+
+  // LPG-27 delete a conversation (D-123): Delete, then Yes; No keeps it
+  await go('/l2/monitor/compute/fr-svc-5526/performance');
+  await page.click('#e2top'); await page.waitForSelector('#e2 [data-sugg]');
+  const t0 = (await page.$$('#e2 .e2turn')).length;
+  const noDelEmpty = t0 === 0 ? !(await page.$('#e2 [data-e2del]')) : !!(await page.$('#e2 [data-e2del="ask"]'));
+  const nBefore = (await page.$$('#e2 .e2a')).length;
+  await page.click('#e2 [data-sugg]'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, nBefore);
+  await page.click('#e2 [data-e2del="ask"]');
+  const asked = await page.innerText('#e2 .e2del');
+  await page.click('#e2 [data-e2del="no"]');
+  const keptAfterNo = (await page.$$('#e2 .e2turn')).length === t0 + 1 && !!(await page.$('#e2 [data-e2del="ask"]'));
+  await page.click('#e2 [data-e2del="ask"]'); await page.click('#e2 [data-e2del="yes"]');
+  const gone = (await page.$$('#e2 .e2turn')).length === 0 && !!(await page.$('#e2 [data-sugg]')) && !(await page.$('#e2 [data-e2del]'));
+  await page.keyboard.press('Escape');
+  check('LPG-27', noDelEmpty && /Delete\?/.test(asked) && keptAfterNo && gone, `${noDelEmpty}; ${asked.replace(/\s+/g, ' ')}; kept ${keptAfterNo}; gone ${gone}`);
 
   // LPG-12 contrast and no foreign request
   const contrast = async () => page.evaluate(() => {

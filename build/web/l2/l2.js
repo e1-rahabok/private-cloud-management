@@ -1033,7 +1033,7 @@ function suggestions(c) {
   if (c.kind === 'finding') return ['Explain this finding.', 'What should I check next?'];
   if (c.kind === 'vm_layer') return [`Is the ${c.show.layer} layer the problem?`, 'Which of its metrics matters most here?', 'What should I check next?'];
   if (c.case) return ['Is the VMware platform the cause?', 'What should I check next?'];
-  // A whole-page question. Agent E2 chooses three by the page's situation (D-123); none while they load; the general ones
+  // A whole-page question. Agent E2 chooses three by the page's situation (D-124); none while they load; the general ones
   // when Agent E2 has none for this page or does not answer.
   const ask = pageSuggestions(c);
   if (ask === null) return [];

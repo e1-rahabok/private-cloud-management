@@ -287,7 +287,7 @@ class Troubleshoot(Base):
         self.assertEqual((code, out["record"]["actor_agent"]), (200, "agent-e2"))
 
     def test_suggest_sends_the_page_kpis_to_agent_e2(self):
-        """D-123: on a release 1.0 page PCM sends the KPI series, points only, and shows Agent E2's questions; elsewhere no call."""
+        """D-124: on a release 1.0 page PCM sends the KPI series, points only, and shows Agent E2's questions; elsewhere no call."""
         seen = {}
         def fake(url, body, timeout):
             seen["url"], seen["body"] = url, body

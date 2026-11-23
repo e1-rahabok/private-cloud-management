@@ -298,13 +298,13 @@ def _facts(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
         facts["pillars"] = [{k: x.get(k) for k in ("pillar", "status", "headline", "findings")} for x in sm.get("pillars", [])]
     if (pv or {}).get("layers"):
         facts["layers"] = [_layer(x) for x in pv["layers"]]
-    sf = suggest_facts(now, ctx, enable)  # the page's KPI series: a suggested question asks how they moved (D-123)
+    sf = suggest_facts(now, ctx, enable)  # the page's KPI series: a suggested question asks how they moved (D-124)
     if sf and sf["kpis"]:
         facts.update({k: v for k, v in sf.items() if k in ("kpis", "parts_at_worst", "consumption_parts", "check")})
     return 200, {"facts": facts, "label": where}
 
 
-# ---------------------------------------------------------------- suggested questions for the whole page (D-123)
+# ---------------------------------------------------------------- suggested questions for the whole page (D-124)
 
 SUGGEST_PAGES = {("cluster", "performance"), ("cluster", "capacity"), ("host", "performance"), ("vm", "performance")}
 VM_KPIS = ("vm_performance", "guest_os_performance")
@@ -325,7 +325,7 @@ def _figures(k: dict) -> dict:
 
 def suggest_facts(now: datetime, ctx: dict, enable=()) -> dict | None:
     """The page's KPI series, as the page draws them, for Agent E2 to read the situation from. None for a page outside
-    release 1.0 (SUGGEST_PAGES). PCM sends values only: no band, no verdict, no rule (D-078, D-123). The same facts go with a
+    release 1.0 (SUGGEST_PAGES). PCM sends values only: no band, no verdict, no rule (D-078, D-124). The same facts go with a
     whole-page question, with the main KPI's parts at its worst point (cluster, host) or what Consumption is made of."""
     E = X.estate(tuple(enable))
     window = ctx.get("window") if ctx.get("window") in X.WINDOWS else "24h"

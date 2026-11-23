@@ -4,11 +4,13 @@
 'use strict';
 const E2Panel = (() => {
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const S = { up: null, model: null, open: false, ctx: null, opener: null, busy: false, timer: null, pending: null, waiting: null, tog: {} };
+  const S = { up: null, model: null, open: false, ctx: null, opener: null, busy: false, timer: null, pending: null, waiting: null, tog: {}, confirmDel: null };
   let H = null;
   const $ = id => document.getElementById(id);
   const convs = () => { try { return JSON.parse(sessionStorage.getItem(H.store) || '{}'); } catch (e) { return {}; } };
   const saveConv = (k, list) => { try { const all = convs(); all[k] = list.slice(-12); sessionStorage.setItem(H.store, JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
+
+  const dropConv = k => { try { const all = convs(); delete all[k]; sessionStorage.setItem(H.store, JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
 
   const mark = (ctx, name, show = {}) => `<button type="button" class="e2mark" data-e2="${esc(JSON.stringify({ ...ctx, show: { about: name, ...show } }))}" aria-label="Ask Agent E2 about ${esc(name)}" title="Ask Agent E2 about ${esc(name)}">E2</button>`;
   function topMark() {
@@ -87,6 +89,9 @@ const E2Panel = (() => {
       ? `<div class="e2sugg" role="group" aria-label="Suggested questions">${H.suggestions(c).map((x, i) => `<button type="button" class="sugg" data-sugg="${i}">${esc(sText(x))}</button>`).join('')}</div>` : '';
     const kept = !S.busy && box.querySelector('#e2q') ? box.querySelector('#e2q').value : '';
     box.innerHTML = `<div class="e2head"><span class="e2mark big" aria-hidden="true">E2</span><div class="e2who"><h2 id="e2title">Agent E2</h2><div class="ctx" data-e2ctx>${esc(H.label(c))}</div></div>
+        ${list.length && !S.busy ? (S.confirmDel === k
+          ? '<span class="e2del" role="group" aria-label="Delete this conversation?"><span class="e2delq">Delete?</span><button type="button" class="e2delyes" data-e2del="yes">Yes</button><button type="button" class="e2delno" data-e2del="no">No</button></span>'
+          : '<button type="button" class="e2delbtn" data-e2del="ask" title="Delete this conversation (the action history keeps its record)">Delete</button>') : ''}
         <button type="button" class="e2close" aria-label="Close Agent E2" title="Close (Esc)">×</button></div>
       ${S.up === false ? '<p class="why e2down">The Agent E2 service is not available.</p>' : ''}
       <div class="e2body" aria-live="polite">${thread || (H.intro ? `<p class="muted">${esc(H.intro(c))}</p>` : '')}
@@ -102,7 +107,7 @@ const E2Panel = (() => {
     if (card && root.contains(card)) card.classList.add('e2-asked');
   }
   function open(ctx, opener) {
-    S.ctx = H.full(ctx); S.opener = opener || $('e2top');
+    S.confirmDel = null; S.ctx = H.full(ctx); S.opener = opener || $('e2top');
     if (S.pending && S.pending.key !== H.convKey(S.ctx)) S.pending = null;
     outline(opener);
     const box = $('e2');
@@ -127,10 +132,11 @@ const E2Panel = (() => {
   // After a move the panel stays; its context becomes the new page's.
   function follow() {
     if (!S.open) return;
+    S.confirmDel = null;
     S.ctx = H.full(H.pageCtx()); S.opener = $('e2top');
     render(); if (H.onToggle) H.onToggle();
   }
-  // The workspace's suggestions arrived after the panel was drawn (D-123): draw it again, keeping the typing and the focus.
+  // The workspace's suggestions arrived after the panel was drawn (D-124): draw it again, keeping the typing and the focus.
   function refresh() {
     if (!S.open || S.busy) return;
     const q = $('e2q'), had = q && document.activeElement === q, at = had ? q.selectionStart : 0;
@@ -182,6 +188,13 @@ const E2Panel = (() => {
       const m = e.target.closest('.e2mark[data-e2], #e2top');
       if (m) { e.preventDefault(); return open(m.id === 'e2top' ? H.pageCtx() : JSON.parse(m.dataset.e2), m); }
       if (e.target.closest('#e2 .e2close')) return close();
+      const del = e.target.closest('#e2 [data-e2del]');
+      if (del) {
+        const k = H.convKey(S.ctx), what = del.dataset.e2del;
+        if (what === 'ask') S.confirmDel = k;
+        else { S.confirmDel = null; if (what === 'yes') { dropConv(k); if (S.pending && S.pending.key === k) S.pending = null; for (const t of Object.keys(S.tog)) if (t.startsWith(k + ':')) delete S.tog[t]; } }
+        render(); return;
+      }
       const fold = e.target.closest('#e2 .e2turn > summary');
       if (fold) { const d = fold.parentElement; S.tog[d.dataset.turn] = !d.open; return; } // a person's choice; the browser does the toggle
       const s = e.target.closest('#e2 [data-sugg]');

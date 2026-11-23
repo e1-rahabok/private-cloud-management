@@ -126,7 +126,7 @@ def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 
 
 
 def suggest_service(url: str, facts: dict, timeout: int = 5) -> dict:
-    """Agent E2's suggested questions for a whole page, chosen by the page's situation (D-123). No model call on its side,
+    """Agent E2's suggested questions for a whole page, chosen by the page's situation (D-124). No model call on its side,
     so a short wait. Returns {questions, situation, source}; questions is empty when Agent E2 has none for the page or does
     not answer, and the panel then keeps the general questions."""
     try:
