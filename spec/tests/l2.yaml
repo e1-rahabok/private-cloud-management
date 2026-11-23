@@ -240,7 +240,7 @@ story:
     expect:
       layer_order: [guest_os, virtual_motherboard]
       guest_os_metrics: [run_queue_per_vcpu, context_switches_per_s, disk_queue, free_memory_mb, paging_per_s, guest_os_performance]
-      virtual_motherboard_metrics: [cpu_ready_percent, co_stop_percent, cpu_overlap_percent, memory_contention_percent, disk_latency_ms, network_dropped_tx_percent, cpu_run_percent, memory_ballooned_percent, memory_zip_swap_percent, vm_performance]
+      virtual_motherboard_metrics: [cpu_ready_percent, co_stop_percent, cpu_overlap_percent, memory_wait_percent, disk_latency_ms, network_dropped_tx_percent, cpu_run_percent, memory_ballooned_percent, memory_zip_swap_percent, vm_performance]
       points: 288
       figures: [now, worst, percentile_95]
       no_average: true

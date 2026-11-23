@@ -112,19 +112,16 @@ def vm_values(vm: dict, score: float, act: dict) -> dict:
     lack = max(0.0, 100 - score)
     # The sub-metrics of the VM Performance KPI without a planted value: healthy, a little worse as the score falls.
     base = {"cpu_ready_percent": round(0.3 + lack * 0.12, 1), "co_stop_percent": round(lack * 0.02, 1),
-            "cpu_overlap_percent": round(0.1 + lack * 0.02, 1), "memory_contention_percent": 0.0,
+            "cpu_overlap_percent": round(0.1 + lack * 0.02, 1), "memory_wait_percent": 0.0,
             "disk_latency_ms": round(2 + lack * 0.2, 1), "network_dropped_tx_percent": 0.0,
             "cpu_run_percent": round(40 + X._h(vm["id"], "run") * 40, 1), "memory_ballooned_percent": 0.0,
             "memory_zip_swap_percent": 0.0, "vm_performance": score}
     if act.get("L-2") and vm["id"] == act["L-2"]["objects"]["vm"]:
-        p = dict(act["L-2"]["plant"]["vm"])
-        if "memory_wait_percent" in p:
-            p["memory_contention_percent"] = p.pop("memory_wait_percent")
-        return {**base, **p}
+        return {**base, **act["L-2"]["plant"]["vm"]}
     if act.get("T-1") and vm["id"] == act["T-1"]["objects"]["vm"]:
         c = act["T-1"]["plant"]["vm_counters"]
         return {**base, "cpu_ready_percent": c["cpu_ready_percent"], "co_stop_percent": c["co_stop_percent"],
-                "memory_contention_percent": c["memory_wait_percent"], "disk_latency_ms": c["disk_latency_ms"],
+                "memory_wait_percent": c["memory_wait_percent"], "disk_latency_ms": c["disk_latency_ms"],
                 "cpu_run_percent": c.get("run_percent", base["cpu_run_percent"]), "vm_performance": score}
     return base
 
@@ -146,7 +143,7 @@ LAYER_METRICS = (
         ("cpu_ready_percent", "CPU Ready", "%", "lower", 1, None, [2, 4, 8]),
         ("co_stop_percent", "CPU Co-Stop", "%", "lower", 1, None, [1, 2, 4]),
         ("cpu_overlap_percent", "CPU Overlap", "%", "lower", 1, None, [0.5, 1, 2]),
-        ("memory_contention_percent", "Memory Contention", "%", "lower", 1, None, [0.5, 1, 2]),
+        ("memory_wait_percent", "Memory Wait", "%", "lower", 1, None, [0.5, 1, 2]),  # Memory Contention + NVMe wait (D-114)
         ("disk_latency_ms", "Disk Latency", " ms", "lower", 1, None, [10, 20, 40]),
         ("network_dropped_tx_percent", "Network Dropped Tx", "%", "lower", 1, None, [0, 0.5, 1]),
         ("cpu_run_percent", "CPU Run", "%", "lower", 1, None, [95, 97, 99]),

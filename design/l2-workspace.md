@@ -189,7 +189,7 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
 - **Every KPI is 0 to 100% with the same four bands:** green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0. Performance is higher-is-better. Risk is higher-is-worse, so its bands run the other way: green 0 to 25, red 75 to 100.
 - **A KPI is a weighted average of its sub-metrics,** and a worse sub-metric weighs more (1 at 100, 16 at 0). One red sub-metric among green ones still shows.
 - **VM KPI** includes the Guest OS, because the VM and its Guest OS are one logical entity for monitoring. The two stay separate objects for troubleshooting (5.6).
-- **Cluster Performance** uses only the contention of its running VMs, never utilization: the worst VM and the 90th percentile of CPU Ready, Co-Stop, memory latency and disk latency, plus the worst host's bad packets. It is a consumer metric, rolled up to the provider.
+- **Cluster Performance** uses only the contention of its running VMs, never utilization: the worst VM and the 90th percentile of CPU Ready, Co-Stop, memory wait (Memory Contention plus NVMe wait) and disk latency, plus the worst host's bad packets. It is a consumer metric, rolled up to the provider.
 - **Cluster Risk** is the leading indicator: how close the cluster is to contention, from its worst host (utilization, imbalance, ballooning, overcommit, reservations, monster VMs).
 - **vSAN KPI** uses the disk latency of every VM on the vSAN datastore, from any cluster.
 - **NSX KPI** is separate, because NSX has a many-to-many relation to clusters. NSX, vSAN and top-of-rack switch metrics come from vCommunity.
