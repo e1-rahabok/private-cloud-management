@@ -219,7 +219,7 @@ try {
   const pillsOk = (ms, hiw) => ms.every(m => m.pills.every(p => p === null || (p.band === band(hiw(m.key) ? 100 - p.v : p.v) && !/green|yellow|orange|red/i.test(p.text) && ratio(p.fg, p.bg) >= 4.5)));
   await go('/l2/monitor/compute/fr-bat-6839/performance');
   const vmFirst = await page.$eval('section.persp', s => s.dataset.section);
-  const vmKpis = await page.$$eval('[data-section="performance-kpis"] .metric', ms => ms.map(m => m.dataset.metric));
+  const vmKpis = await page.$$eval('[data-section="performance-kpis"] .metric:not(.kpi-details .metric)', ms => ms.map(m => m.dataset.metric));
   const vmLayerKpis = await page.$$eval('section.layer .metric', ms => ms.map(m => m.dataset.metric).filter(k => /performance/.test(k)));
   const vmPills = await pills();
   const VM_END = { run_queue_per_vcpu: [2, 4, 8], disk_queue: [20, 40, 80], free_memory_mb: [512, 256, 128], paging_per_s: [1000, 2000, 4000], cpu_ready_percent: [2, 4, 8], co_stop_percent: [1, 2, 4], cpu_overlap_percent: [0.5, 1, 2], memory_wait_percent: [0.5, 1, 2], disk_latency_ms: [10, 20, 40], network_dropped_tx_percent: [0, 0.5, 1], cpu_run_percent: [95, 97, 99], memory_ballooned_percent: [2, 4, 8], memory_zip_swap_percent: [0.25, 0.5, 1] };

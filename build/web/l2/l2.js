@@ -527,16 +527,21 @@ function metricBlock(m, layer, askKpi = false) {
     <dl><dt>Now</dt><dd>${bandFig(m.now, m, figure(m.now, m))}</dd><dt>Worst</dt><dd>${m.worst ? bandFig(m.worst.v, m, figure(m.worst.v, m)) : '–'}</dd><dt>95th percentile</dt><dd>${bandFig(m.percentile_95, m, figure(m.percentile_95, m))}</dd></dl></div>${chart}</div>`;
 }
 const pointsNote = minutes => `<p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(minutes)}. Each point shows the worst value in that interval. 95% of points were better than the 95th percentile.</p>`;
+const OPEN_DETAILS = new Set();
 // The Performance (%) KPIs come first: they say whether anything is wrong; the counters under them say where (D-100).
 function layersView(d) {
-  const kpis = d.layers.flatMap(l => l.metrics.filter(m => m.scale).map(m => metricBlock(m, l.key)));
-  return pointsNote(d.layers[0].metrics[0].minutes)
-    + `<section class="persp kpis" data-section="performance-kpis"><h2>Performance <span class="muted">0 to 100%, higher is better. The Guest OS runs on top of the Virtual Motherboard.</span></h2>${kpis.join('')}</section>`
-    + d.layers.map(l => `<section class="persp layer" data-layer="${l.key}"><h2>${esc(l.title)} ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span>${e2mark({ kind: 'vm_layer', layer: l.key, pillar: 'performance' }, `the ${l.title} layer`, { name: `${l.title} layer`, layer: l.title })}</h2>${l.metrics.filter(m => !m.scale).map(m => metricBlock(m, l.key)).join('')}</section>`).join('');
+  // Each layer: its Performance chart, then a closed "Details" fold with its counters (same fold as a cluster KPI's Details).
+  const layerBlock = l => {
+    const id = `${R.object}|${l.key}`;
+    const counters = l.metrics.filter(m => !m.scale);
+    return l.metrics.filter(m => m.scale).map(m => metricBlock(m, l.key)).join('')
+      + `<details class="kpi-details" data-details="${l.key}"${OPEN_DETAILS.has(id) ? ' open' : ''} data-details-id="${esc(id)}"><summary>Details ${chip(l.status)} <span class="muted">${LAYER_NOTE[l.key]}</span></summary>
+      <section class="persp layer" data-layer="${l.key}"><h2>${e2mark({ kind: 'vm_layer', layer: l.key, pillar: 'performance' }, `the ${l.title} layer`, { name: `${l.title} layer`, layer: l.title })}</h2>${counters.map(m => metricBlock(m, l.key)).join('')}</section></details>`;
+  };
+  return `<section class="persp kpis" data-section="performance-kpis">${d.layers.map(layerBlock).join('')}</section>`;
 }
 // "Details" under a cluster KPI: the parts it is made of, one chart each (D-106). Closed by default: a good KPI needs no
 // explanation. A fold the person opened stays open when the page redraws (window, time, tab back).
-const OPEN_DETAILS = new Set();
 function kpiDetails(k) {
   if (!k.details || !k.details.length) return '';
   const id = `${R.object}|${k.key}`;
