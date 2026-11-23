@@ -31,7 +31,7 @@ paths:
         Ask Agent E2 as L1 (D-098). Body: question (required), context, turns (optional). context: kind (page, tile, cluster, incident, step)
         with page (screens, alerts, alert, shift), screen and location for a tile, cluster, incident, step (its index). PCM rebuilds L1's facts
         on the server and sends the role l1. The answer is checked against the NOC vocabulary, asked for once more if it fails;
-        source is service, model_unavailable (the service is up, its model is not), unavailable (no service) or vocabulary (not shown). Returns type, content, questions, files_read, computed, model,
+        source is service, model_unavailable (the service is up, its model is not), unavailable (no service) or vocabulary (not shown). Returns type, content, questions, files_read, lead, computed, model,
         knowledge_commit, source, label, record (both identity fields). 400 without a question or with an unknown context; 404 for an
         unknown screen, tile, cluster, incident or step.
 
