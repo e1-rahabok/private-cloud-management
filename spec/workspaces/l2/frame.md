@@ -91,6 +91,7 @@ api: /api/l2/agent/ask
 - **The panel stays open across pages** (no page load). Its context follows the page. Each context (object and tab, or case) keeps its own conversation for the browser session.
 - **Delete a conversation** (D-123): during development an answer can be outdated or wrong, so a conversation can be removed. "Delete" in the head, shown only when the open context has a conversation and Agent E2 is not working; one click asks "Delete? Yes / No", Yes removes every question and answer of that context from the browser, and the panel shows the suggestions again. A move to another context, or opening the panel, cancels the question. Other contexts keep theirs. It removes the screen's copy only: the record of each question in the action history stays (D-050), and nothing is sent to Agent E2.
 - **Suggested questions** when a conversation starts, and again when its context changes (another card or the page itself), three at most, by what was clicked:
+  - a card (metric, KPI, case link or layer): first, Agent E2's showcase question for that card, chosen from the card's figures (D-127; none while it loads; none when Agent E2 has none for the card); then the card's own, three in all;
   - metric or KPI: "Is {95th percentile} a problem for this {kind}?", "Why the worst at {time}?", "What should I check next?";
   - layer of a VM: "Is the {layer} layer the problem?", "Which of its metrics matters most here?", "What should I check next?";
   - finding: "Explain this finding.", "What should I check next?";

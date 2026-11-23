@@ -306,7 +306,7 @@ class Troubleshoot(Base):
         with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
             code, out = A.suggest(NOW, {"context": {"kind": "page", "object": cl["id"], "pillar": "security", "window": "24h"}})
         self.assertEqual((out["source"], out["questions"], seen), ("not_in_release", [], {}))
-        code, _ = A.suggest(NOW, {"context": {"kind": "kpi", "object": cl["id"]}})
+        code, _ = A.suggest(NOW, {"context": {"kind": "finding", "object": cl["id"]}})
         self.assertEqual(code, 400)
 
     def test_kpi_question_sends_hourly_parts_and_the_other_kpi_series(self):
@@ -320,6 +320,19 @@ class Troubleshoot(Base):
         o = f["other_kpis"][0]
         self.assertEqual((o["label"], len(o["values"]), o["point_minutes"]), ("Cluster Performance", 288, 5))
         self.assertEqual([c["kind"] for c in f["calendar_in_window"]], ["release"])
+
+    def test_card_suggestion_sends_the_card_facts(self):
+        """D-127: a card's showcase question is Agent E2's, from the facts a question about the card would send."""
+        seen = {}
+        def fake(url, body, timeout):
+            seen.update(body)
+            return {"question": "Risk went from green to yellow, but Performance did not drop. Explain to me why.", "card": "Cluster Risk"}
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            code, out = A.suggest(NOW, {"context": {"kind": "kpi", "object": "SG-S-01", "pillar": "performance", "window": "24h",
+                                                   "metric": "cluster_risk"}}, ("M-5",))
+        self.assertEqual((code, len(out["questions"])), (200, 1))
+        self.assertEqual(seen["card"], {"kind": "kpi", "name": "Cluster Risk"})
+        self.assertIn("parts_hourly", seen["facts"]["asked_about_kpi"])
 
     def test_suggest_without_agent_e2(self):
         cl = E.nodes["SG-S-01"]
