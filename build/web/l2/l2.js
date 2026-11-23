@@ -477,6 +477,7 @@ const niceMax = v => { if (!(v > 0)) return 1; const p = 10 ** Math.floor(Math.l
 const tinyPct = decimals => `0.${'0'.repeat(decimals)}+%`;
 const withUnit = (v, m, tick) => {
   if (v == null) return '–';
+  if (!tick && m.whole && m.unit === '%') return pct(v);  // whole percent (D-101, D-116); pct() is defined with the Capacity tab
   if (!tick && m.unit === '%' && m.decimals > 0 && Number(v) > 0 && Number(v).toFixed(m.decimals) === (0).toFixed(m.decimals)) return tinyPct(m.decimals);
   return `${Number(v).toLocaleString('en-US', tick ? { maximumFractionDigits: 2 } : { minimumFractionDigits: m.decimals, maximumFractionDigits: m.decimals })}${tick && m.unit !== '%' ? '' : m.unit}`;
 };
@@ -490,7 +491,11 @@ const endBand = (v, ends, better) => v == null ? 'no_data' : ['green', 'yellow',
 const bandOf = (v, m) => v == null ? null : m.band_ends ? endBand(v, m.band_ends, m.better) : !m.scale ? null : m.better === 'lower' ? riskBand(v) : perfBand(v);
 const bandFig = (v, m, text) => { const b = bandOf(v, m); return b && b !== 'no_data' ? `<span class="bv ${b}" data-band="${b}">${text}</span>` : text; };
 const LAYER_NOTE = { guest_os: 'Runs on top of the Virtual Motherboard.', virtual_motherboard: 'The VM\'s virtual hardware, under the Guest OS.' };
+// Whole percent (D-101, D-116): a KPI, a part of Consumption on the Capacity tab, and a part under a cluster or ESXi KPI whose band ends are all whole
+// numbers. A part with a fractional end (0.5%, 0.25%) keeps its decimals: they are the band's own scale. A VM's counters keep theirs.
+const wholePct = (m, layer) => m.unit === '%' && (!!m.scale || layer === 'part' || (layer === 'object' && !!m.band_ends && m.band_ends.every(Number.isInteger)));
 function metricBlock(m, layer) {
+  m = { ...m, whole: wholePct(m, layer) };
   const score = !!m.scale;
   const hiV = Math.max(...m.points.map(p => p.v));
   const top = score ? 100 : m.unit === '%' && hiV > 50 && hiV <= 100 ? 100 : niceMax(hiV * 1.1);  // a percentage near full reads on 0 to 100%, never 200%
