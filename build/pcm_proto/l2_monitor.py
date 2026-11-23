@@ -230,7 +230,8 @@ def _kpi(key: str, label: str, better: str, vals: list, times: list, minutes: in
 # What a cluster KPI is made of (D-106). Performance: the contention of its VMs, worst VM (Depth) and 90th percentile
 # (Breadth), and the worst host's bad packets. Risk: the worst host's utilization, saturation, reservation, allocation
 # and monster VMs. Names and band ends are the Agent E2 catalog's (knowledge/catalog/thresholds-performance.yaml,
-# thresholds-capacity.yaml, rows of cluster-performance and cluster-risk). Release 1.0: values derived from the KPI's
+# thresholds-risk.yaml, lines of cluster-performance and cluster-risk). Cluster Risk: the 12 sub-metrics of the catalog;
+# the two memory tiering ones (RISK_TIERED_PARTS) only on a cluster with a tiered host (D-113). Release 1.0: values derived from the KPI's
 # own series, until PCM reads the parts from VCF Operations. A performance part has no band at 5 minutes in the
 # catalog (its levels are for 20-second points), so it shows none. Memory tiering parts: only where hosts have a tier.
 # (key, label, unit, decimals, value from the KPI value v: contention is 100 - v for Performance, v for Risk, band_ends)
@@ -262,14 +263,14 @@ HOST_PARTS = (
 BAND_TOP = {"worst_vcpu_ready": 32, "worst_vcpu_costop": 16, "worst_memory_wait": 8, "worst_memory_latency": 8, "worst_disk_latency": 320,
             "p90_vcpu_ready": 8, "p90_vcpu_costop": 4, "p90_memory_wait": 4, "p90_memory_latency": 4, "p90_disk_latency": 80,
             "highest_esxi_packets": 0.8, "esxi_packets": 0.8,
-            "highest_esxi_cpu_thread_utilization": 95, "worst_esxi_cpu_imbalance": 2, "highest_esxi_memory_consumed": 100,
+            "highest_esxi_cpu_thread_utilization": 95, "worst_esxi_cpu_imbalance": 2,
+            "worst_esxi_active_memory_tiered": 100, "worst_esxi_nvme_read_latency": 800,
             "worst_esxi_memory_ballooned": 8, "worst_esxi_swapped_zipped_memory": 2, "highest_esxi_cpu_reservation": 80,
             "highest_esxi_memory_reservation": 80, "highest_esxi_cpu_overcommit": 4, "highest_esxi_memory_overcommit": 2.2,
             "highest_cpu_monster_vm_host_ratio": 4, "highest_memory_monster_vm_host_ratio": 4}
 RISK_PARTS = (
     ("highest_esxi_cpu_thread_utilization", "Highest ESXi CPU thread utilization", "%", 1, lambda r: min(100.0, 28 + 0.75 * r), [60, 80, 90]),
     ("worst_esxi_cpu_imbalance", "Worst ESXi CPU imbalance", "", 2, lambda r: 1 + 0.004 * r, [1, 1.3, 1.6]),
-    ("highest_esxi_memory_consumed", "Highest ESXi DRAM Memory Consumed", "%", 1, lambda r: min(100.0, 55 + 0.5 * r), [80, 90, 95]),
     ("worst_esxi_memory_ballooned", "Worst ESXi memory ballooned", "%", 2, lambda r: max(0.0, (r - 45) * 0.12), [1, 2, 4]),
     ("worst_esxi_swapped_zipped_memory", "Worst ESXi swapped + zipped memory", "%", 2, lambda r: max(0.0, (r - 55) * 0.05), [0.25, 0.5, 1]),
     ("highest_esxi_cpu_reservation", "Highest ESXi CPU reservation", "%", 1, lambda r: 0.4 * r, [10, 40, 60]),
@@ -279,14 +280,27 @@ RISK_PARTS = (
     ("highest_cpu_monster_vm_host_ratio", "Highest CPU monster VM : host ratio", "", 1, lambda r: 0.3 + 0.012 * r, [1, 2, 3]),
     ("highest_memory_monster_vm_host_ratio", "Highest memory monster VM : host ratio", "", 1, lambda r: 0.25 + 0.01 * r, [1, 2, 3]),
 )
+# Memory tiering sub-metrics of Cluster Risk: on a cluster without a tiered host they have no data and are left out,
+# never 0 (the adapter does the same). No cluster of the estate has memory tiering yet, so they are not shown (D-113).
+RISK_TIERED_PARTS = (
+    ("worst_esxi_active_memory_tiered", "Worst ESXi active memory, tiered hosts", "%", 1, lambda r: 30 + 0.5 * r, [50, 62.5, 75]),
+    ("worst_esxi_nvme_read_latency", "Worst ESXi NVMe read latency", " µs", 0, lambda r: 60 + 4 * r, [100, 200, 400]),
+)
 
 
-def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int, host: bool = False, rows: dict | None = None) -> list:
+def risk_parts(tiered: bool = False) -> tuple:
+    """The sub-metrics of Cluster Risk in the catalog's order: the tiering ones after swapped + zipped, on a tiered cluster."""
+    return RISK_PARTS[:4] + (RISK_TIERED_PARTS if tiered else ()) + RISK_PARTS[4:]
+
+
+def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int, host: bool = False, rows: dict | None = None,
+                tiered: bool = False) -> list:
     """l2.kpi_details: the parts of Cluster Performance or Cluster Risk over the window, same points as the KPI.
-    Each part: points, Now, Worst with its time, 95th percentile (never an average). Lower is better for every part."""
+    Each part: points, Now, Worst with its time, 95th percentile (never an average). Lower is better for every part.
+    tiered: the cluster has a host with memory tiering, so Cluster Risk shows its two tiering parts (D-113)."""
     perf = kpi_key in ("cluster_performance", "esxi_performance")
     out = []
-    for key, label, unit, dec, f, ends in HOST_PARTS if host else PERFORMANCE_PARTS if perf else RISK_PARTS:
+    for key, label, unit, dec, f, ends in HOST_PARTS if host else PERFORMANCE_PARTS if perf else risk_parts(tiered):
         if rows is not None:  # story M-5: the parts the KPI was computed from, not values derived from it
             pts = [round(v, dec) for v in rows[key]]
         else:

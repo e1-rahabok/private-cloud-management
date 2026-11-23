@@ -348,7 +348,7 @@ story:
       figures: [now, worst, percentile_95]
       iceberg_points: 7
       vm_has_kpis: false
-      kpi_details: { cluster_performance: 9, cluster_risk: 11, host: 9 }
+      kpi_details: { cluster_performance: 9, cluster_risk: 10, host: 9 }  # Risk: 12 in the catalog, the 2 tiering ones only with a tiered host (D-113)
       kpi_details_figures: [now, worst, percentile_95]
     decisions: [D-100, D-106, D-108]
   - id: LST-30

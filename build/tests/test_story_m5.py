@@ -32,7 +32,7 @@ class StoryM5Test(unittest.TestCase):
             for i in range(0, 288, 7):
                 self.assertAlmostEqual(kpi["points"][i]["v"], rebuilt(rows, kpi["details"], i), delta=0.25, msg=f"{nid} point {i}")
         risk = M.object_kpis(E, E.nodes["SG-S-01"], NOW, "24h")[1]
-        self.assertEqual(len(risk["details"]), 11)
+        self.assertEqual(len(risk["details"]), 10)  # the catalog's 12 less the two memory tiering ones: no tiered host (D-113)
         for i in range(0, 288, 7):
             self.assertAlmostEqual(risk["points"][i]["v"], rebuilt(S.RISK_ROWS, risk["details"], i, True), delta=0.25)
 
