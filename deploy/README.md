@@ -5,12 +5,13 @@ The prototype runs on synthetic ACME data. It does not connect to vCenter or VCF
 ## What it needs
 
 - Linux with systemd, Python 3.9 or later, PyYAML, git.
-- One TCP port reachable from the browsers that will use it (8080 by default).
-- Nothing else. No database server, no web server, no internet access, unless you want Agent E2 through the AI gateway (section Agent E2).
+- One TCP port reachable from the browsers that will use it: 443 through nginx (section HTTPS with nginx), or 8080 for a quick trial without it.
+- nginx, for HTTPS. PCM itself needs no database server and no internet access, unless you want Agent E2 through the AI gateway (section Agent E2).
 
 ## Security, before you open the port
 
 - **There is no sign-in yet.** Anyone who reaches the port can use every workspace and press every button. Limit the port to the lab network with the VM's firewall.
+- **Browsers reach PCM over HTTPS on 443, through nginx.** PCM speaks plain HTTP and has no TLS code. nginx ends TLS and forwards to PCM on `127.0.0.1:8080`. On the lab VM, PCM also still listens on `0.0.0.0:8080`: plain HTTP from the network, without TLS. Close it once nothing needs it (section HTTPS with nginx, Close port 8080).
 - The service runs as its own user, `pcm`, with write access only to `/var/lib/pcm`.
 - The Agent E2 key, if used, lives in `/etc/pcm/pcm.env`, readable by root and the `pcm` group only.
 
@@ -56,7 +57,7 @@ curl -s "http://127.0.0.1:8080/api/exec/summary?now=2026-10-19T10:05:00%2B08:00"
 cd /opt/pcm && for t in executive noc l2 capacity store docs; do python3 -m unittest build.tests.test_$t 2>&1 | tail -1; done
 ```
 
-Each test line must say `OK`. Then open `http://<vm-address>:8080/exec` from a lab browser. The demo URLs are in [`../demo/README.md`](../demo/README.md).
+Each test line must say `OK`. Then open `https://<vm-address>/exec` from a lab browser (after section HTTPS with nginx; for a trial without nginx, `http://<vm-address>:8080/exec`). The demo URLs are in [`../demo/README.md`](../demo/README.md).
 
 ## Agent E2
 
@@ -118,12 +119,87 @@ Update it with PCM:
 cd /opt/agent-e2 && git pull && systemctl restart agent-e2
 ```
 
-## Open the firewall to the lab network only
+## HTTPS with nginx
 
-With ufw, replacing the network with your lab's:
+- **Design:** TLS ends at nginx, not in PCM. Browser to nginx on port 443 is encrypted. nginx to PCM on `127.0.0.1:8080` is plain HTTP inside the VM.
+- **Why:** one place holds the certificate and its renewal. PCM stays free of key handling.
+- **The lab VM (moltbot29), checked with `nginx -T` and `ss -ltn` on 2026-11-23:** nginx listens on 443 with TLS, certificate `/etc/ssl/certs/pcm.crt`, key `/etc/ssl/private/pcm.key`, and forwards to `http://127.0.0.1:8080`. Nothing listens on port 80. PCM listens on `0.0.0.0:8080`, so 8080 is still reachable over plain HTTP; `tools/lab/Test-Lab.ps1` checks both 443 and 8080.
+
+Install nginx and put the certificate and key where the lab VM has them (the lab's own CA, or a self-signed pair for a trial). The key is mode 600, owned by root:
 
 ```bash
-ufw allow from 192.168.10.0/24 to any port 8080 proto tcp
+apt-get install -y nginx
+```
+
+Create `/etc/nginx/sites-available/pcm`. The `listen`, `ssl_certificate*` and `proxy_pass` lines are the lab VM's. The headers and the timeout are recommended; they are not confirmed on the VM:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name _;
+
+    ssl_certificate     /etc/ssl/certs/pcm.crt;
+    ssl_certificate_key /etc/ssl/private/pcm.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 120s;
+    }
+}
+```
+
+Enable it, test the file, reload:
+
+```bash
+ln -s /etc/nginx/sites-available/pcm /etc/nginx/sites-enabled/pcm && rm -f /etc/nginx/sites-enabled/default
+```
+
+```bash
+nginx -t && systemctl reload nginx
+```
+
+Check it. It must answer from PCM over HTTPS (`-k` skips trust of a self-signed certificate):
+
+```bash
+curl -sk https://127.0.0.1/api/exec/summary | head -c 200
+```
+
+### Close port 8080 (recommended, not done on the lab VM yet)
+
+Port 8080 serves the same pages without TLS. To close it, make PCM listen on the loopback only. In `/etc/pcm/pcm.env` set:
+
+```
+PCM_HOST=127.0.0.1
+```
+
+```bash
+systemctl restart pcm
+```
+
+```bash
+ss -ltn | grep 8080   # now 127.0.0.1:8080, no longer 0.0.0.0:8080
+```
+
+Then drop the 8080 check from `tools/lab/Test-Lab.ps1`, which expects 8080 to answer.
+
+This section follows the lab VM. If the VM's nginx file changes, the VM is the source of truth: copy its `/etc/nginx/sites-available/pcm` here so the two agree.
+
+## Open the firewall to the lab network only
+
+With ufw, replacing the network with your lab's. Open 443:
+
+```bash
+ufw allow from 192.168.10.0/24 to any port 443 proto tcp
+```
+
+While PCM still listens on `0.0.0.0:8080`, limit 8080 to the lab network too. Once it is closed (section Close port 8080), remove the rule:
+
+```bash
+ufw delete allow from 192.168.10.0/24 to any port 8080 proto tcp
 ```
 
 ## Update
