@@ -182,13 +182,19 @@ async function syncTree() {
 }
 
 // ---------------------------------------------------------------- shared pieces
+const KIND_ICON_HEAD = ['cluster', 'host', 'vm'];
 function objHead(o, windowFixed) {
   const crumbs = o.path.slice(0, -1).map(p => `<a href="${objURL(p.id, o.view)}">${esc(p.name)}</a>`).join(' › ');
   const cur = WINDOWS.find(([w]) => w === R.window) || WINDOWS[1];
   const win = windowFixed ? `<div class="windows fixed">${esc(windowFixed)}</div>`
     : `<div class="winpick"><button type="button" class="winbtn" id="winbtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="winlist" aria-label="Time window: ${esc(cur[1])}"><span class="lbl">${esc(cur[1])}</span><span class="car" aria-hidden="true">▾</span></button>
       <ul class="winlist" id="winlist" role="listbox" aria-label="Time window" hidden>${WINDOWS.map(([w, l]) => `<li role="none"><a role="option" tabindex="-1" href="${url({ window: w })}" data-w="${w}" aria-selected="${w === cur[0]}">${l}</a></li>`).join('')}</ul></div>`;
-  return `<div class="objhead"><div><div class="crumbs">${crumbs || '&nbsp;'}</div><div class="kind">${esc(KIND[o.kind] || o.kind)}</div><h1>${esc(o.name)}</h1></div>${win}</div>`;
+  const kindName = esc(KIND[o.kind] || o.kind);
+  // Cluster, ESXi host, VM: an icon beside the name names the type on hover or focus, no type line (frame.md, Object header).
+  const title = KIND_ICON_HEAD.includes(o.kind)
+    ? `<div class="objname" data-kind="${kindName}" data-tip="${kindName}" tabindex="0"><span class="ic k-${esc(o.kind)}" role="img" aria-label="${kindName}">${ICONS[o.kind]}</span><h1>${esc(o.name)}</h1></div>`
+    : `<div class="kind">${kindName}</div><h1>${esc(o.name)}</h1>`;
+  return `<div class="objhead"><div><div class="crumbs">${crumbs || '&nbsp;'}</div>${title}</div>${win}</div>`;
 }
 const CONSUMER_KINDS = ['vm', 'guest_os', 'virtual_disk', 'vnic'];
 // The tabs are the titles of the panel under them: the selected tab and the panel are one shape (frame.md, Tabs).
@@ -982,7 +988,7 @@ const e2mark = E2Panel.mark, e2TopMark = E2Panel.topMark, e2Health = E2Panel.hea
 const pageCtx = () => R.caseId ? { kind: 'case', case: R.caseId, show: { about: 'this case' } }
   : { kind: 'page', show: { about: 'this page' } };
 const objName = () => (main.querySelector('.objhead h1') || {}).textContent || R.object;
-const kindName = () => ((main.querySelector('.objhead .kind') || {}).textContent || 'object').replace(/^Case.*/, 'case');
+const kindName = () => ((main.querySelector('.objhead [data-kind]') || {}).dataset?.kind || (main.querySelector('.objhead .kind') || {}).textContent || 'object').replace(/^Case.*/, 'case');
 const winName = w => (WINDOWS.find(x => x[0] === w) || WINDOWS[1])[1];
 function e2Label(c) {
   const where = `${objName()} · ${PNAME[c.pillar] || 'Summary'} · ${winName(c.window)}`;

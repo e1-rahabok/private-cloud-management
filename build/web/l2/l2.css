@@ -34,6 +34,13 @@ aside.tree a.node[aria-current="true"] .badge { background: #fff; }
 .crumbs a { color: var(--text-muted); text-decoration: none; }
 .crumbs a:hover { text-decoration: underline; }
 .objhead h1 { margin: 0; }
+/* Cluster, ESXi host, VM: the type is an icon beside the name; hover or focus shows its name (frame.md, Object header) */
+.objname { position: relative; display: inline-flex; align-items: center; gap: 10px; outline: none; }
+.objname .ic { display: inline-flex; flex: none; color: #2F6F9F; }
+.objname .ic svg { display: block; width: 28px; height: 28px; }
+.objname::after { content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; padding: 4px 8px; border-radius: 6px; background: var(--text); color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s; }
+.objname:hover::after, .objname:focus-visible::after { opacity: 1; }
+.objname:focus-visible { box-shadow: 0 0 0 2px var(--accent); border-radius: 6px; }
 .objhead .kind { font-size: 13px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 /* Time: one dropdown, light, so the selected tab is the only dark-on-light emphasis in the header (frame.md, Time) */
 .windows { display: flex; gap: 4px; background: #fff; border-radius: 999px; padding: 4px; border: 1px solid var(--line); }
