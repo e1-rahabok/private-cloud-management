@@ -469,7 +469,7 @@ page:
       With the service running, a suggested question returns an answer with a closed "Sources (2)" control, Agent E2's opening as the first paragraph with no box (the calculator's own lines not shown), an object of the
       estate named in it as a link, and the footer "recorded in the action history". A click on "Sources" opens it and shows the two files as chips.
       A move to another tab keeps the panel open with the new context; Esc closes it, the tree comes back, and the focus returns to the mark.
-    decisions: [D-097, D-099, D-118]
+    decisions: [D-097, D-099, D-119]
   - id: LPG-22
     rule: >
       On fr-svc-5526's Performance tab each layer heading has a mark named "Ask Agent E2 about the {layer} layer"; it opens the panel

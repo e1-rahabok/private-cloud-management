@@ -10,7 +10,7 @@ const apiURL = (p, extra = '') => { const q = qjoin(PASS, extra); return `/api/l
 let SIG = null;
 const getJSON = (p, extra, sig = SIG) => fetch(apiURL(p, extra), { signal: sig }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
 const postJSON = (p, body) => { STATUS_CACHE.clear(); return fetch(apiURL(p), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
-  .then(async r => ({ status: r.status, body: await r.json() })); };
+  .then(async r => ({ status: r.status, body: await r.json().catch(() => ({})) })); };
 const STATUS_CACHE = new Map();
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const enc = encodeURIComponent;

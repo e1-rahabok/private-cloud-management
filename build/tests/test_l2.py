@@ -300,7 +300,7 @@ class Troubleshoot(Base):
         with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
             code, out = A.ask(NOW, {"question": "Is it a problem?", "context": ctx})
         self.assertEqual(code, 200)
-        self.assertEqual(out["lead"], "Run queue is 1.5 threads waiting.")  # D-118: the opening reaches the panel
+        self.assertEqual(out["lead"], "Run queue is 1.5 threads waiting.")  # D-119: the opening reaches the panel
         facts = seen["facts"]
         m = facts["asked_about_metric"]
         keys = set(facts) | set(m) | set(facts["object"]) | {"metric" if m.get("name") else None, "layer_status" if facts.get("layer_status") else None,

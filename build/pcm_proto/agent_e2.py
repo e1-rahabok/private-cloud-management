@@ -106,7 +106,7 @@ def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 
     """Agent E2 service (D-078): the knowledge base, the reading plan and the model call, behind one endpoint.
     turns: a clarifying round, [first question, Agent E2's questions, the reply]; the facts go with the first.
     Returns {type, content, questions, files_read, lead, computed, model, knowledge_commit, source}. lead: the opening the
-    person reads first, in plain words (D-118); computed: the calculator's lines, kept for review, not shown.
+    person reads first, in plain words (D-119); computed: the calculator's lines, kept for review, not shown.
     source: service; model_unavailable (the service answered 502: its model cannot be reached); unavailable (no service)."""
     body = {"question": question, "facts": facts, "role": role}
     if turns:

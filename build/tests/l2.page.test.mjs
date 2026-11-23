@@ -327,7 +327,7 @@ try {
   await page.click('#e2 .e2src summary');
   const srcOpened = await page.isVisible('#e2 .srcchip');
   const chips = (await page.$$('#e2 .srcchip')).length, boxes = (await page.$$('#e2 .e2computed, #e2 .box')).length;
-  // D-118: the opening is the answer's first paragraph, in the text's own style; the calculator's lines are not shown.
+  // D-119: the opening is the answer's first paragraph, in the text's own style; the calculator's lines are not shown.
   const leadOk = await page.$eval('#e2 .e2a', a => { const p = a.querySelector('p.e2lead'); return !!p && a.firstElementChild === p && /^Peak vCPU run queue length is 1\.5/.test(p.textContent) && getComputedStyle(p).borderTopStyle === 'none' && !a.textContent.includes('×'); });
   const objLinks = await page.$$eval('#e2 .e2a a[data-obj]', as => as.map(a => a.dataset.obj));
   const foot = await page.innerText('#e2 .e2foot');
