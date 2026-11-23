@@ -62,10 +62,11 @@ api: /api/l2/agent/health
   - Not available: grey mark, grey dot, tooltip "Agent E2 is not available".
   - Checked when the workspace opens and each time the panel opens. Never a guess.
   - A click opens the panel about the current page: object, tab and window, or the case.
-- **On a card:** the same mark, small, at the right of the title of:
+- **On a card:** the same mark, small, at the right of the title of. Dark like the top bar mark (dark square, white "E2"), with no status dot: one dot in the top bar is enough (D-117).
   - each layer heading of a VM's Performance tab, Guest OS and Virtual Motherboard (monitor.md);
   - each metric of a VM's Performance tab (monitor.md);
   - each KPI of the Capacity tab on a cluster (monitor.md);
+  - each KPI at the top of the Performance tab of a cluster and anything under it but a VM: Cluster Performance, Cluster Risk, ESXi Performance (monitor.md; D-117). Not the parts in its Details fold.
   - each finding row, in Monitor and Improve (monitor.md, Findings);
   - the case header, each chain link and each layer row (case.md).
   - Its name says what it asks about: "Ask Agent E2 about Peak vCPU run queue length".

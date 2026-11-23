@@ -494,7 +494,7 @@ const LAYER_NOTE = { guest_os: 'Runs on top of the Virtual Motherboard.', virtua
 // Whole percent (D-101, D-116): a KPI, a part of Consumption on the Capacity tab, and a part under a cluster or ESXi KPI whose band ends are all whole
 // numbers. A part with a fractional end (0.5%, 0.25%) keeps its decimals: they are the band's own scale. A VM's counters keep theirs.
 const wholePct = (m, layer) => m.unit === '%' && (!!m.scale || layer === 'part' || (layer === 'object' && !!m.band_ends && m.band_ends.every(Number.isInteger)));
-function metricBlock(m, layer) {
+function metricBlock(m, layer, askKpi = false) {
   m = { ...m, whole: wholePct(m, layer) };
   const score = !!m.scale;
   const hiV = Math.max(...m.points.map(p => p.v));
@@ -519,7 +519,10 @@ function metricBlock(m, layer) {
     : { key: 'v', label: 'Highest in each point', short: 'Highest', color: 'var(--series-1)' }];
   const chart = lineChart(`m-${layer}-${m.key}`, m.points, series, { label: `${m.label} over the window`, max: top, ticks: score ? [0, 25, 50, 75, 100] : [0, top / 2, top],
     fmt, width: 760, height: 160, left: 56, minutes: m.minutes, noclick: true, nodirect: true, nolegend: true, bands: score ? (hiw ? HIGH_BANDS : LOW_BANDS) : zones, edges, edgeBands });
-  const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, { p95: fmt(m.percentile_95), worst: fmtPoint(m.worst.t, m.minutes) }) : '';
+  const show = { p95: fmt(m.percentile_95), worst: m.worst ? fmtPoint(m.worst.t, m.minutes) : '' };
+  // A VM's layer metrics, and the KPIs at the top of a cluster's or an ESXi host's Performance tab (D-117), not their Details parts.
+  const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, show)
+    : askKpi ? e2mark({ kind: 'kpi', metric: m.key, pillar: 'performance' }, m.label, show) : '';
   return `<div class="metric" data-metric="${m.key}"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div><div class="mfig">
     <dl><dt>Now</dt><dd>${bandFig(m.now, m, figure(m.now, m))}</dd><dt>Worst</dt><dd>${m.worst ? bandFig(m.worst.v, m, figure(m.worst.v, m)) : '–'}</dd><dt>95th percentile</dt><dd>${bandFig(m.percentile_95, m, figure(m.percentile_95, m))}</dd></dl></div>${chart}</div>`;
 }
@@ -544,7 +547,7 @@ function kpiDetails(k) {
 function objectKpis(d) {
   const win = esc(WINDOWS.find(w => w[0] === R.window)[1]).toLowerCase();
   const kpis = d.kpis && d.kpis.length
-    ? pointsNote(d.kpis[0].minutes) + d.kpis.map(m => metricBlock(m, 'object') + kpiDetails(m)).join('')
+    ? pointsNote(d.kpis[0].minutes) + d.kpis.map(m => metricBlock(m, 'object', true) + kpiDetails(m)).join('')
     : '<p class="muted">No data for this object in the window.</p>';
   const outside = d.children_total ? `<p data-outside-green>${n0(d.outside_green)} of ${n0(d.children_total)} children outside green: over the ${win}, or in the last hour. They are first in the list below.</p>` : '';
   return `<section class="persp kpis" data-section="performance-kpis"><h2>Performance <span class="muted">0 to 100%</span></h2>${kpis}</section>${outside}`;

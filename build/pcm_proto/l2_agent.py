@@ -131,7 +131,11 @@ def parts_at_worst(E, now: datetime, cluster: str, metric: str, window: str, ena
     key = KPI_KEY.get(metric)
     if n is None or key is None:
         return None
-    k = next((x for x in M.object_kpis(E, n, now, window, enable) if x["key"] == key), None)
+    return _parts(n, next((x for x in M.object_kpis(E, n, now, window, enable) if x["key"] == key), None))
+
+
+def _parts(n: dict, k: dict | None) -> dict | None:
+    """The parts of an object's Performance tab KPI at its worst point (a cluster's two KPIs, an ESXi host's; D-108, D-111)."""
     if not k or not k.get("details") or not k.get("worst"):
         return None
     times = [p["t"] for p in k["points"]]
@@ -143,8 +147,9 @@ def parts_at_worst(E, now: datetime, cluster: str, metric: str, window: str, ena
         vals = [p["v"] for p in d["points"]]
         parts.append({"name": d["label"], "unit": d["unit"].strip(), "better": "lower", "value": vals[i], "median": _median(vals),
                       "worst": (d.get("worst") or {}).get("v"), "worst_time": (d.get("worst") or {}).get("t")})
+    kind = "ESXi host" if n["kind"] == "host" else n["kind"]
     return {"kpi": k["label"], "time": k["worst"]["t"], "kpi_value": k["worst"]["v"],
-            "shown_in": f"{n['name']} (cluster) · Performance tab · Details under {k['label']}", "parts": parts}
+            "shown_in": f"{n['name']} ({kind}) · Performance tab · Details under {k['label']}", "parts": parts}
 
 
 def _minutes(times: list) -> int | None:
@@ -251,6 +256,21 @@ def _facts(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
                                                                       "metrics": [_metric(m, True) for m in layer["metrics"]]},
                  "other_layers": [_layer(x) for x in layers if x is not layer]}
         return 200, {"facts": facts, "label": f"{LAYER[layer['key']]} layer · {o['name']} · Performance · {WNAME[window]}"}
+    if kind == "kpi" and pillar == "performance":
+        # The KPIs at the top of a cluster's or an ESXi host's Performance tab (D-100, D-117).
+        ks = M.object_kpis(E, X.node(E, o["id"]), now, window, enable)
+        k = next((x for x in ks if x["key"] == ctx.get("metric")), None)
+        if not k:
+            return 404, {"error": "no such KPI on this object"}
+        kpi = {key: k.get(key) for key in ("label", "better", "now", "worst", "percentile_95")}
+        kpi["unit"] = "%"
+        kpi["points"] = [[p["t"], p["v"]] for p in k.get("points", [])]
+        parts = _parts(X.node(E, o["id"]), k)
+        if parts:
+            kpi["parts_at_worst"] = parts
+        facts = {**base, "pillar": "Performance", "asked_about_kpi": kpi,
+                 "other_kpis": [{key: x.get(key) for key in ("label", "now", "worst", "percentile_95")} for x in ks if x is not k]}
+        return 200, {"facts": facts, "label": f"{k['label']} · {o['name']} · Performance · {WNAME[window]}"}
     if kind == "kpi":
         pv = M.pillar_view(now, view, o["id"], "capacity", window, enable=enable)
         cap = (pv or {}).get("capacity") or {}

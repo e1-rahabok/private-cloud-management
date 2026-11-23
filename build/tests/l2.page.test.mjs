@@ -355,6 +355,26 @@ try {
   await page.click('#e2 [data-sugg]'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, shownBefore);
   const pageFacts = E2_SEEN[sentBefore] && E2_SEEN[sentBefore].facts;
   await page.keyboard.press('Escape');
+  // LPG-26 the mark on the KPIs at the top of a cluster's and an ESXi host's Performance tab (D-117)
+  const kpiMarks = () => page.$$eval('[data-section="performance-kpis"] > .metric', ms => ms.map(m => { const b = m.querySelector('.mname .e2mark'); return b && b.getAttribute('aria-label'); }));
+  await go('/l2/monitor/compute/SG-S-01/performance');
+  const clusterMarks = await kpiMarks();
+  const partMarks = (await page.$$('.kpi-details .e2mark')).length;
+  const look = await page.$eval('[data-section="performance-kpis"] .e2mark', b => { const s = getComputedStyle(b); return [s.backgroundColor, s.color, !b.querySelector('.dot')]; });
+  const topBg = await page.$eval('#e2top', b => getComputedStyle(b).backgroundColor);
+  const kSent = E2_SEEN.length;
+  await page.click('[data-section="performance-kpis"] .metric[data-metric="cluster_performance"] .e2mark'); await page.waitForSelector('#e2 [data-sugg]');
+  const kShown = (await page.$$('#e2 .e2a')).length;
+  await page.click('#e2 [data-sugg]'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, kShown);
+  const kFacts = E2_SEEN[kSent] && E2_SEEN[kSent].facts;
+  await page.keyboard.press('Escape');
+  await go('/l2/monitor/compute/sg-esx-110/performance');
+  const hostMarks = await kpiMarks();
+  check('LPG-26', clusterMarks.join() === 'Ask Agent E2 about Cluster Performance,Ask Agent E2 about Cluster Risk' && hostMarks.join() === 'Ask Agent E2 about ESXi Performance'
+    && partMarks === 0 && look[0] === topBg && look[1] === 'rgb(255, 255, 255)' && look[2]
+    && !!kFacts && kFacts.asked_about_kpi.label === 'Cluster Performance' && kFacts.asked_about_kpi.parts_at_worst.parts.length === 9,
+    `cluster ${clusterMarks}; host ${hostMarks}; ${partMarks} part marks; mark ${look} top ${topBg}; sent ${kFacts ? kFacts.asked_about_kpi.label : 'nothing'}`);
+
   check('LPG-22', layerMarks.join() === 'Ask Agent E2 about the Guest OS layer,Ask Agent E2 about the Virtual Motherboard layer' && /Guest OS layer/.test(layerCtx)
     && layerSugg[0] === 'Is the Guest OS layer the problem?' && layerOutlined && pageSugg[0] === 'Is this VM performing well over the last 24 hours?'
     && !!pageFacts && pageFacts.layers.length === 2 && pageFacts.layers.every(l => l.metrics.every(m => m.percentile_95 !== undefined && m.values === undefined)),
