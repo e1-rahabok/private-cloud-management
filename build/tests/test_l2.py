@@ -405,6 +405,28 @@ class Troubleshoot(Base):
         self.assertTrue(all("values" not in m for x in f["other_layers"] for m in x["metrics"]))
         self.assertEqual(A.facts_for(NOW, {**g["vm_layer"], "layer": "no_such_layer"})[0], e["unknown_layer"])
 
+    def test_LST_32_vm_capacity_is_the_vms_own(self):
+        """D-126: a VM's Capacity tab reads the VM's counters, never its cluster's."""
+        t = T["LST-32"]; g, e = t["given"], t["expect"]
+        d = M.pillar_view(NOW, "compute", g["vm"], "capacity", g["window"])
+        c = d["capacity"]
+        self.assertEqual(c["kind"], e["kind"])
+        self.assertEqual([m["key"] for m in c["metrics"]], e["metrics"])
+        self.assertEqual([m["label"] for m in c["metrics"]], e["labels"])
+        for m in c["metrics"]:
+            want = e["band_ends"][m["key"]]
+            self.assertEqual(m.get("band_ends", "none"), "none" if want == "none" else want, m["key"])
+        self.assertEqual([x["key"] for x in c["remaining"]["values"]], e["remaining"])
+        for w in e["forbidden_fields"]:
+            self.assertNotIn(w, c, w)
+        perf = {m["key"]: m for layer in M.pillar_view(NOW, "compute", g["vm"], "performance", g["window"])["layers"] for m in layer["metrics"]}
+        by = {m["key"]: m for m in c["metrics"]}
+        for k in e["same_points_as_performance_tab"]:
+            self.assertEqual(by[k]["points"], perf[k]["points"], k)
+        free = perf["free_memory_mb"]["points"]
+        used = by["guest_os_used_memory_mb"]["points"]
+        self.assertTrue(all(u["v"] + f["v"] == d["capacity"]["memory_gb"] * 1024 for u, f in zip(used, free)))
+
     def test_LST_31_every_question_carries_the_screen(self):
         """LST-31 (D-103): Agent E2 is told what the person sees, not only the data; whether a move is a drop is Agent E2's."""
         t = T["LST-31"]; g, e = t["given"], t["expect"]

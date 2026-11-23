@@ -146,6 +146,7 @@ decisions: [D-094, D-095, D-100]
 
 On a cluster. On a host, VM or Guest OS, the tab shows its cluster's page with the host marked. L2 design, 4.3.3 and 4.3.4.
 
+- **On a VM (l2.vm_capacity, D-126):** the VM's own counters, not its cluster's. After the summary, Key Trends: CPU (VM Net Run, Guest OS CPU Run Queue) and Memory (Guest OS Used Memory, Peak Guest OS Paging activity), each with Now, Worst, 95th percentile and a chart. Bands only where the catalog has band ends (Used Memory has none). No verdict, usable capacity, host spread or host list; one sentence links to the cluster's Capacity tab.
 - **Summary first** (l2.capacity_remaining, D-100), on a VM, ESXi host and cluster, headed "Summary" and the kind of object:
   - VM: Capacity Remaining (%), Time Remaining (days).
   - ESXi host, cluster: Capacity Remaining (%), Time Remaining (days), VM Remaining.
