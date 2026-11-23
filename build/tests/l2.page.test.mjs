@@ -23,7 +23,7 @@ const stub = createServer((req, res) => {
     if (req.url === '/v1/health') return send({ ok: true, model: 'stub-model', files: 286 });
     const body = JSON.parse(b || '{}'); E2_SEEN.push(body);
     if (!body.turns && /which counter/i.test(body.question)) return send({ type: 'clarify', content: '', questions: ['Do you mean the Guest OS Run Queue or the VM CPU Ready?'], files_read: [], computed: [], model: 'stub-model', knowledge_commit: 'abc1234' });
-    send({ type: 'answer', content: E2_ANSWER, questions: [], files_read: ['guest-os/cpu/metrics/run-queue', 'vsphere/technology/cpu/metrics/vm/ready'], computed: ['0.38 per vCPU × 4 vCPU = 1.5 threads waiting'], model: 'stub-model', knowledge_commit: 'abc1234' });
+    send({ type: 'answer', content: E2_ANSWER, questions: [], files_read: ['guest-os/cpu/metrics/run-queue', 'vsphere/technology/cpu/metrics/vm/ready'], lead: 'Peak vCPU run queue length is 1.5 threads waiting, 0.38 per vCPU.', computed: ['0.38 per vCPU × 4 vCPU = 1.5 threads waiting'], model: 'stub-model', knowledge_commit: 'abc1234' });
   });
 });
 for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/exec`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
@@ -106,7 +106,7 @@ try {
   await page.click('.objhead .e2mark'); await page.waitForSelector('#e2 [data-sugg]');
   await page.click('#e2 [data-sugg]'); await page.waitForSelector('#e2 .e2a', { timeout: 30000 });
   const askText = await page.innerText('#e2 .e2a');
-  const noAnswer = !(await page.$('#e2 .e2src')) && !(await page.$('#e2 .e2computed'));
+  const noAnswer = !(await page.$('#e2 .e2src')) && !(await page.$('#e2 .e2lead'));
   await page.keyboard.press('Escape');
   check('LPG-8', offLabel === 'Agent E2 is not available' && offGrey && askText.includes('The Agent E2 service is not available') && noAnswer, `${offLabel}; ${askText.split('\n')[0]}`);
 
@@ -326,7 +326,9 @@ try {
   const srcClosed = await page.$eval('#e2 .e2src details', d => !d.open) && !(await page.isVisible('#e2 .srcchip'));
   await page.click('#e2 .e2src summary');
   const srcOpened = await page.isVisible('#e2 .srcchip');
-  const chips = (await page.$$('#e2 .srcchip')).length, boxes = (await page.$$('#e2 .e2computed .box')).length;
+  const chips = (await page.$$('#e2 .srcchip')).length, boxes = (await page.$$('#e2 .e2computed, #e2 .box')).length;
+  // D-119: the opening is the answer's first paragraph, in the text's own style; the calculator's lines are not shown.
+  const leadOk = await page.$eval('#e2 .e2a', a => { const p = a.querySelector('p.e2lead'); return !!p && a.firstElementChild === p && /^Peak vCPU run queue length is 1\.5/.test(p.textContent) && getComputedStyle(p).borderTopStyle === 'none' && !a.textContent.includes('×'); });
   const objLinks = await page.$$eval('#e2 .e2a a[data-obj]', as => as.map(a => a.dataset.obj));
   const foot = await page.innerText('#e2 .e2foot');
   const sentFacts = E2_SEEN[E2_SEEN.length - 1];
@@ -337,7 +339,7 @@ try {
   const focusBack = await page.evaluate(() => document.activeElement && document.activeElement.id);
   check('LPG-20', e2utils[0] === 'e2top' && e2utils.slice(1).join() === 'Rules,Calendar' && findRows.length > 0 && findRows.every(Boolean) && noExplain && marksOk
     && chartRight <= panelBox.x && folded && outlined && /fr-svc-5526/.test(ctx) && /Performance/.test(ctx) && /Last 24 hours/.test(ctx) && nSugg >= 1 && nSugg <= 3
-    && srcLabel === 'Sources (2)' && srcClosed && srcOpened && chips === 2 && boxes === 1 && objLinks.includes('fr-esx-218') && foot.includes('recorded in the action history') && sentFacts.role === 'l2' && sentFacts.facts.asked_about_metric.name === 'Peak vCPU run queue length'
+    && srcLabel === 'Sources (2)' && srcClosed && srcOpened && chips === 2 && boxes === 0 && leadOk && objLinks.includes('fr-esx-218') && foot.includes('recorded in the action history') && sentFacts.role === 'l2' && sentFacts.facts.asked_about_metric.name === 'Peak vCPU run queue length'
     && stillOpen && /Capacity/.test(ctx2) && closed && focusBack === 'e2top',
     `${e2utils}; ${findRows.length} findings marked; ${marks.length} metric marks; chart right ${Math.round(chartRight)} <= panel ${Math.round(panelBox.x)}; ${ctx}; ${nSugg} suggestions; ${chips} sources; links ${objLinks}; then ${ctx2}; focus ${focusBack}`);
 
