@@ -68,7 +68,7 @@ api: /api/l2/agent/health
   - each KPI of the Capacity tab on a cluster (monitor.md);
   - each finding row, in Monitor and Improve (monitor.md, Findings);
   - the case header, each chain link and each layer row (case.md).
-  - Its name says what it asks about: "Ask Agent E2 about Run Queue".
+  - Its name says what it asks about: "Ask Agent E2 about Peak vCPU run queue length".
   - It stays visible, quiet, at rest; it is not hidden until hover.
 - **Not available:** the marks on cards stay, so the panel can say why there is no answer.
 

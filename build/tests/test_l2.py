@@ -306,14 +306,14 @@ class Troubleshoot(Base):
                                                              "calendar" if "calendar_in_window" in facts else None}
         for k in e["metric_facts"]:
             self.assertIn(k, keys, k)
-        self.assertEqual(m["name"], "Run Queue")
+        self.assertEqual(m["name"], "Peak vCPU run queue length")
         self.assertNotEqual(m["now"], g["now_sent_by_browser"])  # the browser's number is ignored
         self.assertEqual(len(m["values"]), 288)
         self.assertEqual(seen["role"], e["role"])
         r = out["record"]
         self.assertEqual((r["action"], r["actor_agent"], r["actor_human"]), (e["recorded"]["action"], e["recorded"]["actor_agent"], e["recorded"]["actor_human"]))
         self.assertEqual([x["id"] for x in out["links"]], ["fr-svc-5526", "fr-esx-218"])
-        self.assertEqual(out["label"], "Run Queue · fr-svc-5526 · Performance · Last 24 hours")
+        self.assertEqual(out["label"], "Peak vCPU run queue length · fr-svc-5526 · Performance · Last 24 hours")
         # a finding and a case link: their own facts
         f = M.findings(NOW)[0]
         with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
