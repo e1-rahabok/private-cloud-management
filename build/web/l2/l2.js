@@ -735,8 +735,16 @@ function capGroup(g, d) {
     <p class="muted">Performance and Risk across clusters are on the <a class="link" href="${url({ pillar: 'performance' })}">Performance tab</a>.</p>
     ${monthsAhead(`/capacity/clusters${PASS ? '?' + PASS : ''}`)}</section>`;
 }
+// A VM's own Capacity tab (D-126): the VM's demand on CPU and memory from its own counters, never its cluster's figures.
+function capVM(c, d) {
+  const sect = name => `<section class="persp" data-section="vm-capacity-${name.toLowerCase()}"><h2>${name}</h2>${c.metrics.filter(m => m.section === name).map(m => metricBlock(m, 'vm_capacity')).join('')}</section>`;
+  return remainingSummary(c.remaining, 'vm') + pointsNote(c.metrics[0].minutes)
+    + `<h2>Key Trends</h2><p class="muted">This VM's own demand, ${n0(c.vcpu)} vCPU and ${n0(c.memory_gb)} GB, as the Guest OS and the VM use it.</p>` + sect('CPU') + sect('Memory')
+    + (c.cluster ? `<p class="muted" data-its-cluster>The cluster's capacity, and whether it takes new VMs, is on the Capacity tab of ${objLink(c.cluster)}.</p>` : '');
+}
 function capacityTab(c, d) {
   if (!c || c.kind === 'none') return '<p class="muted">No cluster under this object.</p>';
+  if (c.kind === 'vm') return capVM(c, d);
   return c.kind === 'group' ? capGroup(c, d) : capCluster(c, d);
 }
 function childrenTable(d) {

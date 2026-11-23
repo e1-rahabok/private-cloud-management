@@ -366,7 +366,7 @@ story:
   - id: LST-31
     name: Every question to Agent E2 carries the screen the person sees
     given:
-      kpi: { kind: kpi, object: fr-bat-6839, pillar: capacity, metric: performance, window: 24h }
+      kpi: { kind: kpi, object: fr-esx-244, pillar: capacity, metric: performance, window: 24h }
       kpi_m5: { kind: kpi, object: SG-S-01, pillar: capacity, metric: performance, window: 24h }
       metric: { kind: metric, object: fr-svc-5526, layer: guest_os, metric: run_queue_per_vcpu, window: 24h }
       page: { kind: page, object: fr-svc-5526, pillar: performance, window: 24h }
@@ -380,7 +380,7 @@ story:
       perf_kpi_parts: [9, 10, 9]
       first_key: screen
       asked_by: "an L2 platform engineer, who typed only the question"
-      kpi_page: "fr-bat-6839 (vm) · Capacity tab · Last 24 hours"
+      kpi_page: "fr-esx-244 (host) · Capacity tab · Last 24 hours"
       kpi_clicked: "the E2 mark on the Cluster Performance chart"
       kpi_point_minutes: 5
       kpi_belongs_to: FR-B-04
@@ -394,6 +394,18 @@ story:
       no_drop_verdict_from_pcm: true
     decisions: [D-078, D-103, D-111, D-117]
 
+  - id: LST-32
+    name: A VM's Capacity tab shows the VM's own CPU and memory counters, not its cluster's
+    given: { vm: fr-bat-6839, window: 24h }
+    expect:
+      kind: vm
+      metrics: [cpu_run_percent, run_queue_per_vcpu, guest_os_used_memory_mb, paging_per_s]
+      labels: [VM Net Run, Guest OS CPU Run Queue, Guest OS Used Memory, Peak Guest OS Paging activity]
+      band_ends: { cpu_run_percent: [95, 97, 99], run_queue_per_vcpu: [2, 4, 8], guest_os_used_memory_mb: none, paging_per_s: [1000, 2000, 4000] }
+      remaining: [capacity_remaining, time_remaining]
+      forbidden_fields: [check, kpis, parts, usable, spread, hosts, strip]
+      same_points_as_performance_tab: [cpu_run_percent, run_queue_per_vcpu, paging_per_s]
+    decisions: [D-126]
 page:
   - id: LPG-1
     rule: Every L2 page and section names question, role and cadence.

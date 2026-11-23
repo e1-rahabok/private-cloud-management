@@ -799,12 +799,51 @@ def capacity_tab(E, view: str, n: dict, now: datetime, window: str, cls, at, ena
         fs = [f for f in findings_under(now, n["id"], enable, "capacity", window)]
         g["status"] = WORST([f["severity"] for f in fs] + (["red"] if any(r["contention_now"] for r in g["clusters_at"]) else []))
         return {"kind": "group", **g}
+    if n["kind"] == "vm":
+        return vm_capacity(E, n, now, window, enable)
     cid = n["id"] if n["kind"] == "cluster" else n.get("cluster") or E.nodes.get(n.get("vm", ""), {}).get("cluster")
     if not cid or cid not in E.nodes:
         return {"kind": "none", "status": "green"}
     host = n["id"] if n["kind"] == "host" else n.get("host") if n["kind"] == "vm" else E.nodes.get(n.get("vm", ""), {}).get("host")
     return {"kind": "cluster", **CAP.cluster_view(now, cid, window, enable, host if n["kind"] != "cluster" else None),
             "remaining": CAP.capacity_remaining(n, now)}
+
+
+# The VM's own Capacity tab (D-126): the VM's demand on its own CPU and memory, from the Guest OS and the VM's run time,
+# never its cluster's figures. (key in the Performance tab's layers, label, section). Net Run and the run queue per vCPU
+# carry the catalog's band ends; Guest OS Used Memory has no catalog row, so no band (no invented thresholds).
+VM_CAPACITY_METRICS = (("cpu_run_percent", "VM Net Run", "CPU"), ("run_queue_per_vcpu", "Guest OS CPU Run Queue", "CPU"),
+                       ("guest_os_used_memory_mb", "Guest OS Used Memory", "Memory"),
+                       ("paging_per_s", "Peak Guest OS Paging activity", "Memory"))
+
+
+def vm_capacity(E, n: dict, now: datetime, window: str, enable=()) -> dict:
+    """l2.vm_capacity: the Capacity tab of a VM. Same points as the Performance tab's layers for the counters they share;
+    Guest OS Used Memory is the configured memory minus the Guest OS's free memory, point by point."""
+    act = X.active_stories(enable)
+    own = perf_score(E, n, now, window, enable) or 100.0
+    by_key = {m["key"]: m for layer in vm_layers(n, now, window, act, own) for m in layer["metrics"]}
+    total = n["memory_gb"] * 1024
+    free = by_key["free_memory_mb"]
+    used = [{"t": p["t"], "v": max(0, total - p["v"])} for p in free["points"]]
+    vals = [p["v"] for p in used]
+    w = max(range(len(vals)), key=lambda i: vals[i])
+    by_key["guest_os_used_memory_mb"] = {
+        "key": "guest_os_used_memory_mb", "label": "Guest OS Used Memory", "unit": " MB", "better": "lower", "decimals": 0,
+        "scale": None, "minutes": free["minutes"], "points": used, "now": vals[-1], "worst": {"v": vals[w], "t": used[w]["t"]},
+        "percentile_95": P.nearest_rank(vals, 95)}
+    metrics = []
+    for key, label, section in VM_CAPACITY_METRICS:
+        m = {**by_key[key], "label": label, "section": section}
+        metrics.append(m)
+    # status: the worst band among the metrics that have band ends; a metric without them says nothing.
+    def level(m):
+        e = m.get("band_ends")
+        return None if not e else sum(1 for x in e if m["now"] > x)
+    lv = [x for x in map(level, metrics) if x is not None]
+    status = ("green", "amber", "red", "red")[max(lv)] if lv else "green"
+    return {"kind": "vm", "status": status, "vcpu": n["vcpu"], "memory_gb": n["memory_gb"], "cluster": n.get("cluster"),
+            "metrics": metrics, "remaining": CAP.capacity_remaining(n, now)}
 
 
 def trend(E, n: dict, now: datetime, window: str, enable=()) -> list:
