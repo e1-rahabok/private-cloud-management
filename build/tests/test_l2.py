@@ -300,7 +300,8 @@ class Troubleshoot(Base):
         f = seen["body"]["facts"]
         self.assertEqual((f["object"]["kind"], f["pillar"]), ("cluster", "Performance"))
         self.assertEqual([k["label"] for k in f["kpis"]], ["Cluster Performance", "Cluster Risk"])
-        self.assertTrue(all(set(k) == {"label", "better", "unit", "points"} for k in f["kpis"]))  # no band, no verdict
+        self.assertTrue(all(set(k) == {"label", "better", "unit", "first_point", "point_minutes", "values"} for k in f["kpis"]))  # no band, no verdict
+        self.assertEqual(set(f), {"object", "pillar", "window", "kpis"})
         seen.clear()
         with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
             code, out = A.suggest(NOW, {"context": {"kind": "page", "object": cl["id"], "pillar": "security", "window": "24h"}})

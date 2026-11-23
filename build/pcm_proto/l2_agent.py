@@ -300,7 +300,7 @@ def _facts(now: datetime, ctx: dict, enable=()) -> tuple[int, dict]:
         facts["layers"] = [_layer(x) for x in pv["layers"]]
     sf = suggest_facts(now, ctx, enable)  # the page's KPI series: a suggested question asks how they moved (D-123)
     if sf and sf["kpis"]:
-        facts["kpis"] = sf["kpis"]
+        facts.update({k: v for k, v in sf.items() if k in ("kpis", "parts_at_worst", "consumption_parts", "check")})
     return 200, {"facts": facts, "label": where}
 
 
@@ -310,29 +310,47 @@ SUGGEST_PAGES = {("cluster", "performance"), ("cluster", "capacity"), ("host", "
 VM_KPIS = ("vm_performance", "guest_os_performance")
 
 
+def _compact(k: dict) -> dict:
+    """A KPI series as Agent E2 reads it, compact: the values with the first point's time and the minutes between points.
+    Time and value pairs cost about five times the tokens and overflowed the model's context on the Capacity tab."""
+    pts = k.get("points") or []
+    ts = [p["t"] for p in pts]
+    return {"label": k["label"], "better": k.get("better", "higher"), "unit": "%", "first_point": ts[0] if ts else None,
+            "point_minutes": _minutes(ts), "values": [p["v"] for p in pts]}
+
+
+def _figures(k: dict) -> dict:
+    return {"label": k["label"], **{x: k.get(x) for x in ("now", "worst", "percentile_95") if k.get(x) is not None}}
+
+
 def suggest_facts(now: datetime, ctx: dict, enable=()) -> dict | None:
     """The page's KPI series, as the page draws them, for Agent E2 to read the situation from. None for a page outside
-    release 1.0 (SUGGEST_PAGES). PCM sends the points only: no band, no verdict, no rule (D-078, D-123)."""
+    release 1.0 (SUGGEST_PAGES). PCM sends values only: no band, no verdict, no rule (D-078, D-123). The same facts go with a
+    whole-page question, with the main KPI's parts at its worst point (cluster, host) or what Consumption is made of."""
     E = X.estate(tuple(enable))
     window = ctx.get("window") if ctx.get("window") in X.WINDOWS else "24h"
     o = _obj(E, ctx.get("view") or "compute", ctx.get("object") or "estate")
     pillar = ctx.get("pillar")
     if o is None or (o["kind"], pillar) not in SUGGEST_PAGES:
         return None
+    extra = {}
     if pillar == "capacity":
         if X.node(E, o["id"]).get("class") not in X.WORKLOADS:  # no Periodic Cluster Check on this cluster
             return None
         cap = (M.pillar_view(now, ctx.get("view") or "compute", o["id"], "capacity", window, enable=enable) or {}).get("capacity") or {}
-        ks = [{"label": k["label"], "better": k["better"], "unit": "%", "points": [[p["t"], p["v"]] for p in k.get("points", [])]}
-              for k in cap.get("kpis") or []]
+        ks = [_compact(k) for k in cap.get("kpis") or []]
+        extra["consumption_parts"] = [_figures(p) for p in cap.get("parts") or []]  # what Consumption is made of, % of usable
+        extra["check"] = cap.get("check")  # the latest Periodic Cluster Check: state, rule, reason, its inputs
     elif o["kind"] == "vm":
         pv = M.pillar_view(now, ctx.get("view") or "compute", o["id"], "performance", window, enable=enable) or {}
-        ks = [{"label": m["label"], "better": m.get("better", "higher"), "unit": "%", "points": [[p["t"], p["v"]] for p in m.get("points", [])]}
-              for layer in pv.get("layers") or [] for m in layer.get("metrics", []) if m.get("key") in VM_KPIS]
+        ks = [_compact(m) for layer in pv.get("layers") or [] for m in layer.get("metrics", []) if m.get("key") in VM_KPIS]
     else:
-        ks = [{"label": k["label"], "better": k["better"], "unit": "%", "points": [[p["t"], p["v"]] for p in k.get("points", [])]}
-              for k in M.object_kpis(E, X.node(E, o["id"]), now, window, enable)]
-    return {"object": {"name": o["name"], "kind": o["kind"]}, "pillar": PNAME[pillar], "window": WNAME[window], "kpis": ks}
+        raw = M.object_kpis(E, X.node(E, o["id"]), now, window, enable)
+        ks = [_compact(k) for k in raw]
+        parts = _parts(X.node(E, o["id"]), raw[0]) if raw else None  # the main KPI's parts at its worst point (D-111)
+        if parts:
+            extra["parts_at_worst"] = parts
+    return {"object": {"name": o["name"], "kind": o["kind"]}, "pillar": PNAME[pillar], "window": WNAME[window], "kpis": ks, **extra}
 
 
 def suggest(now: datetime, body: dict, enable=()) -> tuple[int, dict]:
@@ -344,7 +362,8 @@ def suggest(now: datetime, body: dict, enable=()) -> tuple[int, dict]:
     if facts is None:
         return 200, {"questions": [], "situation": None, "source": "not_in_release"}
     settings = generator.load_spec()["settings"]
-    return 200, agent_e2.suggest_service(service_url(settings), facts)
+    slim = {k: facts[k] for k in ("object", "pillar", "window", "kpis")}  # the situation is read from the series alone
+    return 200, agent_e2.suggest_service(service_url(settings), slim)
 
 
 # ---------------------------------------------------------------- object names in the answer become links
