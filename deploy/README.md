@@ -213,3 +213,12 @@ cd /opt/pcm && git pull && systemctl restart pcm
 ```bash
 systemctl stop pcm && rm -f /var/lib/pcm/pcm.sqlite* && systemctl start pcm
 ```
+
+## To do
+
+Not urgent: the whole lab is behind a firewall (author, 2026-11-23).
+
+- [ ] **Close port 8080 on the lab VM.** PCM still listens on `0.0.0.0:8080`, plain HTTP that bypasses TLS. Steps: section HTTPS with nginx, Close port 8080.
+- [ ] **Drop the 8080 check from `tools/lab/Test-Lab.ps1`,** in the same change: it expects 8080 to answer, so it fails once 8080 is closed.
+- [ ] **Remove the ufw rule for 8080,** if one exists (section Open the firewall to the lab network only).
+- [ ] **Copy the lab VM's `/etc/nginx/sites-available/pcm` into section HTTPS with nginx.** The proxy headers and the timeout there are recommended, not yet confirmed on the VM.
