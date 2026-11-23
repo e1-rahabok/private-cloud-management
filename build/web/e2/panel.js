@@ -129,6 +129,14 @@ const E2Panel = (() => {
     S.ctx = H.full(H.pageCtx()); S.opener = $('e2top');
     render(); if (H.onToggle) H.onToggle();
   }
+  // Says what failed and what to do (the page is up; it is the answer that did not arrive). status 0: the browser got no reply.
+  // A gateway status, or a reply that is not JSON (status set, empty body), means PCM or the proxy in front cut the wait.
+  function failure(status) {
+    if (status === 0) return 'Your browser lost its connection to PCM while Agent E2 was working. Check your network or VPN, then ask again.';
+    if (status === 401 || status === 403) return 'Your PCM session has ended. Reload the page, sign in, then ask again.';
+    if (status === 502 || status === 503 || status === 504) return 'Agent E2 took too long or is restarting, so PCM gave up waiting. Nothing was lost. Wait a minute, then ask again.';
+    return `Agent E2 could not answer (PCM replied ${status}). Ask again; if it repeats, tell the PCM administrator the time and this code.`;
+  }
   async function ask(q, task) {
     q = (q || '').trim();
     if (!q || S.busy || !S.ctx) return;
@@ -143,12 +151,12 @@ const E2Panel = (() => {
     clearInterval(S.timer);
     S.timer = setInterval(() => { const s = document.querySelector('#e2 [data-secs]'); if (s) s.textContent = Math.round((Date.now() - S.started) / 1000); }, 1000);
     let r;
-    try { r = task ? await H.draft(c, task) : await H.post('agent/ask', body); } catch (e) { r = { status: 0, body: { error: 'Could not reach PCM. Try again.' } }; }
+    try { r = task ? await H.draft(c, task) : await H.post('agent/ask', body); } catch (e) { r = { status: 0, body: {} }; }
     clearInterval(S.timer); S.busy = false; S.waiting = null;
     if (r.status !== 200) {
       saveConv(k, list); render();
       const ta = $('e2q'); if (ta && !task) ta.value = q;
-      const b = document.querySelector('#e2 .e2body'); if (b) b.insertAdjacentHTML('beforeend', answer({ error: r.body.error || 'Agent E2 could not answer.' }));
+      const b = document.querySelector('#e2 .e2body'); if (b) b.insertAdjacentHTML('beforeend', answer({ error: r.body.error || failure(r.status) }));
       document.body.dataset.e2ask = 'error';
       return;
     }

@@ -5,7 +5,7 @@ const PASS = ['now', 'enable'].filter(k => QS.get(k)).map(k => `${k}=${encodeURI
 const apiURL = p => `/api/noc/${p}${PASS ? '?' + PASS : ''}`;
 const getJSON = p => fetch(apiURL(p)).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
 const postJSON = (p, body) => fetch(apiURL(p), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
-  .then(async r => ({ status: r.status, body: await r.json() }));
+  .then(async r => ({ status: r.status, body: await r.json().catch(() => ({})) }));
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const LABEL = { up: 'Availability', fast: 'Performance', safe: 'Security', changed: 'Volatility', set_right: 'Configuration', capacity: 'Capacity' };
 const STATUS = { green: 'Good', amber: 'Watch', red: 'Act now', no_data: 'No data', orange: 'By end of day' };
