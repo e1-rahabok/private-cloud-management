@@ -5,7 +5,7 @@ role: l2
 cadence: [live]
 vocabulary: catalog/vocabulary/l2.yaml
 design: design/l2-workspace.md
-decisions: [D-083, D-086, D-087, D-097]
+decisions: [D-083, D-086, D-087, D-097, D-120]
 ---
 
 # L2 frame
@@ -156,6 +156,8 @@ reads: [l2.time_window]
 ```
 
 - **The path** of the selected object, estate first, each part a link.
+- **The name, with the type as an icon** for a cluster, an ESXi host and a VM (D-120). The icon is the one in the inventory tree, at the left of the name. Hovering over the icon or the name, or focusing it with the keyboard, pops up the type: Cluster, ESXi host, VM. There is no type line above the name.
+  - Other objects (estate, region, location, vCenter Server, datastore and the rest) keep the type line above the name.
 - **The window picker is a drop-down** at the right of the path: one light button that names the window ("Last 24 hours") and opens a list: Last hour, Last 24 hours, Last 7 days, Last 30 days, Last year. The chosen one is ticked. Default: 24 hours in Monitor, 30 days in Improve.
   - The window stays when the object or tab changes.
   - Inside a case the picker is replaced by the case window, fixed.
