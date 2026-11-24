@@ -25,3 +25,13 @@ ssh -t apollos@moltbot29-iwan-claw "sudo rm /etc/sudoers.d/apollos-moltbot-log"
 Test-Moltbot              # key login
 Get-MoltbotSshdLog        # sshd log, needs the host setup above
 ```
+
+## Update the services on the host
+
+Run on the host. Pulls `main` in `/opt/agent-e2` and `/opt/pcm`, restarts `agent-e2` and `pcm`, and checks that Agent E2 answers `/v1/suggest`:
+
+```bash
+sudo bash update-services.sh
+```
+
+Copy `update-services.sh` to the host first. Paths, unit names and port are set at the top, and can be overridden with `E2_DIR`, `PCM_DIR`, `E2_UNIT`, `PCM_UNIT`, `E2_PORT`.
