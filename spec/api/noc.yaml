@@ -35,6 +35,10 @@ paths:
         knowledge_commit, source, label, record (both identity fields). 400 without a question or with an unknown context; 404 for an
         unknown screen, tile, cluster, incident or step.
 
+  /api/noc/agent/topic:
+    post:
+      summary: Agent E2's topic decision alone, before the answer, as /api/l2/agent/topic (D-130). Not recorded.
+
   /api/noc/incidents:
     get:
       summary: Open incidents, red first, then orange, oldest first within each. Grouped by D-069.

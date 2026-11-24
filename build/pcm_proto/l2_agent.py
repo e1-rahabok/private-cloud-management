@@ -417,6 +417,21 @@ def links_in(text: str, enable=()) -> list:
     return out
 
 
+
+def topic(body: dict) -> tuple[int, dict]:
+    """POST /api/l2/agent/topic and /api/noc/agent/topic (D-130): Agent E2's topic decision alone, before the answer.
+    Not recorded: nothing is answered."""
+    question = (body.get("question") or "").strip()
+    if not question:
+        return 400, {"error": "A question is required."}
+    history = agent_e2.history_of(body)
+    if history is None:
+        return 400, {"error": "history must be a list of {question, answer}."}
+    if not history:
+        return 200, {"continues": False, "by": "first", "source": "pcm"}
+    return 200, agent_e2.topic_service(service_url(generator.load_spec()["settings"]), question, history)
+
+
 def ask(now: datetime, body: dict, enable=()) -> tuple[int, dict]:
     question = (body.get("question") or "").strip()
     if not question:

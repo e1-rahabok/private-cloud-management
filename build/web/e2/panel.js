@@ -11,7 +11,8 @@ const E2Panel = (() => {
   const saveConv = (k, list) => { try { const all = convs(); all[k] = list; sessionStorage.setItem(H.store, JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
 
   // Topics (D-129): a context holds topics, a topic holds turns. Agent E2 decides whether a question continues the current
-  // topic (only that topic's turns go with it, uncut); the person can flip the decision on the newest answer.
+  // topic (only that topic's turns go with it, uncut); the person can flip the decision while the answer is written
+  // (D-130) and on the newest answer.
   const topicOf = list => list.length ? (list[list.length - 1].topic || 0) : -1;
   const topicTurns = (list, t) => list.filter(m => (m.topic || 0) === t);
   const histOf = turns => turns.filter(t => t.a && !t.a.draft && t.a.source === 'service')
@@ -81,6 +82,15 @@ const E2Panel = (() => {
     const src = a.files_read && a.files_read.length ? `<div class="e2src"><details><summary>Sources (${a.files_read.length})</summary><div class="srcchips">${a.files_read.map(f => `<span class="srcchip" title="Knowledge file">${esc(f)}</span>`).join('')}</div></details></div>` : '';
     return `<div class="e2a">${lead}${a.content ? linkify(a.content, a.links) : ''}${asks}${src}${H.answerExtra ? H.answerExtra(a) : ''}${foot}</div>`;
   }
+  // D-130: the topic decision, shown while the answer is written, with the one button to flip it at once.
+  function waitTopic(list) {
+    const w = S.waiting;
+    if (!w || !w.choice || !list.length) return '';
+    const isNew = w.choice === 'new', first = topicTurns(list, topicOf(list))[0];
+    const flip = w.flippable ? `<button type="button" class="e2flip" data-e2flipwait="${isNew ? 'continue' : 'new'}">${isNew ? 'Continue the last topic instead' : 'Start a new topic instead'}</button>` : '';
+    return isNew ? `<div class="e2divider" role="separator" data-topic-new data-topic-waiting><span>New topic</span></div>${flip ? `<div class="e2topic">${flip}</div>` : ''}`
+      : `<div class="e2topic" data-topic-continues data-topic-waiting><span class="tq">Continuing: “${esc(first.q)}”</span>${flip}</div>`;
+  }
   function render() {
     const box = $('e2'), c = S.ctx;
     if (!box || !c) return;
@@ -110,7 +120,7 @@ const E2Panel = (() => {
         <button type="button" class="e2close" aria-label="Close Agent E2" title="Close (Esc)">×</button></div>
       ${S.up === false ? '<p class="why e2down">The Agent E2 service is not available.</p>' : ''}
       <div class="e2body" aria-live="polite">${thread || (H.intro ? `<p class="muted">${esc(H.intro(c))}</p>` : '')}
-        ${waitingHere ? `<div class="e2q">${list.length && list[list.length - 1].label === S.waiting.label ? '' : `<div class="lbl">${esc(S.waiting.label)}</div>`}${esc(S.waiting.q)}</div><div class="e2wait" role="status">${esc(S.waiting.note)} <span data-secs>0</span> s</div>` : ''}${sugg}</div>
+        ${waitingHere ? `${waitTopic(list)}<div class="e2q">${list.length && list[list.length - 1].label === S.waiting.label ? '' : `<div class="lbl">${esc(S.waiting.label)}</div>`}${esc(S.waiting.q)}</div><div class="e2wait" role="status">${esc(S.waiting.note)} <span data-secs>0</span> s</div>` : ''}${sugg}</div>
       <form class="e2form" id="e2form"><label class="sr" for="e2q">Question for Agent E2</label><textarea id="e2q" rows="2" placeholder="${S.pending ? 'Your reply to Agent E2…' : S.nextNew ? 'Ask about a new topic…' : 'Ask Agent E2…'}">${esc(kept)}</textarea>
         <span class="e2btns">${list.length && !S.pending ? `<button type="button" class="e2new" data-e2new aria-pressed="${S.nextNew ? 'true' : 'false'}" title="The next question starts a new topic: Agent E2 reads it without the earlier questions">New topic</button>` : ''}
         <button type="submit" class="act"${S.busy ? ' disabled' : ''}>Ask</button></span></form>`;
@@ -184,15 +194,37 @@ const E2Panel = (() => {
     if (body.turns) { topic = list[list.length - 1].topic || 0; }
     const hist = histOf(topicTurns(body.turns ? list.slice(0, -1) : list, topic));
     if (body.turns) choice = hist.length ? 'continue' : 'new';
-    if (!task) { body.history = choice === 'new' ? [] : hist; body.topic_choice = choice; S.nextNew = false; }
+    if (!task) S.nextNew = false;
     if (opts.redo) saveConv(k, list);
     S.busy = true; S.started = Date.now();
-    S.waiting = { q, label, key: k, note: task ? 'Agent E2 is drafting.' : 'Agent E2 is reading the knowledge base and the facts PCM sent.' };
+    const reading = task ? 'Agent E2 is drafting.' : 'Agent E2 is reading the knowledge base and the facts PCM sent.';
+    S.waiting = { q, label, key: k, note: reading };
     render(); $('e2q').focus({ preventScroll: true }); if (!opts.redo) $('e2q').value = '';
     clearInterval(S.timer);
     S.timer = setInterval(() => { const s = document.querySelector('#e2 [data-secs]'); if (s) s.textContent = Math.round((Date.now() - S.started) / 1000); }, 1000);
+    // D-130: Agent E2 decides the topic first, alone, so the person sees the decision and can flip it before the answer.
+    // With no decision (no reply, or a service older than the topic call), a question sent with the topic's turns continues.
+    let decided = null;
+    if (!task && choice === 'auto' && hist.length) {
+      S.waiting.note = 'Agent E2 is reading whether this continues the topic.'; render();
+      let t;
+      try { t = await H.post('agent/topic', { question: q, history: hist }); } catch (e) { t = { status: 0, body: {} }; }
+      const got = t.status === 200 && typeof t.body.continues === 'boolean';
+      decided = { continues: got ? t.body.continues : true, by: got ? t.body.by || 'model' : 'unsure' };
+      choice = decided.continues ? 'continue' : 'new';
+    }
+    // The decision is shown, with its flip, whenever there is a topic to continue (not for a clarifying reply).
+    if (!task && hist.length && !body.turns) { S.waiting.choice = choice === 'new' ? 'new' : 'continue'; S.waiting.flippable = true; }
+    S.waiting.note = reading;
     let r;
-    try { r = task ? await H.draft(c, task) : await H.post('agent/ask', body); } catch (e) { r = { status: 0, body: {} }; }
+    for (;;) {
+      if (!task) { body.history = choice === 'new' ? [] : hist; body.topic_choice = choice; }
+      render();
+      const flipped = new Promise(res => { S.waiting.onFlip = res; });
+      try { r = task ? await H.draft(c, task) : await Promise.race([H.post('agent/ask', body), flipped]); } catch (e) { r = { status: 0, body: {} }; }
+      if (r && r.flip) { choice = r.flip; S.waiting.choice = choice; decided = { continues: choice === 'continue', by: 'user' }; S.started = Date.now(); continue; }
+      break;
+    }
     clearInterval(S.timer); S.busy = false; S.waiting = null;
     if (r.status !== 200) {
       saveConv(k, opts.redo ? all : list); render();
@@ -203,8 +235,10 @@ const E2Panel = (() => {
     }
     const a = task ? { ...r.body, draft: task } : r.body;
     S.pending = !task && a.type === 'clarify' && a.questions && a.questions.length && a.source === 'service' ? { key: k, first: body.turns ? body.turns[0] : q, questions: a.questions } : null;
-    // The turn's topic: the one it continues, or the next one. Without Agent E2's decision (it did not answer), the choice sent.
-    const continues = body.turns ? true : a.topic ? a.topic.continues : choice === 'continue';
+    // The turn's topic: the one it continues, or the next one. Without Agent E2's decision, a question sent with the
+    // topic's turns continues it (D-130): an Agent E2 older than topics returns none, and losing the context is the worse mistake.
+    if (decided && a.source === 'service') a.topic = decided;  // the decision shown while waiting, with who made it
+    const continues = body.turns ? true : a.topic ? a.topic.continues : choice !== 'new';
     const t = body.turns ? topic : continues && topic >= 0 ? topic : topic + 1;
     saveConv(k, [...list, { q, label, a, topic: t }]);
     const keep = document.activeElement === document.body || (document.activeElement && document.activeElement.closest('#e2'));
@@ -230,6 +264,8 @@ const E2Panel = (() => {
       const s = e.target.closest('#e2 [data-sugg]');
       // A suggested question is about the page or card, so it starts a new topic (D-129).
       if (s) { const x = H.suggestions(S.ctx)[Number(s.dataset.sugg)]; return typeof x === 'string' ? ask(x, undefined, { choice: 'new' }) : ask(x.q, x.draft); }
+      const fw = e.target.closest('#e2 [data-e2flipwait]');
+      if (fw) { if (S.busy && S.waiting && S.waiting.onFlip) S.waiting.onFlip({ flip: fw.dataset.e2flipwait }); return; }
       const fl = e.target.closest('#e2 [data-e2flip]');
       if (fl) { const all = convs()[H.convKey(S.ctx)] || []; return all.length ? ask(all[all.length - 1].q, undefined, { choice: fl.dataset.e2flip, redo: true }) : undefined; }
       if (e.target.closest('#e2 [data-e2new]')) { S.nextNew = !S.nextNew; refresh(); const n = $('e2q'); if (n) n.focus({ preventScroll: true }); return; }
