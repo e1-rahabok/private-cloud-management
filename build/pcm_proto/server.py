@@ -234,6 +234,8 @@ class Handler(BaseHTTPRequestHandler):
             code, data = l2_cases.act(now, parts[3:], body, enable)
         elif parts[1] == "l2" and parts[2:] == ["agent", "ask"]:
             code, data = l2_agent.ask(now, body, enable)
+        elif parts[1] in ("l2", "noc") and parts[2:] == ["agent", "topic"]:
+            code, data = l2_agent.topic(body)
         elif parts[1] == "l2" and parts[2:] == ["agent", "suggest"]:
             code, data = l2_agent.suggest(now, body, enable)
         elif parts[1] == "l2" and parts[2:3] == ["decisions"]:

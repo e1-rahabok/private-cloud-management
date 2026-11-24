@@ -1,4 +1,4 @@
-// Page tests LPG-2 to LPG-27 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
+// Page tests LPG-2 to LPG-30 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
 // GENERATED from spec/tests/l2.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node build/tests/l2.page.test.mjs
 import { spawn } from 'node:child_process';
@@ -15,19 +15,30 @@ const avoided = readFileSync(ROOT + 'spec/catalog/vocabulary/l2.yaml', 'utf8').s
 // PCM points at a stub Agent E2 service (PCM_AGENT_E2_URL). It is not running for LPG-8 (the unavailable state); LPG-20 and LPG-21 start it.
 const E2_PORT = 8769;
 const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DEMO_SWITCHER: '0', PCM_AGENT_E2_MODE: 'mock', PCM_DB: ':memory:', PCM_AGENT_E2_URL: `http://127.0.0.1:${E2_PORT}` } });
-const E2_SEEN = [];
+const E2_SEEN = [], E2_TOPIC = [];  // answer requests; topic requests (D-130)
 const E2_ANSWER = 'No. A Guest OS Run Queue of 0.38 per vCPU at the 95th percentile is not a CPU shortage inside fr-svc-5526.\n\nCheck next: VM CPU Ready on the same hour, then the host fr-esx-218.';
 const stub = createServer((req, res) => {
   let b = ''; req.on('data', c => { b += c; }); req.on('end', () => {
     const send = d => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(d)); };
     if (req.url === '/v1/health') return send({ ok: true, model: 'stub-model', files: 286 });
-    const body = JSON.parse(b || '{}'); E2_SEEN.push(body);
-    if (!body.turns && /which counter/i.test(body.question)) return send({ type: 'clarify', content: '', questions: ['Do you mean the Guest OS Run Queue or the VM CPU Ready?'], files_read: [], computed: [], model: 'stub-model', knowledge_commit: 'abc1234' });
+    const body = JSON.parse(b || '{}');
     // The stub's topic decision (D-129): the person's choice; else a question on Memory Zip Swap is a new topic; else it continues.
     const h = body.history || [], ch = body.topic_choice || 'auto';
     const topic = ch !== 'auto' ? { continues: ch === 'continue' && h.length > 0, by: 'user' } : !h.length ? { continues: false, by: 'first' }
       : { continues: !/Zip Swap/i.test(body.question), by: 'model' };
-    send({ type: 'answer', content: E2_ANSWER, questions: [], files_read: ['guest-os/cpu/metrics/run-queue', 'vsphere/technology/cpu/metrics/vm/ready'], lead: 'Peak vCPU run queue length is 1.5 threads waiting, 0.38 per vCPU.', computed: ['0.38 per vCPU × 4 vCPU = 1.5 threads waiting'], topic, model: 'stub-model', knowledge_commit: 'abc1234' });
+    // An Agent E2 older than topics (D-130): no /v1/topic, and no topic in its answer.
+    const old = /old service/i.test(body.question || '');
+    if (req.url === '/v1/topic') {
+      E2_TOPIC.push(body);
+      if (old) { res.writeHead(404, { 'Content-Type': 'application/json' }); return res.end('{"error":"not found"}'); }
+      return send(topic);
+    }
+    E2_SEEN.push(body);
+    if (!body.turns && /which counter/i.test(body.question)) return send({ type: 'clarify', content: '', questions: ['Do you mean the Guest OS Run Queue or the VM CPU Ready?'], files_read: [], computed: [], model: 'stub-model', knowledge_commit: 'abc1234' });
+    const out = { type: 'answer', content: E2_ANSWER, questions: [], files_read: ['guest-os/cpu/metrics/run-queue', 'vsphere/technology/cpu/metrics/vm/ready'], lead: 'Peak vCPU run queue length is 1.5 threads waiting, 0.38 per vCPU.', computed: ['0.38 per vCPU × 4 vCPU = 1.5 threads waiting'], topic: old ? undefined : topic, model: 'stub-model', knowledge_commit: 'abc1234' };
+    // A slow answer, so the test can flip the topic while it is written (D-130).
+    if (/slowly/i.test(body.question || '') && ch === 'continue') return setTimeout(() => send(out), 3000);
+    send(out);
   });
 });
 for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/exec`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
@@ -411,14 +422,15 @@ try {
   await page.click('.metric[data-metric="cpu_ready_percent"] .e2mark'); await page.waitForSelector('#e2q');
   const n28 = (await page.$$('#e2 .e2a')).length;
   await page.fill('#e2q', 'Is this a problem?'); await page.press('#e2q', 'Enter'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, n28);
-  const at28 = E2_SEEN.length;
+  const at28 = E2_SEEN.length, tp28 = E2_TOPIC.length;
   await page.fill('#e2q', 'I do not understand. Explain again.'); await page.press('#e2q', 'Enter'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, n28 + 1);
   const hist = E2_SEEN[at28] && E2_SEEN[at28].history;
   const last = hist && hist[hist.length - 1];
   const cont28 = await page.$$eval('#e2 [data-topic-continues]', els => els.length ? els[els.length - 1].innerText : '');
   check('LPG-28', Array.isArray(hist) && hist.length >= 1 && last.question === 'Is this a problem?' && last.answer.startsWith('Peak vCPU run queue length') && last.answer.includes('Check next')
-    && E2_SEEN[at28].topic_choice === 'auto' && /^Continuing: “/.test(cont28),
-    `history ${hist && hist.length}; last ${last && last.question}; ${E2_SEEN[at28].topic_choice}; ${cont28}`);
+    && E2_TOPIC[tp28] && E2_TOPIC[tp28].topic_choice === 'auto' && E2_TOPIC[tp28].history.length === hist.length
+    && E2_SEEN[at28].topic_choice === 'continue' && /^Continuing: “/.test(cont28),
+    `history ${hist && hist.length}; last ${last && last.question}; topic call ${E2_TOPIC[tp28] && E2_TOPIC[tp28].topic_choice}; answer ${E2_SEEN[at28].topic_choice}; ${cont28}`);
 
   // LPG-29 a new topic: divider, its own history; the flip asks again; New topic and a suggestion send topic_choice new
   const askAt = i => E2_SEEN.slice(i).find(b => typeof b.question === 'string') || {};
@@ -449,6 +461,29 @@ try {
     && flipSent.topic_choice === 'new' && histOf29(flipSent).length === 0 && replaced && pressed === 'true'
     && forced.topic_choice === 'new' && histOf29(forced).length === 0 && !!sugg29 && sugg29.topic_choice === 'new',
     `dividers ${div0}->${div1}; flip "${flipText}"; own ${own.length}; flip sent ${flipSent.topic_choice}/${histOf29(flipSent).length}; replaced ${replaced}; pressed ${pressed}; forced ${forced && forced.topic_choice}; suggestion ${sugg29 && sugg29.topic_choice}`);
+
+  // LPG-30 the topic decision shows before the answer, and can be flipped while waiting (D-130); no decision continues
+  await go('/l2/monitor/compute/fr-svc-5526/performance');
+  await page.click('.metric[data-metric="cpu_ready_percent"] .e2mark'); await page.waitForSelector('#e2q');
+  const ask30 = async q => { const n = (await page.$$('#e2 .e2a')).length; await page.fill('#e2q', q); await page.press('#e2q', 'Enter'); await page.waitForFunction(m => document.querySelectorAll('#e2 .e2a').length > m && !document.querySelector('#e2 .e2wait'), n); };
+  await ask30('Is this a problem?');
+  const n30 = (await page.$$('#e2 .e2turn')).length, s30 = E2_SEEN.length, d30 = (await page.$$('#e2 [data-topic-new]')).length;
+  await page.fill('#e2q', 'More details, slowly'); await page.press('#e2q', 'Enter');
+  await page.waitForSelector('#e2 [data-topic-waiting]', { timeout: 15000 });
+  const waitLine = await page.innerText('#e2 [data-topic-waiting]'), stillWaiting = !!(await page.$('#e2 .e2wait'));
+  await page.click('#e2 [data-e2flipwait]');
+  await page.waitForFunction(() => !document.querySelector('#e2 .e2wait'), null, { timeout: 15000 });
+  await page.waitForTimeout(3500);  // the dropped slow answer arrives late: it must not be added
+  const sent30 = E2_SEEN.slice(s30), n30b = (await page.$$('#e2 .e2turn')).length, d30b = (await page.$$('#e2 [data-topic-new]')).length;
+  const s30c = E2_SEEN.length;
+  await ask30('The old service: explain again');
+  const old30 = E2_SEEN[s30c] || {}, oldCont = await page.$$eval('#e2 [data-topic-continues]', els => els.length ? els[els.length - 1].innerText : '');
+  await page.click('#e2 [data-e2del="ask"]'); await page.click('#e2 [data-e2del="yes"]');
+  await page.keyboard.press('Escape');
+  check('LPG-30', /^Continuing: “Is this a problem\?”/.test(waitLine) && /Start a new topic instead/.test(waitLine) && stillWaiting
+    && sent30.length === 2 && sent30.some(b => b.topic_choice === 'continue' && b.history.length === 1) && sent30.some(b => b.topic_choice === 'new' && (b.history || []).length === 0)
+    && n30b === n30 + 1 && d30b === d30 + 1 && old30.topic_choice === 'continue' && (old30.history || []).length === 1 && /^Continuing: “More details, slowly”/.test(oldCont),
+    `waiting "${waitLine.replace(/\s+/g, ' ')}"; sent ${sent30.map(b => b.topic_choice + '/' + (b.history || []).length).join(', ')}; turns ${n30}->${n30b}; dividers ${d30}->${d30b}; old service ${old30.topic_choice}/${(old30.history || []).length}, "${oldCont}"`);
 
   // LPG-27 delete a conversation (D-123): Delete, then Yes; No keeps it
   await go('/l2/monitor/compute/fr-svc-5526/performance');

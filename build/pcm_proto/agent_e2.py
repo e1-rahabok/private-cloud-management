@@ -132,6 +132,20 @@ def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 
                 "knowledge_commit": None, "source": "unavailable"}
 
 
+
+def topic_service(url: str, question: str, history: list, timeout: int = 20) -> dict:
+    """Agent E2's topic decision alone (D-130): whether the question continues the topic of `history`, decided before
+    the answer so the panel can show it and the person can flip it while the answer is written. Returns {continues, by,
+    source}; continues is None when Agent E2 gives no decision (not reachable, or a service older than /v1/topic): the
+    panel then continues the topic, since losing the context is the worse mistake."""
+    try:
+        out = _post_raw(url.rstrip("/") + "/v1/topic", {"question": question, "history": history, "topic_choice": "auto"}, timeout)
+        c = out.get("continues")
+        return {"continues": c if isinstance(c, bool) else None, "by": out.get("by"), "source": "service"}
+    except (urllib.error.URLError, TimeoutError, ConnectionError, ValueError, KeyError):
+        return {"continues": None, "by": None, "source": "unavailable"}
+
+
 TOPIC_CHOICES = ("auto", "new", "continue")
 
 

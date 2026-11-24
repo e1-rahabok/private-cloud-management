@@ -398,6 +398,20 @@ class Troubleshoot(Base):
         self.assertEqual(seen["topic_choice"], "auto")
         self.assertEqual(A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}, "topic_choice": "maybe"})[0], 400)
         self.assertEqual(A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}, "history": [{"question": "Q"}]})[0], 400)
+        # the topic decision alone, before the answer (D-130): sent to /v1/topic; none from an older service or a down one
+        calls = []
+        def topic_fake(url, body, timeout):
+            calls.append(url)
+            return {"continues": False, "by": "model"}
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", topic_fake):
+            self.assertEqual(A.topic({"question": "What is VM CPU Ready?", "history": hist[:1]}), (200, {"continues": False, "by": "model", "source": "service"}))
+            self.assertEqual(A.topic({"question": "Why?"})[1]["by"], "first")
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0].endswith("/v1/topic"))
+        self.assertEqual(A.topic({"question": " ", "history": hist})[0], 400)
+        self.assertEqual(A.topic({"question": "Why?", "history": [{"question": "Q"}]})[0], 400)
+        with mock.patch.dict(os.environ, {"PCM_AGENT_E2_URL": "http://127.0.0.1:9"}):
+            self.assertEqual(A.topic({"question": "Why?", "history": hist[:1]})[1]["continues"], None)
         # refusals and the service down
         self.assertEqual(A.ask(NOW, {"question": "x", "context": {"kind": "nope"}})[0], e["unknown_context"])
         self.assertEqual(A.ask(NOW, {"question": "x", "context": {**ctx, "metric": "no_such_metric"}})[0], e["unknown_metric"])
