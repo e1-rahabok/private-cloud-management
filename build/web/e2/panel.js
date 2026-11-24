@@ -10,6 +10,13 @@ const E2Panel = (() => {
   const convs = () => { try { return JSON.parse(sessionStorage.getItem(H.store) || '{}'); } catch (e) { return {}; } };
   const saveConv = (k, list) => { try { const all = convs(); all[k] = list; sessionStorage.setItem(H.store, JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
 
+  // Topics (D-129): a context holds topics, a topic holds turns. Agent E2 decides whether a question continues the current
+  // topic (only that topic's turns go with it, uncut); the person can flip the decision on the newest answer.
+  const topicOf = list => list.length ? (list[list.length - 1].topic || 0) : -1;
+  const topicTurns = (list, t) => list.filter(m => (m.topic || 0) === t);
+  const histOf = turns => turns.filter(t => t.a && !t.a.draft && t.a.source === 'service')
+    .map(t => ({ question: t.q, answer: t.a.type === 'clarify' ? (t.a.questions || []).join('\n') : [t.a.lead, t.a.content].filter(Boolean).join('\n\n') }))
+    .filter(t => t.answer);
   const dropConv = k => { try { const all = convs(); delete all[k]; sessionStorage.setItem(H.store, JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
 
   const mark = (ctx, name, show = {}) => `<button type="button" class="e2mark" data-e2="${esc(JSON.stringify({ ...ctx, show: { about: name, ...show } }))}" aria-label="Ask Agent E2 about ${esc(name)}" title="Ask Agent E2 about ${esc(name)}">E2</button>`;
@@ -83,7 +90,15 @@ const E2Panel = (() => {
     const thread = list.map((m, i) => {
       const open = S.tog[k + ':' + i] !== undefined ? S.tog[k + ':' + i] : (i === list.length - 1 && !waitingHere);
       const lbl = i === 0 || list[i - 1].label !== m.label ? `<div class="lbl">${esc(m.label)}</div>` : '';
-      return `<details class="e2turn" data-turn="${esc(k + ':' + i)}"${open ? ' open' : ''}><summary class="e2q">${lbl}<span class="qt">${esc(m.q)}</span></summary>${answer(m.a)}</details>`;
+      // D-129: a new topic gets a divider, seen even when the folds are closed; a turn that continues says which topic.
+      const isNew = i > 0 && (m.topic || 0) !== (list[i - 1].topic || 0);
+      const first = topicTurns(list, m.topic || 0)[0];
+      const canFlip = i === list.length - 1 && !S.busy && m.a && m.a.source === 'service' && !m.a.draft && m.a.type !== 'clarify';
+      const flip = canFlip ? `<button type="button" class="e2flip" data-e2flip="${isNew ? 'continue' : 'new'}">${isNew ? 'Continue the last topic instead' : 'Start a new topic instead'}</button>` : '';
+      const tline = i === 0 ? '' : isNew ? (flip ? `<div class="e2topic">${flip}</div>` : '')
+        : `<div class="e2topic" data-topic-continues><span class="tq">Continuing: “${esc(first.q)}”</span>${flip}</div>`;
+      const divider = isNew ? '<div class="e2divider" role="separator" data-topic-new><span>New topic</span></div>' : '';
+      return `${divider}<details class="e2turn" data-turn="${esc(k + ':' + i)}"${open ? ' open' : ''}><summary class="e2q">${lbl}<span class="qt">${esc(m.q)}</span></summary>${tline}${answer(m.a)}</details>`;
     }).join('');
     const sugg = !S.busy && !S.pending && (!list.length || list[list.length - 1].label !== H.label(c))
       ? `<div class="e2sugg" role="group" aria-label="Suggested questions">${H.suggestions(c).map((x, i) => `<button type="button" class="sugg" data-sugg="${i}">${esc(sText(x))}</button>`).join('')}</div>` : '';
@@ -96,8 +111,9 @@ const E2Panel = (() => {
       ${S.up === false ? '<p class="why e2down">The Agent E2 service is not available.</p>' : ''}
       <div class="e2body" aria-live="polite">${thread || (H.intro ? `<p class="muted">${esc(H.intro(c))}</p>` : '')}
         ${waitingHere ? `<div class="e2q">${list.length && list[list.length - 1].label === S.waiting.label ? '' : `<div class="lbl">${esc(S.waiting.label)}</div>`}${esc(S.waiting.q)}</div><div class="e2wait" role="status">${esc(S.waiting.note)} <span data-secs>0</span> s</div>` : ''}${sugg}</div>
-      <form class="e2form" id="e2form"><label class="sr" for="e2q">Question for Agent E2</label><textarea id="e2q" rows="2" placeholder="${S.pending ? 'Your reply to Agent E2…' : 'Ask Agent E2…'}">${esc(kept)}</textarea>
-        <button type="submit" class="act"${S.busy ? ' disabled' : ''}>Ask</button></form>`;
+      <form class="e2form" id="e2form"><label class="sr" for="e2q">Question for Agent E2</label><textarea id="e2q" rows="2" placeholder="${S.pending ? 'Your reply to Agent E2…' : S.nextNew ? 'Ask about a new topic…' : 'Ask Agent E2…'}">${esc(kept)}</textarea>
+        <span class="e2btns">${list.length && !S.pending ? `<button type="button" class="e2new" data-e2new aria-pressed="${S.nextNew ? 'true' : 'false'}" title="The next question starts a new topic: Agent E2 reads it without the earlier questions">New topic</button>` : ''}
+        <button type="submit" class="act"${S.busy ? ' disabled' : ''}>Ask</button></span></form>`;
     const body = box.querySelector('.e2body'); body.scrollTop = body.scrollHeight;
   }
   function outline(el) {
@@ -107,7 +123,7 @@ const E2Panel = (() => {
     if (card && root.contains(card)) card.classList.add('e2-asked');
   }
   function open(ctx, opener) {
-    S.confirmDel = null; S.ctx = H.full(ctx); S.opener = opener || $('e2top');
+    S.confirmDel = null; S.nextNew = false; S.ctx = H.full(ctx); S.opener = opener || $('e2top');
     if (S.pending && S.pending.key !== H.convKey(S.ctx)) S.pending = null;
     outline(opener);
     const box = $('e2');
@@ -132,7 +148,7 @@ const E2Panel = (() => {
   // After a move the panel stays; its context becomes the new page's.
   function follow() {
     if (!S.open) return;
-    S.confirmDel = null;
+    S.confirmDel = null; S.nextNew = false;
     S.ctx = H.full(H.pageCtx()); S.opener = $('e2top');
     render(); if (H.onToggle) H.onToggle();
   }
@@ -151,37 +167,46 @@ const E2Panel = (() => {
     if (status === 502 || status === 503 || status === 504) return 'Agent E2 took too long or is restarting, so PCM gave up waiting. Nothing was lost. Wait a minute, then ask again.';
     return `Agent E2 could not answer (PCM replied ${status}). Ask again; if it repeats, tell the PCM administrator the time and this code.`;
   }
-  async function ask(q, task) {
+  // opts.choice: 'new' or 'continue' when the person chose (a suggestion, New topic, the flip); opts.redo: ask the newest
+  // question again with the other decision, in place of its answer.
+  async function ask(q, task, opts = {}) {
     q = (q || '').trim();
     if (!q || S.busy || !S.ctx) return;
     const c = S.ctx, k = H.convKey(c), label = H.label(c);
     const { show, ...context } = c;
     const body = { question: q, context };
-    if (!task && S.pending && S.pending.key === k) body.turns = [S.pending.first, S.pending.questions.join('\n'), q];
-    const list = convs()[k] || [];
-    // Every earlier turn of this conversation, uncut (D-128): a model holds no memory between calls. The pending turn of a
-    // clarifying round goes as turns, not here; a draft and a failed turn are not part of the conversation.
-    if (!task) body.history = (body.turns ? list.slice(0, -1) : list).filter(t => t.a && !t.a.draft && t.a.source === 'service')
-      .map(t => ({ question: t.q, answer: t.a.type === 'clarify' ? (t.a.questions || []).join('\n') : [t.a.lead, t.a.content].filter(Boolean).join('\n\n') }))
-      .filter(t => t.answer);
+    if (!task && !opts.redo && S.pending && S.pending.key === k) body.turns = [S.pending.first, S.pending.questions.join('\n'), q];
+    const all = convs()[k] || [];
+    const list = opts.redo ? all.slice(0, -1) : all;
+    // D-129: only the current topic's turns go with the question, every one of them (a model holds no memory between calls).
+    // A clarifying reply stays in the topic of the question it answers; the pending turn itself goes as turns.
+    let topic = topicOf(list), choice = opts.choice || (S.nextNew ? 'new' : 'auto');
+    if (body.turns) { topic = list[list.length - 1].topic || 0; }
+    const hist = histOf(topicTurns(body.turns ? list.slice(0, -1) : list, topic));
+    if (body.turns) choice = hist.length ? 'continue' : 'new';
+    if (!task) { body.history = choice === 'new' ? [] : hist; body.topic_choice = choice; S.nextNew = false; }
+    if (opts.redo) saveConv(k, list);
     S.busy = true; S.started = Date.now();
     S.waiting = { q, label, key: k, note: task ? 'Agent E2 is drafting.' : 'Agent E2 is reading the knowledge base and the facts PCM sent.' };
-    render(); $('e2q').focus({ preventScroll: true }); $('e2q').value = '';
+    render(); $('e2q').focus({ preventScroll: true }); if (!opts.redo) $('e2q').value = '';
     clearInterval(S.timer);
     S.timer = setInterval(() => { const s = document.querySelector('#e2 [data-secs]'); if (s) s.textContent = Math.round((Date.now() - S.started) / 1000); }, 1000);
     let r;
     try { r = task ? await H.draft(c, task) : await H.post('agent/ask', body); } catch (e) { r = { status: 0, body: {} }; }
     clearInterval(S.timer); S.busy = false; S.waiting = null;
     if (r.status !== 200) {
-      saveConv(k, list); render();
-      const ta = $('e2q'); if (ta && !task) ta.value = q;
+      saveConv(k, opts.redo ? all : list); render();
+      const ta = $('e2q'); if (ta && !task && !opts.redo) ta.value = q;
       const b = document.querySelector('#e2 .e2body'); if (b) b.insertAdjacentHTML('beforeend', answer({ error: r.body.error || failure(r.status) }));
       document.body.dataset.e2ask = 'error';
       return;
     }
     const a = task ? { ...r.body, draft: task } : r.body;
     S.pending = !task && a.type === 'clarify' && a.questions && a.questions.length && a.source === 'service' ? { key: k, first: body.turns ? body.turns[0] : q, questions: a.questions } : null;
-    saveConv(k, [...list, { q, label, a }]);
+    // The turn's topic: the one it continues, or the next one. Without Agent E2's decision (it did not answer), the choice sent.
+    const continues = body.turns ? true : a.topic ? a.topic.continues : choice === 'continue';
+    const t = body.turns ? topic : continues && topic >= 0 ? topic : topic + 1;
+    saveConv(k, [...list, { q, label, a, topic: t }]);
     const keep = document.activeElement === document.body || (document.activeElement && document.activeElement.closest('#e2'));
     if (S.open && H.convKey(S.ctx) === k) render();
     if (keep && S.open) $('e2q').focus({ preventScroll: true });
@@ -197,13 +222,17 @@ const E2Panel = (() => {
       if (del) {
         const k = H.convKey(S.ctx), what = del.dataset.e2del;
         if (what === 'ask') S.confirmDel = k;
-        else { S.confirmDel = null; if (what === 'yes') { dropConv(k); if (S.pending && S.pending.key === k) S.pending = null; for (const t of Object.keys(S.tog)) if (t.startsWith(k + ':')) delete S.tog[t]; } }
+        else { S.confirmDel = null; if (what === 'yes') { dropConv(k); S.nextNew = false; if (S.pending && S.pending.key === k) S.pending = null; for (const t of Object.keys(S.tog)) if (t.startsWith(k + ':')) delete S.tog[t]; } }
         render(); return;
       }
       const fold = e.target.closest('#e2 .e2turn > summary');
       if (fold) { const d = fold.parentElement; S.tog[d.dataset.turn] = !d.open; return; } // a person's choice; the browser does the toggle
       const s = e.target.closest('#e2 [data-sugg]');
-      if (s) { const x = H.suggestions(S.ctx)[Number(s.dataset.sugg)]; return typeof x === 'string' ? ask(x) : ask(x.q, x.draft); }
+      // A suggested question is about the page or card, so it starts a new topic (D-129).
+      if (s) { const x = H.suggestions(S.ctx)[Number(s.dataset.sugg)]; return typeof x === 'string' ? ask(x, undefined, { choice: 'new' }) : ask(x.q, x.draft); }
+      const fl = e.target.closest('#e2 [data-e2flip]');
+      if (fl) { const all = convs()[H.convKey(S.ctx)] || []; return all.length ? ask(all[all.length - 1].q, undefined, { choice: fl.dataset.e2flip, redo: true }) : undefined; }
+      if (e.target.closest('#e2 [data-e2new]')) { S.nextNew = !S.nextNew; refresh(); const n = $('e2q'); if (n) n.focus({ preventScroll: true }); return; }
       const a = e.target.closest('#e2 [data-e2act]');
       if (a && H.onAction) H.onAction(a);
     });

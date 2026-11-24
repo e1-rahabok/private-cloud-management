@@ -523,5 +523,13 @@ page:
   - id: LPG-28
     rule: >
       A second question in the same context carries the first as history: its question, and its answer as the person read it (the opening,
-      then the text). No turn is dropped from the conversation.
-    decisions: [D-128]
+      then the text), with topic_choice auto. No turn of the topic is dropped. When Agent E2 says it continues, the answer shows
+      "Continuing:" and the first question of the topic.
+    decisions: [D-128, D-129]
+  - id: LPG-29
+    rule: >
+      When Agent E2 starts a new topic, a "New topic" divider comes before the turn, and its next question carries only that topic's turns.
+      "Continue the last topic instead" asks the same question again with topic_choice continue and the earlier topic's turns, and
+      replaces the answer. "New topic" beside Ask makes the next question go with topic_choice new and no history. A suggested question
+      goes with topic_choice new.
+    decisions: [D-129]

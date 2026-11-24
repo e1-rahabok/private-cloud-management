@@ -55,6 +55,15 @@
 .e2sugg { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .sugg { font: inherit; font-size: 14px; text-align: left; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--text); cursor: pointer; }
 .sugg:hover, .sugg:focus-visible { border-color: var(--text); }
+/* Topics (D-129): a divider before a new topic; a line on a turn that continues one; the flip on the newest answer. */
+.e2divider { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.e2divider::before, .e2divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.e2topic { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0 0 6px; font-size: 12px; color: var(--text-muted); }
+.e2topic .tq { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.e2flip, .e2new { border: 1px solid var(--line); background: #fff; font: inherit; font-size: 12px; color: var(--text); cursor: pointer; padding: 3px 9px; border-radius: 6px; }
+.e2flip:hover, .e2flip:focus-visible, .e2new:hover, .e2new:focus-visible { border-color: var(--text); }
+.e2new[aria-pressed="true"] { background: var(--text); color: #fff; border-color: var(--text); }
+.e2btns { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .e2form { display: flex; gap: 8px; align-items: flex-end; padding: 12px 16px 16px; border-top: 1px solid var(--line); }
 .e2form textarea { flex: 1; font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); resize: vertical; min-height: 42px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

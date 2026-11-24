@@ -389,6 +389,14 @@ class Troubleshoot(Base):
         with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
             A.ask(NOW, {"question": "Explain again.", "context": {"kind": "case", "case": "case-sg-app-117"}, "history": hist})
         self.assertEqual(seen["history"], hist)
+        # the topic choice goes as sent (D-129); auto when none; any other value is refused
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}, "history": hist, "topic_choice": "new"})
+        self.assertEqual(seen["topic_choice"], "new")
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}})
+        self.assertEqual(seen["topic_choice"], "auto")
+        self.assertEqual(A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}, "topic_choice": "maybe"})[0], 400)
         self.assertEqual(A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}, "history": [{"question": "Q"}]})[0], 400)
         # refusals and the service down
         self.assertEqual(A.ask(NOW, {"question": "x", "context": {"kind": "nope"}})[0], e["unknown_context"])
