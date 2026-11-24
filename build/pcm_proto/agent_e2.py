@@ -103,10 +103,11 @@ def draft_facts(facts: dict, task: str, settings: dict, avoided: list, template:
 
 
 def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 180, turns: list | None = None,
-                history: list | None = None) -> dict:
+                history: list | None = None, topic_choice: str | None = None) -> dict:
     """Agent E2 service (D-078): the knowledge base, the reading plan and the model call, behind one endpoint.
     turns: a clarifying round, [first question, Agent E2's questions, the reply]; the facts go with the first.
-    history: every earlier turn of the conversation, [{question, answer}], oldest first, uncut (D-128).
+    history: every earlier turn of the current topic, [{question, answer}], oldest first, uncut (D-128, D-129).
+    topic_choice: auto (Agent E2 decides whether the question continues the topic), new or continue (the person chose).
     Returns {type, content, questions, files_read, lead, computed, model, knowledge_commit, source}. lead: the opening the
     person reads first, in plain words (D-119); computed: the calculator's lines, kept for review, not shown.
     source: service; model_unavailable (the service answered 502: its model cannot be reached); unavailable (no service)."""
@@ -115,10 +116,12 @@ def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 
         body["turns"] = turns
     if history:
         body["history"] = history
+    if topic_choice:
+        body["topic_choice"] = topic_choice
     try:
         out = _post_raw(url.rstrip("/") + "/v1/answer", body, timeout)
         return {"content": out.get("content") or "", "lead": out.get("lead") or "", "questions": out.get("questions", []), "type": out.get("type"),
-                "files_read": out.get("files_read", []), "computed": out.get("computed", []),
+                "files_read": out.get("files_read", []), "computed": out.get("computed", []), "topic": out.get("topic"),
                 "model": out.get("model"), "knowledge_commit": out.get("knowledge_commit"), "source": "service"}
     except urllib.error.HTTPError as e:
         # The service answered, but its model did not (502): say which part is down (frame.md, Agent E2 panel).
@@ -127,6 +130,15 @@ def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 
     except (urllib.error.URLError, TimeoutError, ConnectionError, ValueError, KeyError):
         return {"type": None, "content": "", "questions": [], "files_read": [], "lead": "", "computed": [], "model": None,
                 "knowledge_commit": None, "source": "unavailable"}
+
+
+TOPIC_CHOICES = ("auto", "new", "continue")
+
+
+def topic_choice_of(body: dict):
+    """auto, new or continue (D-129); None for any other value (the caller answers 400)."""
+    c = body.get("topic_choice") or "auto"
+    return c if c in TOPIC_CHOICES else None
 
 
 def history_of(body: dict):

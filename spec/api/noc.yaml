@@ -28,7 +28,7 @@ paths:
   /api/noc/agent/ask:
     post:
       summary: >
-        Ask Agent E2 as L1 (D-098). Body: question (required), context, turns (optional), history (optional, every earlier turn of the context's conversation, as for L2; D-128). context: kind (page, tile, cluster, incident, step)
+        Ask Agent E2 as L1 (D-098). Body: question (required), context, turns (optional), history (optional, every earlier turn of the current topic, as for L2; D-128, D-129), topic_choice (optional, as for L2). context: kind (page, tile, cluster, incident, step)
         with page (screens, alerts, alert, shift), screen and location for a tile, cluster, incident, step (its index). PCM rebuilds L1's facts
         on the server and sends the role l1. The answer is checked against the NOC vocabulary, asked for once more if it fails;
         source is service, model_unavailable (the service is up, its model is not), unavailable (no service) or vocabulary (not shown). Returns type, content, questions, files_read, lead, computed, model,

@@ -23,7 +23,11 @@ const stub = createServer((req, res) => {
     if (req.url === '/v1/health') return send({ ok: true, model: 'stub-model', files: 286 });
     const body = JSON.parse(b || '{}'); E2_SEEN.push(body);
     if (!body.turns && /which counter/i.test(body.question)) return send({ type: 'clarify', content: '', questions: ['Do you mean the Guest OS Run Queue or the VM CPU Ready?'], files_read: [], computed: [], model: 'stub-model', knowledge_commit: 'abc1234' });
-    send({ type: 'answer', content: E2_ANSWER, questions: [], files_read: ['guest-os/cpu/metrics/run-queue', 'vsphere/technology/cpu/metrics/vm/ready'], lead: 'Peak vCPU run queue length is 1.5 threads waiting, 0.38 per vCPU.', computed: ['0.38 per vCPU × 4 vCPU = 1.5 threads waiting'], model: 'stub-model', knowledge_commit: 'abc1234' });
+    // The stub's topic decision (D-129): the person's choice; else a question on Memory Zip Swap is a new topic; else it continues.
+    const h = body.history || [], ch = body.topic_choice || 'auto';
+    const topic = ch !== 'auto' ? { continues: ch === 'continue' && h.length > 0, by: 'user' } : !h.length ? { continues: false, by: 'first' }
+      : { continues: !/Zip Swap/i.test(body.question), by: 'model' };
+    send({ type: 'answer', content: E2_ANSWER, questions: [], files_read: ['guest-os/cpu/metrics/run-queue', 'vsphere/technology/cpu/metrics/vm/ready'], lead: 'Peak vCPU run queue length is 1.5 threads waiting, 0.38 per vCPU.', computed: ['0.38 per vCPU × 4 vCPU = 1.5 threads waiting'], topic, model: 'stub-model', knowledge_commit: 'abc1234' });
   });
 });
 for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/exec`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
@@ -411,9 +415,40 @@ try {
   await page.fill('#e2q', 'I do not understand. Explain again.'); await page.press('#e2q', 'Enter'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, n28 + 1);
   const hist = E2_SEEN[at28] && E2_SEEN[at28].history;
   const last = hist && hist[hist.length - 1];
+  const cont28 = await page.$$eval('#e2 [data-topic-continues]', els => els.length ? els[els.length - 1].innerText : '');
+  check('LPG-28', Array.isArray(hist) && hist.length >= 1 && last.question === 'Is this a problem?' && last.answer.startsWith('Peak vCPU run queue length') && last.answer.includes('Check next')
+    && E2_SEEN[at28].topic_choice === 'auto' && /^Continuing: “/.test(cont28),
+    `history ${hist && hist.length}; last ${last && last.question}; ${E2_SEEN[at28].topic_choice}; ${cont28}`);
+
+  // LPG-29 a new topic: divider, its own history; the flip asks again; New topic and a suggestion send topic_choice new
+  const askAt = i => E2_SEEN.slice(i).find(b => typeof b.question === 'string') || {};
+  const histOf29 = b => b.history || [];
+  const turns29 = async () => (await page.$$('#e2 .e2turn')).length;
+  const askWait = async q => { const n = (await page.$$('#e2 .e2a')).length; await page.fill('#e2q', q); await page.press('#e2q', 'Enter'); await page.waitForFunction(m => document.querySelectorAll('#e2 .e2a').length > m && !document.querySelector('#e2 .e2wait'), n); };
+  const div0 = (await page.$$('#e2 [data-topic-new]')).length;
+  await askWait('What does Memory Zip Swap mean?');
+  const div1 = (await page.$$('#e2 [data-topic-new]')).length, flipText = await page.$eval('#e2 [data-e2flip]', b => b.innerText).catch(() => '');
+  const at29 = E2_SEEN.length;
+  await askWait('Why?');
+  const own = histOf29(askAt(at29));
+  const nT = await turns29(), at29b = E2_SEEN.length;
+  await page.click('#e2 [data-e2flip]'); await page.waitForFunction(() => !document.querySelector('#e2 .e2wait') && document.querySelector('#e2 [data-e2flip]'));
+  const flipSent = askAt(at29b), replaced = (await turns29()) === nT;
+  await page.click('#e2 [data-e2new]'); const pressed = await page.$eval('#e2 [data-e2new]', b => b.getAttribute('aria-pressed'));
+  const at29c = E2_SEEN.length;
+  await askWait('Why?');
+  const forced = askAt(at29c);
   await page.keyboard.press('Escape');
-  check('LPG-28', Array.isArray(hist) && hist.length >= 1 && last.question === 'Is this a problem?' && last.answer.startsWith('Peak vCPU run queue length') && last.answer.includes('Check next'),
-    `history ${hist && hist.length}; last ${last && last.question}`);
+  await page.click('#e2top'); await page.waitForSelector('#e2 [data-sugg]');
+  const at29d = E2_SEEN.length, nS = (await page.$$('#e2 .e2a')).length;
+  await page.click('#e2 [data-sugg]'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, nS);
+  const sugg29 = E2_SEEN.slice(at29d).find(b => b.question && !(b.facts && b.facts.card));
+  await page.click('#e2 [data-e2del="ask"]'); await page.click('#e2 [data-e2del="yes"]');  // leave the page's conversation empty for LPG-27
+  await page.keyboard.press('Escape');
+  check('LPG-29', div1 === div0 + 1 && flipText === 'Continue the last topic instead' && own.length === 1 && own[0].question === 'What does Memory Zip Swap mean?'
+    && flipSent.topic_choice === 'new' && histOf29(flipSent).length === 0 && replaced && pressed === 'true'
+    && forced.topic_choice === 'new' && histOf29(forced).length === 0 && !!sugg29 && sugg29.topic_choice === 'new',
+    `dividers ${div0}->${div1}; flip "${flipText}"; own ${own.length}; flip sent ${flipSent.topic_choice}/${histOf29(flipSent).length}; replaced ${replaced}; pressed ${pressed}; forced ${forced && forced.topic_choice}; suggestion ${sugg29 && sugg29.topic_choice}`);
 
   // LPG-27 delete a conversation (D-123): Delete, then Yes; No keeps it
   await go('/l2/monitor/compute/fr-svc-5526/performance');
