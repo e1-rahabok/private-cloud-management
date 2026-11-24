@@ -520,3 +520,8 @@ page:
       A clarifying answer shows its questions under "Agent E2 asks"; the next question sent carries the earlier turns. On a narrow screen
       (800 px) the panel covers the page as a sheet with Close at the top.
     decisions: [D-097]
+  - id: LPG-28
+    rule: >
+      A second question in the same context carries the first as history: its question, and its answer as the person read it (the opening,
+      then the text). No turn is dropped from the conversation.
+    decisions: [D-128]

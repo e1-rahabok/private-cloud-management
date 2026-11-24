@@ -8,7 +8,7 @@ const E2Panel = (() => {
   let H = null;
   const $ = id => document.getElementById(id);
   const convs = () => { try { return JSON.parse(sessionStorage.getItem(H.store) || '{}'); } catch (e) { return {}; } };
-  const saveConv = (k, list) => { try { const all = convs(); all[k] = list.slice(-12); sessionStorage.setItem(H.store, JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
+  const saveConv = (k, list) => { try { const all = convs(); all[k] = list; sessionStorage.setItem(H.store, JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
 
   const dropConv = k => { try { const all = convs(); delete all[k]; sessionStorage.setItem(H.store, JSON.stringify(all)); } catch (e) { /* per-viewer convenience only */ } };
 
@@ -159,6 +159,11 @@ const E2Panel = (() => {
     const body = { question: q, context };
     if (!task && S.pending && S.pending.key === k) body.turns = [S.pending.first, S.pending.questions.join('\n'), q];
     const list = convs()[k] || [];
+    // Every earlier turn of this conversation, uncut (D-128): a model holds no memory between calls. The pending turn of a
+    // clarifying round goes as turns, not here; a draft and a failed turn are not part of the conversation.
+    if (!task) body.history = (body.turns ? list.slice(0, -1) : list).filter(t => t.a && !t.a.draft && t.a.source === 'service')
+      .map(t => ({ question: t.q, answer: t.a.type === 'clarify' ? (t.a.questions || []).join('\n') : [t.a.lead, t.a.content].filter(Boolean).join('\n\n') }))
+      .filter(t => t.answer);
     S.busy = true; S.started = Date.now();
     S.waiting = { q, label, key: k, note: task ? 'Agent E2 is drafting.' : 'Agent E2 is reading the knowledge base and the facts PCM sent.' };
     render(); $('e2q').focus({ preventScroll: true }); $('e2q').value = '';

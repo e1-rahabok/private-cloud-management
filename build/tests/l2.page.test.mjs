@@ -402,6 +402,19 @@ try {
   check('LPG-21', /Agent E2 asks/i.test(asks) && Array.isArray(turns) && turns.length === 3 && turns[0] === 'Which counter do I read?' && turns[2] === 'The VM one'
     && sheet.x === 0 && sheet.width === 800 && closeTop < 60, `${asks.split('\n')[0]}; turns ${turns && turns.length}; sheet ${sheet.x},${sheet.width}; close at ${Math.round(closeTop)}`);
 
+  // LPG-28 a second question carries the first as history (D-128)
+  await go('/l2/monitor/compute/fr-svc-5526/performance');
+  await page.click('.metric[data-metric="cpu_ready_percent"] .e2mark'); await page.waitForSelector('#e2q');
+  const n28 = (await page.$$('#e2 .e2a')).length;
+  await page.fill('#e2q', 'Is this a problem?'); await page.press('#e2q', 'Enter'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, n28);
+  const at28 = E2_SEEN.length;
+  await page.fill('#e2q', 'I do not understand. Explain again.'); await page.press('#e2q', 'Enter'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, n28 + 1);
+  const hist = E2_SEEN[at28] && E2_SEEN[at28].history;
+  const last = hist && hist[hist.length - 1];
+  await page.keyboard.press('Escape');
+  check('LPG-28', Array.isArray(hist) && hist.length >= 1 && last.question === 'Is this a problem?' && last.answer.startsWith('Peak vCPU run queue length') && last.answer.includes('Check next'),
+    `history ${hist && hist.length}; last ${last && last.question}`);
+
   // LPG-27 delete a conversation (D-123): Delete, then Yes; No keeps it
   await go('/l2/monitor/compute/fr-svc-5526/performance');
   await page.click('#e2top'); await page.waitForSelector('#e2 [data-sugg]');

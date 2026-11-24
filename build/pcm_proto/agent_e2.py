@@ -102,15 +102,19 @@ def draft_facts(facts: dict, task: str, settings: dict, avoided: list, template:
         return {"text": template, "source": "fallback_unavailable", "model": model}
 
 
-def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 180, turns: list | None = None) -> dict:
+def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 180, turns: list | None = None,
+                history: list | None = None) -> dict:
     """Agent E2 service (D-078): the knowledge base, the reading plan and the model call, behind one endpoint.
     turns: a clarifying round, [first question, Agent E2's questions, the reply]; the facts go with the first.
+    history: every earlier turn of the conversation, [{question, answer}], oldest first, uncut (D-128).
     Returns {type, content, questions, files_read, lead, computed, model, knowledge_commit, source}. lead: the opening the
     person reads first, in plain words (D-119); computed: the calculator's lines, kept for review, not shown.
     source: service; model_unavailable (the service answered 502: its model cannot be reached); unavailable (no service)."""
     body = {"question": question, "facts": facts, "role": role}
     if turns:
         body["turns"] = turns
+    if history:
+        body["history"] = history
     try:
         out = _post_raw(url.rstrip("/") + "/v1/answer", body, timeout)
         return {"content": out.get("content") or "", "lead": out.get("lead") or "", "questions": out.get("questions", []), "type": out.get("type"),
@@ -123,6 +127,15 @@ def ask_service(url: str, question: str, facts: dict, role: str, timeout: int = 
     except (urllib.error.URLError, TimeoutError, ConnectionError, ValueError, KeyError):
         return {"type": None, "content": "", "questions": [], "files_read": [], "lead": "", "computed": [], "model": None,
                 "knowledge_commit": None, "source": "unavailable"}
+
+
+def history_of(body: dict):
+    """The conversation's earlier turns the browser sent (D-128): every one, as {question, answer} strings, or None when a
+    turn has another shape (the caller answers 400)."""
+    h = body.get("history") or []
+    if not isinstance(h, list) or not all(isinstance(t, dict) and isinstance(t.get("question"), str) and isinstance(t.get("answer"), str) for t in h):
+        return None
+    return [{"question": t["question"], "answer": t["answer"]} for t in h]
 
 
 def card_service(url: str, facts: dict, card: dict, timeout: int = 5) -> dict:
