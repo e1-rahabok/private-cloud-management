@@ -149,12 +149,12 @@ A page is where four dimensions meet. The navigation shows each dimension in its
 | Improve | 30 days | Opportunities and risk move slowly. |
 
 - **Performance reads the 20-second peak** of each 5-minute interval, not the 5-minute average. A spike of a few seconds disappears in 300 seconds of average.
-- **Over a window, an object's score is its 95th percentile:** not the average (it hides problems), not the worst (too noisy). This is the rule of the author's sample dashboard (`sources/Cluster Performance v2.html`).
+- **Over a window, an object's score is the value it meets or beats 95% of the time:** the 95th percentile where higher is worse, the 5th where higher is better (D-131); not the average (it hides problems), not the worst (too noisy). This is the rule of the author's sample dashboard (`sources/Cluster Performance v2.html`).
 - **Which statistic, on which axis** (D-095):
-  - **Over time, on one object:** a point holds the worst value of its slot. The figures are Now, Worst (with its time) and 95th percentile. The status is the 95th percentile, and the worse of that and the last hour.
+  - **Over time, on one object:** a point holds the worst value of its slot. The figures are Now, Worst (with its time) and the percentile figure. The percentile figure is named by direction: 5th percentile where higher is better, 95th where higher is worse (D-131). The status is that figure, and the worse of that and the last hour.
   - **Across objects, at one time:** the worst object, and the 10th or 90th percentile at the bad end.
   - **Never an average,** on either axis. Never a sum or average of percentages across clusters.
-  - **A statistic is named by what it is.** vCommunity's "Worst Cluster Consumption" is the 95th percentile of its check period, so PCM labels it "95th percentile, 24 hours to 08:00". "Worst" on a PCM page is always the single worst point.
+  - **A statistic is named by what it is.** vCommunity's "Worst Cluster Consumption" is the 95th percentile of its check period, so PCM labels it "95th percentile, 24 hours to 08:00"; Cluster Performance's check value, where higher is better, reads "5th percentile, 24 hours to 08:00". "Worst" on a PCM page is always the single worst point.
 - **Why:** in vCenter and VCF Operations, time is set per chart or per widget. Moving between them resets it. One window per page keeps every number on the page about the same period.
 
 ### 3.5 Pages are addressed by the four dimensions
@@ -169,7 +169,7 @@ The question: **what is wrong, at risk or wasteful, across the whole estate?** M
 
 - **What:** every node shows the same three parts. This follows the author's sample dashboards.
   - **Summary:** the node's trend for the pillar, and the count of children outside the green zone over time.
-  - **Children, worst first:** each child's score (95th percentile over the window), with its red and orange alerts.
+  - **Children, worst first:** each child's score over the window (the value met or beaten 95% of the time), with its red and orange alerts.
   - **Detail:** the selected child's trend and its own children. Going down one level is going one level deeper into vSphere.
 - **At the root this is the estate:** 1,200 hosts, all clusters, all VMs of the synthetic ACME estate.
 - **Why:**
@@ -215,14 +215,14 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
   - **Clusters at a time:** a click on either chart, or on the VM chart, picks a time. The table lists every cluster in scope at that time, worst first: Performance, Risk, VMs hit at that time, and different VMs hit over the window. Before any click, the time is the worst point of the window.
   - A click on a cluster opens it in the tree: its hosts, then vSAN, NSX and the switches underneath.
 - **What, not why:** the tab says what was hit, when, where and how wide. Causes, including a VM that slows itself (a limit, too many vCPUs), are the case's (D-084).
-- **At the cluster and below,** the tab opens with the object's KPI over the window, as a trend chart with Now, Worst and 95th percentile: Cluster Performance and Cluster Risk on a cluster, ESXi Performance on a host (D-100).
+- **At the cluster and below,** the tab opens with the object's KPI over the window, as a trend chart with Now, Worst and the percentile figure: Cluster Performance and Cluster Risk on a cluster, ESXi Performance on a host (D-100).
   - **Details (D-106):** under each cluster KPI a fold named "Details", closed when the page opens. It holds what the KPI is made of, one chart per part: nine for Cluster Performance (VM contention, worst and 90th percentile, and the host's bad packets), eleven for Cluster Risk (the worst host's utilization, saturation, reservation, allocation and monster VMs). It is closed because L2 has no need of it when the KPI is green, and a long page of eleven charts hides the two that matter. It says what moved, not why (D-084). An ESXi host has the same fold under ESXi Performance, nine parts over the VMs on the host (D-108). Every part, and every VM counter that has a catalog row, is coloured by its band ends: pill, zones and line. Then children outside green in one sentence, "Just above the line" as a 7-day chart, and the children worst first.
 
 ### 4.3.2 The Performance tab on a VM (D-092)
 
 - **The two Performance (%) scores first** (D-100): Guest OS Performance, then VM Performance. They say whether anything is wrong; the layers under them say where.
 - **Two layers, one over the other.** The Guest OS runs on the Virtual Motherboard (the VM's virtual hardware), so the Guest OS comes first and the Virtual Motherboard under it. Never side by side.
-- **One chart per metric,** over the window. Beside it, three named figures: Now, Worst (with its time) and 95th percentile. Never an average: a VM is felt at its peak.
+- **One chart per metric,** over the window. Beside it, three named figures: Now, Worst (with its time) and the percentile figure. Never an average: a VM is felt at its peak.
 - **Group by, "Just above the line", "Children outside green" and Inventory are not on a VM.** They describe a group of objects.
 - **Names and units:** Title Case, capitals for abbreviations, the unit after the number, never inside the name ("CPU Ready 2.5%", "Disk Latency 5.6 ms").
 
@@ -262,7 +262,7 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
   - The last hour is not in it: "Contention now" is the chip beside the verdict, in the band colour of its value.
 - **Three charts, one per KPI, in the rule's order:** Consumption, Performance, Risk. Same time axis, one above the other.
   - Each draws the display bands as background, and the two closure levels as lines.
-  - Beside each: Now, Worst (with its time), 95th percentile, and the check's value named as its percentile.
+  - Beside each: Now, Worst (with its time), the percentile figure, and the check's value named as its percentile.
 - **The check strip** under the three charts: one cell per check period, closed or open, aligned with the charts' time axis. A closure lines up with the KPI that caused it.
   - Below 7 check periods in the window (1 hour, 24 hours), the strip becomes words: the latest check, and the one before it.
 - **What consumption is made of:** one chart per part, each against usable capacity, with the same three figures:

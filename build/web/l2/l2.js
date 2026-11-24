@@ -530,9 +530,11 @@ function metricBlock(m, layer, askKpi = false) {
   const mark = E2_LAYERS.includes(layer) ? e2mark({ kind: 'metric', layer, metric: m.key, pillar: 'performance' }, m.label, show)
     : askKpi ? e2mark({ kind: 'kpi', metric: m.key, pillar: 'performance' }, m.label, show) : '';
   return `<div class="metric" data-metric="${m.key}"><div class="mname"><h4>${esc(m.label)}</h4>${mark}</div><div class="mfig">
-    <dl><dt>Now</dt><dd>${bandFig(m.now, m, figure(m.now, m))}</dd><dt>Worst</dt><dd>${m.worst ? bandFig(m.worst.v, m, figure(m.worst.v, m)) : '–'}</dd><dt>95th percentile</dt><dd>${bandFig(m.percentile_95, m, figure(m.percentile_95, m))}</dd></dl></div>${chart}</div>`;
+    <dl><dt>Now</dt><dd>${bandFig(m.now, m, figure(m.now, m))}</dd><dt>Worst</dt><dd>${m.worst ? bandFig(m.worst.v, m, figure(m.worst.v, m)) : '–'}</dd><dt>${pctName(m.better)}</dt><dd>${bandFig(m.percentile_95, m, figure(m.percentile_95, m))}</dd></dl></div>${chart}</div>`;
 }
-const pointsNote = minutes => `<p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(minutes)}. Each point shows the worst value in that interval. 95% of points were better than the 95th percentile.</p>`;
+const pointsNote = minutes => `<p class="muted">${esc(WINDOWS.find(w => w[0] === R.window)[1])}, one point every ${fmtDur(minutes)}. Each point shows the worst value in that interval. 95% of points were better than the percentile beside each chart: the 5th where higher is better, the 95th where higher is worse.</p>`;
+// The percentile figure beside a chart, named by direction (l2.statistics, D-131): the value 95% of the points were better than.
+const pctName = better => better === 'higher' ? '5th percentile' : '95th percentile';
 // The Performance (%) KPIs come first: they say whether anything is wrong; the counters under them say where (D-100).
 function layersView(d) {
   const kpis = d.layers.flatMap(l => l.metrics.filter(m => m.scale).map(m => metricBlock(m, l.key)));
@@ -624,7 +626,7 @@ function kpiBlock(k, c, m) {
   const mark = e2mark({ kind: 'kpi', metric: k.key, pillar: 'capacity' }, k.label, { p95: pct(k.percentile_95), worst: k.worst ? fmtPoint(k.worst.t, m) : '' });
   return `<div class="metric" data-kpi="${k.key}"><div class="mname"><h4>${esc(k.label)}</h4>${mark}</div><div class="mfig">
     <dl><dt>Now</dt><dd>${bandFig(k.now, km, pct(k.now))}</dd><dt>Worst</dt><dd>${k.worst ? bandFig(k.worst.v, km, pct(k.worst.v)) : '–'}</dd>
-    <dt>95th percentile</dt><dd>${bandFig(k.percentile_95, km, pct(k.percentile_95))}</dd></dl></div>${chart}</div>`;
+    <dt>${pctName(k.better)}</dt><dd>${bandFig(k.percentile_95, km, pct(k.percentile_95))}</dd></dl></div>${chart}</div>`;
 }
 // Capacity Remaining, Time Remaining and VM Remaining are VCF Operations' own figures; PCM shows them, never computes them.
 // Release 1.0 has no connector yet, so the values are placeholders, and the page says so (D-100).

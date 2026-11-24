@@ -186,7 +186,7 @@ settings:
     decisions: [D-094, D-096]
 
   adapter.cluster_check_worst_percent:
-    description: The share of the window's worst samples the check ignores. 5 makes each check value the 95th percentile of its window; the page labels follow it (l2.statistics).
+    description: The share of the window's worst samples the check ignores. 5 makes each check value the 95th percentile of its window (the 5th for Cluster Performance, where higher is better); the page labels follow it (l2.statistics).
     default: 5
     range: [0, 50]
     unit: percent

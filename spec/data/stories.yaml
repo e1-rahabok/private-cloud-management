@@ -672,7 +672,7 @@ stories:
       LD-B-01:
         latest_check: { state: closed, rule: 1, reason: "Consumption 82% is above 80%.", checks_closed: 1 }
         check_before: { state: open, consumption: 77, consumption_band: red }
-        check_label: "95th percentile, 24 hours to"
+        check_labels: { consumption: "95th percentile, 24 hours to", performance: "5th percentile, 24 hours to", risk: "95th percentile, 24 hours to" }
         finding: { kind: closed_consumption, window: "24h", severity: amber, outcome: improve }
         strip_7d_cells: 7
       FR-B-04: { state: open, near_closure: true, finding: { kind: heading_to_closed, window: "7d", severity: amber, outcome: improve } }

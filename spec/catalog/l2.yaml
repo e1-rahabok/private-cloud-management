@@ -89,7 +89,7 @@ entries:
   l2.object_kpis:
     description: >
       The KPI of a cluster or anything under it (not a VM, which has l2.realms), over the window, one point per slot
-      (l2.statistics), with Now, Worst and 95th percentile. First on the object's Performance tab (D-100).
+      (l2.statistics), with Now, Worst and the percentile figure. First on the object's Performance tab (D-100).
     kpi:
       cluster: ["Cluster Performance (l2.cluster_kpi_series, the same series as the Capacity tab)", "Cluster Risk"]
       host: "ESXi Performance (vCommunity|ESXi Performance|ESXi Performance Score)"
@@ -231,23 +231,28 @@ entries:
   l2.statistics:
     description: >
       Which statistic, on which axis. Over time on one object: a point holds the worst value of its slot; the figures
-      are Now, Worst (with its time) and 95th percentile; the status is the 95th percentile over the window, and the
-      worse of that and the last hour. Across objects at one time: the worst object, and the 10th (higher is better)
+      are Now, Worst (with its time) and the percentile figure, the value 95% of the points were better than, named by
+      direction: the 5th percentile where higher is better, the 95th where higher is worse (D-131); the status is that
+      figure over the window, and the worse of that and the last hour. Across objects at one time: the worst object, and the 10th (higher is better)
       or 90th (higher is worse) percentile. Never an average on either axis; never a sum or average of percentages
       across clusters.
     over_time:
       point: "the worst value inside its slot"
       slots: { "1h": 5m, "24h": 5m, "7d": 1h, "30d": 4h, "1y": 1d }
       figures: [now, worst, percentile_95]
+      percentile_label: { higher_is_better: "5th percentile", higher_is_worse: "95th percentile" }
       status: "percentile_95 over the window; the worse of that and the last hour"
     across_objects:
       lines: [worst, percentile]
       percentile: { higher_is_better: 10, higher_is_worse: 90 }
     method: "nearest rank, as vCommunity: sort, take the value at position p% of the count, rounded up"
     naming: >
-      A statistic is labelled by what it is. vCommunity's "Worst" check values are the (100 - Worst Percent)th
-      percentile of the check period, so PCM labels them "{p}th percentile, {period} to {end time}". "Worst" on a PCM
-      page is always the single worst point.
+      A statistic is labelled by what it is, and a percentile by its statistical rank, counted from the lowest value
+      (D-131). vCommunity's "Worst" check values are the worst end of the check period: the (100 - Worst Percent)th
+      percentile where higher is worse, the (Worst Percent)th where higher is better. PCM labels them "{p}th
+      percentile, {period} to {end time}". The field percentile_95 keeps its name in the API for both directions: it
+      names the value 95% of the points were better than, not the label. "Worst" on a PCM page is always the single
+      worst point.
     never: [average, sum_across_clusters]
     decisions: [D-088, D-091, D-092, D-095]
 
@@ -357,7 +362,7 @@ entries:
       dram_consumed:          { label: "DRAM Consumed",          unit: "%", band_ends: [80, 85, 90], optional: true, note: "tiered hosts: DRAM in use (Memory Consumed minus the NVMe tier in use) against their usable DRAM" }
       memory_tiering:         { label: "Memory Tiering Consumption", unit: "%", band_ends: [15, 30, 45], optional: true, note: "NVMe tier in use against usable DRAM, not against the tier" }
     band_ends:
-      note: "Upper end of green, yellow and orange; above the last is red. Higher is worse. A value on an end stays in the lower band. From the Agent E2 knowledge base, knowledge/catalog/thresholds-capacity.yaml (models, rows of vsphere/object-types/cluster/models/cluster-consumption): the figures Now, Worst and 95th percentile are colored by it. The band's name is not written (D-104)."
+      note: "Upper end of green, yellow and orange; above the last is red. Higher is worse. A value on an end stays in the lower band. From the Agent E2 knowledge base, knowledge/catalog/thresholds-capacity.yaml (models, rows of vsphere/object-types/cluster/models/cluster-consumption): the figures Now, Worst and the percentile figure are colored by it. The band's name is not written (D-104)."
     figures: [now, worst, percentile_95]
     decisions: [D-094]
 
@@ -483,7 +488,7 @@ entries:
       (the VM's virtual hardware), so the layers are stacked, Guest OS first, never side by side (D-092). If the
       Virtual Motherboard is not waiting and the Guest OS is, the cause is inside the Guest OS: hand the evidence to
       the Windows or Linux team. On the VM's Performance tab each metric is a chart over the window with its named
-      figures: now, worst, 95th percentile. Never an average.
+      figures: now, worst, the percentile figure. Never an average.
     layers:
       guest_os:
         title: Guest OS
@@ -508,7 +513,7 @@ entries:
           memory_zip_swap_percent: { label: "VM swapped + zipped memory",       unit: "%",         better: lower,  decimals: 1, band_ends: [0.25, 0.5, 1] }
           vm_performance:         { label: "VM Performance",         unit: "%",         better: higher, decimals: 1, scale: [0, 100] }
     figures: [now, worst, percentile_95]
-    percentile_95: "the value that 95% of the points were better than (nearest rank); the lowest 5% of points for a metric where higher is better"
+    percentile_95: "the value that 95% of the points were better than (nearest rank): the 5th percentile for a metric where higher is better, the 95th where higher is worse, labelled so (l2.statistics, D-131)"
     unit_rule: "The unit follows the number. % and /s attach to it; any other unit follows a space. The label never holds the unit."
     decisions: [D-038, D-092]
 

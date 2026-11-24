@@ -296,7 +296,7 @@ def risk_parts(tiered: bool = False) -> tuple:
 def kpi_details(cid: str, kpi_key: str, vals: list, times: list, minutes: int, host: bool = False, rows: dict | None = None,
                 tiered: bool = False) -> list:
     """l2.kpi_details: the parts of Cluster Performance or Cluster Risk over the window, same points as the KPI.
-    Each part: points, Now, Worst with its time, 95th percentile (never an average). Lower is better for every part.
+    Each part: points, Now, Worst with its time, the percentile figure (never an average). Lower is better for every part.
     tiered: the cluster has a host with memory tiering, so Cluster Risk shows its two tiering parts (D-113)."""
     perf = kpi_key in ("cluster_performance", "esxi_performance")
     out = []
