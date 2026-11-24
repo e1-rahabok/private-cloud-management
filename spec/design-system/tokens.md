@@ -44,7 +44,7 @@ Taken from the Executive Dashboard mockup (D-015), which is already accessible. 
 
 ## Band figures
 
-A KPI on the 0 to 100% scale has four bands: green, yellow, orange, red (catalog.kpi_band). Its figures (Now, Worst, 95th percentile) show the band of their value (D-100). The band colours are for lines and zones; as text on white, yellow is 3.0:1 and green 3.3:1, too faint. So a figure is a pill:
+A KPI on the 0 to 100% scale has four bands: green, yellow, orange, red (catalog.kpi_band). Its figures (Now, Worst, the percentile figure) show the band of their value (D-100). The band colours are for lines and zones; as text on white, yellow is 3.0:1 and green 3.3:1, too faint. So a figure is a pill:
 
 | Band | Line and bar | Pill background | Pill text | Text contrast |
 |---|---|---|---|---|

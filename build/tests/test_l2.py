@@ -659,6 +659,7 @@ class CapacityTab(Base):
         self.assertEqual(CAP.check_label(5, 24), e["label_worst_percent_5"])
         self.assertEqual(CAP.check_label(10, 24), e["label_worst_percent_10"])
         self.assertNotIn(e["label_never"], CAP.check_label(5, 24))
+        self.assertEqual(CAP.check_label(5, 24, higher_is_better=True), e["label_higher_is_better_worst_percent_5"])
 
     def test_LCAT_14_capacity_findings(self):
         for g in T["LCAT-14"]["given"]:
@@ -694,7 +695,8 @@ class CapacityTab(Base):
         self.assertEqual([k["key"] for k in d["kpis"]], e["kpi_order"])
         for k in d["kpis"]:
             self.assertTrue({"now", "worst", "percentile_95", "check_value"} <= set(k) and "average" not in k)
-        self.assertTrue(ck["label"].startswith(e["check_value_label_starts"]))
+        for key, start in e["check_value_labels_start"].items():
+            self.assertTrue(ck["labels"][key].startswith(start), ck["labels"])
         self.assertEqual(len(d["strip"]), e["strip_cells"])
         self.assertEqual(d["strip"][-1]["state"], "closed")
         over = [p["key"] for p in d["parts"] if p["percentile_95"] > 80]

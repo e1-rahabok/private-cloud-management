@@ -91,9 +91,10 @@ catalog:
       worst_higher_is_better: 1
       label_worst_percent_5: "95th percentile, 24 hours to"
       label_worst_percent_10: "90th percentile, 24 hours to"
+      label_higher_is_better_worst_percent_5: "5th percentile, 24 hours to"
       label_never: Worst
       average: absent
-    reason: With a 24-hour period and Worst Percent 5, the check value equals the 95th percentile of the day's 5-minute points (vCommunity ignores the 14 worst). LCAT-7 uses the same method.
+    reason: With a 24-hour period and Worst Percent 5, the check value equals the 95th percentile of the day's 5-minute points (vCommunity ignores the 14 worst); where higher is better it is the 5th percentile, and so labelled (D-131). LCAT-7 uses the same method.
   - id: LCAT-14
     entry: l2.capacity_findings
     given:
@@ -259,7 +260,7 @@ story:
       check_before: { state: open, consumption: 77, consumption_band: red }
       kpi_order: [consumption, performance, risk]
       figures: [now, worst, percentile_95, check_value]
-      check_value_label_starts: "95th percentile, 24 hours to"
+      check_value_labels_start: { consumption: "95th percentile, 24 hours to", performance: "5th percentile, 24 hours to", risk: "95th percentile, 24 hours to" }
       strip_cells: 7
       parts_first_over_80: memory_consumed
       usable_steps: [total, ha, buffer, usable]
@@ -450,13 +451,13 @@ page:
     rule: >
       A VM's Performance tab has the tabs Summary, Availability, Performance, Capacity, Security, Configuration in that order,
       no Inventory, no Group by and no side-by-side cards. Guest OS comes first and Virtual Motherboard under it, one chart per metric,
-      with Now, Worst and 95th percentile. Every figure has its unit after the number and no name holds its unit or starts in lower case.
+      with Now, Worst and the percentile figure. Every figure has its unit after the number and no name holds its unit or starts in lower case.
     decisions: [D-092]
   - id: LPG-17
     rule: >
       On LD-B-01's Capacity tab (7 days) the verdict comes first in words, then three charts in the order Cluster Consumption,
       Cluster Performance, Cluster Risk on one time axis with the closure levels drawn, then the check strip with 7 cells, the
-      last one closed. Each chart has Now, Worst and 95th percentile, once each: the check value is not repeated beside the chart. No chart has an average line. Every capacity chip on the page has a finding row, or outside the 24-hour
+      last one closed. Each chart has Now, Worst and the percentile figure, once each: the check value is not repeated beside the chart. No chart has an average line. Every capacity chip on the page has a finding row, or outside the 24-hour
       window a link to its daily finding, and "Nothing needs you under this object" is not shown.
     decisions: [D-094, D-095]
   - id: LPG-18

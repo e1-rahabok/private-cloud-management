@@ -58,9 +58,11 @@ def adapter() -> dict:
             "red": num(lv["performance"]["red"]), "orange": num(lv["performance"]["orange"])}
 
 
-def check_label(worst_percent: int, period_hours: int) -> str:
-    """l2.statistics naming: a check value is a percentile of its period, never "Worst"."""
-    p = 100 - worst_percent
+def check_label(worst_percent: int, period_hours: int, higher_is_better: bool = False) -> str:
+    """l2.statistics naming: a check value is a percentile of its period, never "Worst". Named by direction (D-131): the
+    worst end of a KPI where higher is better is its (Worst Percent)th percentile, where higher is worse its
+    (100 - Worst Percent)th."""
+    p = worst_percent if higher_is_better else 100 - worst_percent
     suffix = "th" if 10 <= p % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(p % 10, "th")
     return f"{p}{suffix} percentile, {period_hours} hours to"
 
@@ -257,7 +259,7 @@ def _times(now: datetime, window: str) -> tuple:
 
 
 def figures(vals: list, times: list, higher_is_worse: bool, decimals: int = 1) -> dict:
-    """l2.statistics over time: Now, Worst with its time, 95th percentile. Never an average."""
+    """l2.statistics over time: Now, Worst with its time, the percentile figure. Never an average."""
     xs = [(v, i) for i, v in enumerate(vals) if v is not None]
     if not xs:
         return {"now": None, "worst": None, "percentile_95": None}
@@ -386,7 +388,7 @@ def cluster_view(now: datetime, cid: str, window: str, enable=(), marked_host: s
     return {"cluster": cid, "applies": True, "class_of_service": c["class"], "location": E.nodes[c["location"]]["name"],
             "window": window, "point_minutes": minutes, "status": status,
             "check": {**latest, "since": s_end, "checks_closed": s_n, "reason": reason(latest), "period_hours": a["period_hours"],
-                      "window_end": latest["end"], "worst_percent": a["worst_percent"], "label": check_label(a["worst_percent"], a["period_hours"]),
+                      "window_end": latest["end"], "worst_percent": a["worst_percent"], "labels": {k: check_label(a["worst_percent"], a["period_hours"], not HIGHER_IS_WORSE[k]) for k in KPI_LABEL},
                       "previous": {k: rows[1][k] for k in ("end", "state", "consumption", "performance", "risk")}},
             "contention_now": cn, "kpis": kpis, "strip": strip, "strip_as_words": len(strip) < 7,
             "parts": parts, "memory_tiering": None, "usable": uc, "spread": spread, "hosts": hosts, "marked_host": marked_host}

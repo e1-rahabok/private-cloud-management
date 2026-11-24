@@ -99,7 +99,7 @@ api: /api/l2/agent/ask
 - **Delete a conversation** (D-123): during development an answer can be outdated or wrong, so a conversation can be removed. "Delete" in the head, shown only when the open context has a conversation and Agent E2 is not working; one click asks "Delete? Yes / No", Yes removes every question and answer of that context from the browser, and the panel shows the suggestions again. A move to another context, or opening the panel, cancels the question. Other contexts keep theirs. It removes the screen's copy only: the record of each question in the action history stays (D-050), and nothing is sent to Agent E2.
 - **Suggested questions** when a conversation starts, and again when its context changes (another card or the page itself), three at most, by what was clicked:
   - a card (metric, KPI, case link or layer): first, Agent E2's showcase question for that card, chosen from the card's figures (D-127; none while it loads; none when Agent E2 has none for the card); then the card's own, three in all;
-  - metric or KPI: "Is {95th percentile} a problem for this {kind}?", "Why the worst at {time}?", "What should I check next?";
+  - metric or KPI: "Is {percentile figure} a problem for this {kind}?", "Why the worst at {time}?", "What should I check next?";
   - layer of a VM: "Is the {layer} layer the problem?", "Which of its metrics matters most here?", "What should I check next?";
   - finding: "Explain this finding.", "What should I check next?";
   - case, chain link or case layer: "Is the VMware platform the cause?", "What should I check next?";
@@ -113,20 +113,20 @@ api: /api/l2/agent/ask
 - **What PCM sends for a whole-page question** (the top bar mark), so an overall question is answered from the numbers on screen:
   - always: the object and its path, the tab, the window, the tab's status and score, the findings under the object (ten at most), the worst children (ten at most), the calendar entries in the window;
   - on the Summary tab: every pillar with its status and headline;
-  - on a VM's Performance tab: both layers, each with its status and, per metric, Now, Worst with its time, 95th percentile and which way is better. No points: those go with a question about one metric.
+  - on a VM's Performance tab: both layers, each with its status and, per metric, Now, Worst with its time, the percentile figure and which way is better. No points: those go with a question about one metric.
   - on the four pages of release 1.0 (a cluster's Performance and Capacity tabs, an ESXi host's and a VM's Performance tab): the page's KPI series with their points, the same ones the suggested questions are chosen from (D-124), so a question such as "Why is performance declining?" is answered from the numbers.
-- **What PCM sends for a layer of a VM:** that layer's status and every metric with its points, Now, Worst, 95th percentile; the other layer's status and figures without points.
+- **What PCM sends for a layer of a VM:** that layer's status and every metric with its points, Now, Worst, the percentile figure; the other layer's status and figures without points.
 - **What PCM sends with every question: the screen** (D-103), so Agent E2 speaks of what the person sees, never of the data behind it ("the provided JSON"):
   - who asks (an L2 platform engineer) and that they typed only the question;
   - the page: the object, its kind, the tab and the window, as in the panel's context line;
   - what was clicked: the top bar mark (the whole page), or the mark on a chart, layer, finding or case, by its name;
-  - what that card shows, in one line: for a trend chart, the KPI over the window, how often a point comes and that a point holds the worst value inside it, and Now, Worst and 95th percentile in their band colours;
+  - what that card shows, in one line: for a trend chart, the KPI over the window, how often a point comes and that a point holds the worst value inside it, and Now, Worst and the percentile figure in their band colours;
   - for a KPI that belongs to another object than the page (a cluster's KPI on a VM's Capacity tab), the object it belongs to, by name;
   - for a KPI, where to look next (drill_down): the page and tab that take it further, what that page shows, and what PCM does not show yet. Cluster Performance and Cluster Risk: the cluster's Performance tab (the two KPIs over the window, each with its fold Details, closed until opened, one chart per part; then the hosts worst first with their scores) (D-111). Cluster Consumption: "What makes up Consumption" on the cluster's Capacity tab.
 - **What PCM sends for a KPI that has parts** (Cluster Performance, Cluster Risk; D-111), so Agent E2 can say which part pulled the KPI down: `parts_at_worst`, the parts at the KPI's worst point of the window. The KPI's name, the time and value of that point, where the parts are shown (the Details fold), and per part: its name (the Agent E2 catalog's), unit, its value at that point, its median and its worst of the window with the time. The values are the ones the Details fold shows. No score, ranking or verdict: scoring the parts is Agent E2's (D-078).
 - **With a KPI question on a Performance tab, also** (D-125), so Agent E2 can explain when a KPI changed level, not only its worst point ("Risk went up from green to yellow, but Performance did not drop: why?"):
   - `parts_hourly`: the same parts once an hour over the window, the value at the end of each hour: times, and per part its name, unit and values. No score.
-  - the other KPIs of the tab with their series, compact (values, first point, minutes between points), beside Now, Worst and 95th percentile.
+  - the other KPIs of the tab with their series, compact (values, first point, minutes between points), beside Now, Worst and the percentile figure.
   - Agent E2 finds the step, scores the parts the hour before and the hour after it, and checks whether the other KPI followed; its opening names the moment ("Cluster Risk changed level at 18 Oct, 17:05: from 11% to 30%. Cluster Performance held: 91%, then 90%.").
 - **Not PCM's to send:** whether a move of a KPI is a drop. That is domain knowledge, Agent E2's (D-078): its KPI change level and its calculator read the points PCM sends.
 - **While Agent E2 works:** "Agent E2 is reading the knowledge base and the facts PCM sent." with the seconds elapsed. A local model takes 10 to 40 seconds; no made-up progress steps.

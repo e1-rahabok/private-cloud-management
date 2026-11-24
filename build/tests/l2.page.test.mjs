@@ -177,7 +177,7 @@ try {
   check('LPG-17', capOrder.join() === 'verdict,consumption,performance,risk,strip' && /^Closed for new VMs/.test(verdictText) && /Consumption 82% is above 80%\./.test(whyText)
     && diag.out === 'closed' && diag.hit === 'consumption' && diag.off === 'risk' && /above by 2 points/.test(whyText)
     && checkLabels.length === 0
-    && ['Now', 'Worst', '95th percentile'].every(k => kpiLabels.includes(k)) && cells.length === 7 && cells[6] === 'closed'
+    && ['Now', 'Worst', '95th percentile', '5th percentile'].every(k => kpiLabels.includes(k)) && cells.length === 7 && cells[6] === 'closed'
     && refs === 0 && !/average/i.test(capText) && chipsCap.includes('Closed for new VMs') && capFindings >= 1 && !/Nothing needs you under this object/.test(capText),
     `${capOrder}; ${verdictText.slice(0, 80)}; diagram ${JSON.stringify(diag)}; cells ${cells.length}; findings ${capFindings}`);
 
@@ -223,7 +223,7 @@ try {
   const labels = await page.$$eval('.metric dt', xs => [...new Set(xs.map(x => x.textContent.trim()))]);
   const mainText = await page.innerText('main');
   check('LPG-15', tabsText === 'Summary,Availability,Performance,Capacity,Security,Configuration' && layers.join() === 'guest_os,virtual_motherboard' && names.length === 16
-    && labels.join() === 'Now,Worst,95th percentile' && figs.every(f => /\d\+?(%|\/s| ms| per vCPU| pages\/s| IOs| MB)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
+    && [...labels].sort().join() === '5th percentile,95th percentile,Now,Worst' && figs.every(f => /\d\+?(%|\/s| ms| per vCPU| pages\/s| IOs| MB)/.test(f)) && names.every(n => /^[A-Z]/.test(n) && !/percent| ms$|%/.test(n))
     && !(await page.$('#grp')) && !/side by side|Just above the line|Children outside green/i.test(mainText) && !/average/i.test(mainText),
     `${tabsText}; ${layers}; ${names.length} charts; ${figs.slice(0, 3)}`);
 

@@ -105,7 +105,7 @@ CLICKED = {"page": "the E2 mark in the top bar: a question about the whole page"
 # and Cluster Risk are in the Details fold under each KPI on the cluster's Performance tab (D-106, D-111).
 DRILL = {
     "performance": ("Performance", "Cluster Performance and Cluster Risk over the window; under Cluster Performance the fold "
-                    "Details (closed until opened): one chart per part, the 9 parts with Now, Worst and 95th percentile; "
+                    "Details (closed until opened): one chart per part, the 9 parts with Now, Worst and 95th percentile (lower is better for every part); "
                     "then the cluster's hosts worst first, each with its score over the window and over the last hour", None),
     "risk": ("Performance", "Cluster Performance and Cluster Risk over the window; under Cluster Risk the fold Details (closed "
              "until opened): one chart per part, with Now, Worst and 95th percentile; then the cluster's hosts worst first, "
@@ -175,10 +175,17 @@ def _minutes(times: list) -> int | None:
         return None
 
 
-def _chart(name: str, window: str, minutes, banded: bool) -> str:
+def percentile_name(better) -> str:
+    """The label of the percentile figure beside a chart, by direction (l2.statistics, D-131): the value 95% of the points
+    were better than is the 5th percentile where higher is better, the 95th where higher is worse."""
+    return "5th percentile" if better == "higher" else "95th percentile"
+
+
+def _chart(name: str, window: str, minutes, banded: bool, better=None) -> str:
     every = f", one point every {minutes} minutes, each point the worst value inside it" if minutes else ""
     band = ", each in its band colour" if banded else ""  # a KPI has bands; a counter has none (D-100)
-    return f"a trend chart of {name} over the {window.lower()}{every}; beside it Now, Worst and 95th percentile{band}"
+    return (f"a trend chart of {name} over the {window.lower()}{every}; beside it Now, Worst and {percentile_name(better)} "
+            f"(the value 95% of the points were better than){band}")
 
 
 def screen(ctx: dict, got: dict) -> dict:
@@ -192,7 +199,7 @@ def screen(ctx: dict, got: dict) -> dict:
     if kind == "kpi":
         k = f["asked_about_kpi"]
         out["clicked"] = f"the E2 mark on the {k['label']} chart"
-        out["card_shows"] = _chart(k["label"], f["window"], _minutes([p[0] for p in k["points"][:2]]), True)
+        out["card_shows"] = _chart(k["label"], f["window"], _minutes([p[0] for p in k["points"][:2]]), True, k.get("better"))
         cl = f.get("cluster")
         if cl and o.get("kind") != "cluster":
             out["kpi_belongs_to"] = f"the cluster {cl}, not the {o.get('kind')} {o.get('name')}: it is the cluster's KPI, shown on this page"
@@ -204,10 +211,12 @@ def screen(ctx: dict, got: dict) -> dict:
     elif kind == "metric":
         m = f["asked_about_metric"]
         out["clicked"] = f"the E2 mark on the {m['name']} chart, in the {f['layer']} layer"
-        out["card_shows"] = _chart(m["name"], f["window"], m.get("point_minutes"), m.get("unit") == "%" and "Performance" in m["name"])
+        out["card_shows"] = _chart(m["name"], f["window"], m.get("point_minutes"), m.get("unit") == "%" and "Performance" in m["name"],
+                                  m.get("better"))
     elif kind == "vm_layer":
         out["clicked"] = f"the E2 mark on the {f['asked_about_layer']['layer']} layer"
-        out["card_shows"] = "the layer's status and one trend chart per metric, each with Now, Worst and 95th percentile"
+        out["card_shows"] = ("the layer's status and one trend chart per metric, each with Now, Worst and its percentile figure: the 5th "
+                            "percentile where higher is better, the 95th where higher is worse")
     return out
 
 
