@@ -99,15 +99,18 @@ def ask(nd: dict, body: dict) -> tuple[int, dict]:
     st, now = nd["settings"], nd["now"]
     avoided = _avoided()
     turns = [t for t in (body.get("turns") or []) if isinstance(t, str)] or None
+    history = agent_e2.history_of(body)
+    if history is None:
+        return 400, {"error": "history must be a list of {question, answer}."}
     rule = L1_RULE.format(avoided=", ".join(avoided))
     url = service_url(generator.load_spec()["settings"])
-    out = agent_e2.ask_service(url, f"{question}\n\n{rule}", got["facts"], "l1", turns=turns)
+    out = agent_e2.ask_service(url, f"{question}\n\n{rule}", got["facts"], "l1", turns=turns, history=history)
     if out["source"] == "service":
         bad = agent_e2.avoided_found(((out.get("lead") or "") + "\n" + (out.get("content") or "")).strip(), avoided)
         if bad:  # asked once more, naming the words (D-098)
             again = (f"{question}\n\n{rule}\nYour last answer used {', '.join(bad)}. Say the same without those words, "
                      "in scores from 0 to 100.")
-            out = agent_e2.ask_service(url, again, got["facts"], "l1", turns=turns)
+            out = agent_e2.ask_service(url, again, got["facts"], "l1", turns=turns, history=history)
             if out["source"] == "service" and agent_e2.avoided_found(((out.get("lead") or "") + "\n" + (out.get("content") or "")).strip(), avoided):
                 out = {**out, "source": "vocabulary", "content": "", "lead": "", "computed": [], "questions": []}
     target = ctx.get("incident") or ctx.get("cluster") or ctx.get("location") or ctx.get("page") or "noc"

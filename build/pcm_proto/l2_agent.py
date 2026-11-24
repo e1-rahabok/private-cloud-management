@@ -429,7 +429,10 @@ def ask(now: datetime, body: dict, enable=()) -> tuple[int, dict]:
         return code, got
     settings = generator.load_spec()["settings"]
     turns = [t for t in (body.get("turns") or []) if isinstance(t, str)]
-    out = agent_e2.ask_service(service_url(settings), question, got["facts"], "l2", turns=turns or None)
+    history = agent_e2.history_of(body)
+    if history is None:
+        return 400, {"error": "history must be a list of {question, answer}."}
+    out = agent_e2.ask_service(service_url(settings), question, got["facts"], "l2", turns=turns or None, history=history)
     target = ctx.get("case") or ctx.get("finding") or ctx.get("object") or "estate"
     with noc.STATE.lock:
         rec = noc.record("agent_ask", target, HUMAN, question, ctx.get("kind") or "page", out["source"], now, actor_agent="agent-e2")

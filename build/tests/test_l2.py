@@ -384,6 +384,12 @@ class Troubleshoot(Base):
         with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
             A.ask(NOW, {"question": "The VM one", "context": {"kind": "case", "case": "case-sg-app-117"}, "turns": ["Which counter?", "Guest OS or VM?", "The VM one"]})
         self.assertEqual(seen["turns"], ["Which counter?", "Guest OS or VM?", "The VM one"])
+        # the whole conversation goes with a follow-up, every turn (D-128)
+        hist = [{"question": f"Q{i}?", "answer": f"A{i}."} for i in range(30)]
+        with mock.patch("build.pcm_proto.agent_e2._post_raw", fake):
+            A.ask(NOW, {"question": "Explain again.", "context": {"kind": "case", "case": "case-sg-app-117"}, "history": hist})
+        self.assertEqual(seen["history"], hist)
+        self.assertEqual(A.ask(NOW, {"question": "Why?", "context": {"kind": "case", "case": "case-sg-app-117"}, "history": [{"question": "Q"}]})[0], 400)
         # refusals and the service down
         self.assertEqual(A.ask(NOW, {"question": "x", "context": {"kind": "nope"}})[0], e["unknown_context"])
         self.assertEqual(A.ask(NOW, {"question": "x", "context": {**ctx, "metric": "no_such_metric"}})[0], e["unknown_metric"])
