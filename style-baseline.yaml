@@ -1,0 +1,19 @@
+# Known style debt: file -> number of problems found by the workspace's tools/style.py (R-WS-006).
+# May only shrink: lower a number, or remove a clean file, in the pull request that fixes it. Q-PCM-1 in OPEN-QUESTIONS.md.
+decisions.md: 133
+demo/README.md: 8
+deploy/README.md: 2
+pcm/README.md: 1
+pcm/capacity/design-note.md: 9
+pcm/core/design-notes/pcm-core.md: 5
+pcm/core/design-notes/service-levels.md: 10
+pcm/core/design-notes/specification-structure.md: 9
+pcm/core/design-notes/synthetic-acme-data.md: 27
+pcm/core/spec/visual-style.md: 1
+pcm/docs/design-note.md: 2
+pcm/executive/design-note.md: 3
+pcm/executive/spec/pages/page.md: 3
+pcm/l2/design-note.md: 21
+pcm/l2/spec/pages/case.md: 1
+pcm/noc/design-note.md: 12
+spec/README.md: 2
