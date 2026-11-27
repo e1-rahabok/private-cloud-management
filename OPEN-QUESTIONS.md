@@ -4,7 +4,7 @@ Questions about private-cloud-manager only, for the author (WD-019 in the worksp
 
 ### Q-PCM-1 The style baseline of 249 problems
 
-The workspace's style check (R-WS-006, [tools/style.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/style.py)) found 249 problems in 17 files on its first run: 133 in [decisions.md](decisions.md), whose table cells hold whole decisions, and most of the rest in the design notes (long headings, sentence headings such as "What it needs", wide tables). They are listed, file by file with their counts, in the workspace's [style_baseline.yaml](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/style_baseline.yaml), which may only shrink.
+The workspace's style check (R-WS-006, [tools/style.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/style.py)) found 249 problems in 17 files on its first run: 133 in [decisions.md](decisions.md), whose table cells hold whole decisions, and most of the rest in the design notes (long headings, sentence headings such as "What it needs", wide tables). They are listed, file by file with their counts, in [style-baseline.yaml](style-baseline.yaml), which may only shrink: the pull request that fixes a file lowers its count.
 
 - (a) Keep the baseline. A file is fixed when it is next edited, and its count drops.
 - (b) Fix them all in M2: decisions.md becomes one block per decision, as the workspace's DECISIONS.md is, and the design notes get noun-phrase headings and bullets in place of wide tables.
