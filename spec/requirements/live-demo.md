@@ -16,13 +16,13 @@ Tests named below do not exist yet unless stated; "to write" marks them. Lab sce
 
 ### R-LIVE-001 A separate entry for the live demo
 
-Source: the author's answers to Q-WS-20 and Q-WS-32 in the interview, round 1 ("The synthetic and the live are 2 separate demoes. Not flippable"); WD-003, the decision to keep ACME and add a separate live demo.
+Source: the author's answers to Q-WS-20 and Q-WS-32 in the interview, round 1 ("The synthetic and the live are 2 separate demoes. Not flippable"); WD-003, the decision to keep ACME and add a separate live demo; Q-WS-65 (the page `/live/l2` and the API `/api/live/l2/` on the same PCM server).
 
 Milestone: M8, first slice.
 
 - Given PCM runs with the demo control on
 - When a person opens the demo drop-down on any page
-- Then it lists one new entry for the live L2 demo, with its own URL (proposed: `/live/l2`)
+- Then it lists one new entry for the live L2 demo, with its own URL, `/live/l2`, served with its API under `/api/live/l2/` by the same PCM server
 - And every synthetic entry keeps its place, its URL and its behaviour
 - And no page of either demo has a control that switches its data to the other
 
@@ -57,16 +57,16 @@ Test scenarios:
 
 ### R-LIVE-004 Performance and capacity only
 
-Source: answer to Q-WS-33 ("All these are out of scope in 1.0. Focus on performance and capacity management"); WD-015.
+Source: answer to Q-WS-33 ("All these are out of scope in 1.0. Focus on performance and capacity management"); WD-015; Q-WS-63 (the Performance and Capacity tabs of a cluster, an ESXi host and a VM, the same tabs on the objects above the cluster, and the tree).
 
 - Given the live L2 page
 - When it opens on any object
-- Then it shows the Monitor activity with the Performance and Capacity tabs only
+- Then it shows the Monitor activity with the Performance and Capacity tabs only, on a cluster, an ESXi host, a VM and each object above the cluster in the tree
 - And it shows no Troubleshoot, Improve, Rules or Calendar entry, no other pillar tab, no story, no case and no action button
 - And the live API refuses every write path with 404
 
 Test scenarios:
-- T-LIVE-004a (anywhere, automated by build/tests/live.page.test.mjs::test_tabs_only, to write). Data: the fake Suite API. Steps: open a cluster, a host and a VM. Expected: only Performance and Capacity tabs; no Troubleshoot, Improve, Rules or Calendar entry; no action button.
+- T-LIVE-004a (anywhere, automated by build/tests/live.page.test.mjs::test_tabs_only, to write). Data: the fake Suite API. Steps: open a cluster, a host, a VM and the VCF instance. Expected: only Performance and Capacity tabs, on each; no Troubleshoot, Improve, Rules or Calendar entry; no action button.
 - T-LIVE-004b (anywhere, automated by build/tests/test_live.py::test_no_writes, to write). Steps: POST to each L2 write path under the live prefix (cases, proposals, decisions, policies, thresholds, calendar). Expected: 404 for each, and nothing written to PCM's database.
 
 ### R-LIVE-005 No clock and no planted stories in the live demo
@@ -101,7 +101,7 @@ Test scenarios:
 
 Source: answer to Q-WS-34 ("agree"); WD-011.
 
-- Given `/etc/pcm/pcm.env` on the lab VM holds the Suite API URL, user and password (proposed names `PCM_VCFOPS_URL`, `PCM_VCFOPS_USER`, `PCM_VCFOPS_PASSWORD`)
+- Given `/etc/pcm/pcm.env` on the lab VM holds the Suite API URL, user and password in `PCM_VCFOPS_URL`, `PCM_VCFOPS_USER` and `PCM_VCFOPS_PASSWORD`
 - When the live demo needs data
 - Then PCM acquires a Suite API token with them, keeps it until it expires, and acquires a new one once after a 401
 - And the password and the token appear in no log, page, API response, error message or Agent E2 fact
@@ -116,7 +116,7 @@ Test scenarios:
 
 Source: answer to Q-WS-34 (the lab CA pinned, no skip-verify).
 
-- Given the CA file of the lab VCF Operations certificate is named in `/etc/pcm/pcm.env` (proposed `PCM_VCFOPS_CA_FILE`)
+- Given the CA file of the lab VCF Operations certificate is named in `/etc/pcm/pcm.env` in `PCM_VCFOPS_CA_FILE`
 - When PCM connects to the Suite API
 - Then it verifies the certificate against that file
 - And a certificate that does not verify is a failed read (R-LIVE-011), with the reason "certificate not trusted"
@@ -154,9 +154,9 @@ Test scenarios:
 
 ### R-LIVE-011 A failed read shows "No data" for the whole page
 
-Source: answer to Q-WS-27 ("If the data is stale, say no data"); [PCM D-041, wall behaviour: stale data turns grey, never green](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L47).
+Source: answer to Q-WS-27 ("If the data is stale, say no data"); [PCM D-041, wall behaviour: stale data turns grey, never green](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L47); Q-WS-69 (a Suite API read stops after 10 seconds).
 
-- Given the Suite API times out (proposed limit 10 seconds), answers an HTTP error, refuses the login, or fails the certificate check
+- Given the Suite API does not answer within 10 seconds, answers an HTTP error, refuses the login, or fails the certificate check
 - When a live page loads
 - Then every KPI, part and check value on it shows "No data", in grey
 - And the page says that VCF Operations did not answer, with the reason and the time of the last good read
@@ -169,16 +169,17 @@ Test scenarios:
 
 ### R-LIVE-012 The tree is VCF Operations' inventory, from the VCF instance down
 
-Source: answer to Q-WS-25 ("Use the inventory from VCF Operations. It starts with VCF Instance"); WD-015.
+Source: answer to Q-WS-25 ("Use the inventory from VCF Operations. It starts with VCF Instance"); WD-015; Q-WS-66 (VCF Operations' VCF chain, without datacenters and folders); Q-WS-67 (compute only).
 
 - Given the lab VCF Operations
 - When the live L2 page opens
-- Then its tree starts at the VCF instance objects and follows VCF Operations' own parent and child relationships down to the cluster, the ESXi host and the VM
+- Then its tree starts at the VCF instance objects and follows VCF Operations' own parent and child relationships down the VCF chain: VCF instance, workload domain, vCenter, cluster, ESXi host, VM
+- And it shows no datacenter, no folder, no Guest OS node and no Storage, Network or Management view
 - And each node shows the object's name as VCF Operations shows it, and its type
 - And a node whose KPI has no data shows grey "No data"
 
 Test scenarios:
-- T-LIVE-012a (anywhere, automated by build/tests/test_live.py::test_tree_from_relationships, to write). Data: the fake Suite API with one VCF instance, two clusters, three hosts and five VMs, linked as parent and child. Steps: open the tree and expand every node. Expected: the same hierarchy, names and types as the fake; nothing else.
+- T-LIVE-012a (anywhere, automated by build/tests/test_live.py::test_tree_from_relationships, to write). Data: the fake Suite API with one VCF instance, two clusters, three hosts and five VMs, linked as parent and child. Steps: open the tree and expand every node. Expected: the same hierarchy, names and types as the fake; a datacenter and a folder that the fake also holds are not shown; nothing else.
 - T-LIVE-012b (lab, automated by tools/lab/live_reference.py and build/tests/live.lab.test.mjs::test_tree, to write). Steps: the reference script lists the lab's VCF instance and its descendants through the Suite API; the page test expands the tree. Expected: the tree has the same objects under the same parents; a screenshot is saved.
 
 ### R-LIVE-013 An object's ID is its VCF Operations resource ID
@@ -210,7 +211,7 @@ Test scenarios:
 
 ### R-LIVE-015 A stale value shows "No data" at once
 
-Source: answer to Q-WS-27 ("No need to wait 15 minutes"); WD-015. The rule below is proposed and waits for the author's confirmation in round two (Q-WS-64 in the [interview, round 2](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/interview-round-2.md): decided, 10 minutes).
+Source: answer to Q-WS-27 ("No need to wait 15 minutes"); WD-015; Q-WS-64 (10 minutes for a value).
 
 - Given VCF vCommunity Adapter collects every 5 minutes, and marks its own inputs stale after 10 minutes ([STALE_AFTER_MINUTES in ops_stats.py](https://github.com/e1-rahabok/PCM-Adapter/blob/main/Management%20Pack/app/utils/ops_stats.py#L32))
 - When the newest sample of a key on an object is older than 10 minutes (one collection cycle plus a margin of one cycle) at the time PCM reads it
@@ -276,7 +277,7 @@ Test scenarios:
 
 ### R-LIVE-020 Parts an object does not have
 
-Source: answer to Q-WS-28 ("we should fix them in the PCM Adapter"); WD-016. Until the VCF vCommunity Adapter makes absent data explicit ([pcm-adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md)), the rule below is proposed for round two.
+Source: answer to Q-WS-28 ("we should fix them in the PCM Adapter"); WD-016; Q-WS-68 (a part the object does not have is left out until the VCF vCommunity Adapter makes absent data explicit, after release 1.0 by [WD-033](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md)).
 
 - Given a part key that VCF Operations does not hold for an object at all (for example a memory tiering key on a cluster without a tiered host)
 - When the object's Details fold opens
@@ -285,17 +286,17 @@ Source: answer to Q-WS-28 ("we should fix them in the PCM Adapter"); WD-016. Unt
 
 Test scenarios:
 - T-LIVE-020a (anywhere, automated by build/tests/test_live.py::test_absent_part, to write). Data: the fake Suite API with a cluster that holds 10 of the 12 Cluster Risk part keys, one of them with samples ending 30 minutes ago. Steps: open the Cluster Risk Details fold. Expected: 10 parts shown; the old one shows "No data".
-- T-LIVE-020b (lab, automated by build/tests/live.lab.test.mjs::test_tiered_parts, to write). Data: the nested tiered cluster of [R-LAB-002](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/requirements/lab-build.md). Steps: open its Cluster Risk Details fold. Expected: the tiering parts are shown with data. Runs once the lab build exists; until then it reports "not run".
+- The same check on a cluster with tiered hosts is [R-LIVE-034](#r-live-034-tiered-clusters-show-their-tiering-parts), after release 1.0.
 
 ### R-LIVE-021 The Periodic Cluster Check as the adapter publishes it
 
-Source: answer to Q-WS-31 ("PCM gets from the PCM Adapter"); [PCM D-094, the Capacity tab reads the check and never recomputes it](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L101).
+Source: answer to Q-WS-31 ("PCM gets from the PCM Adapter"); Q-WS-64 (30 minutes for a check result); [PCM D-094, the Capacity tab reads the check and never recomputes it](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L101).
 
 - Given a lab cluster with Periodic Cluster Check values for its latest window
 - When its Capacity tab opens
 - Then the verdict and the three check values are the published values of that window, with its window end
 - And the rule shown is named by comparing published values with published closure levels; PCM decides nothing
-- And when no value is published for a window that ended more than 30 minutes ago (proposed: the VCF vCommunity Adapter may publish a few cycles late), the page says "No check for the {period} to {end time}", never "Open"
+- And when no value is published for a window that ended more than 30 minutes ago (the VCF vCommunity Adapter may publish a few cycles late), the page says "No check for the {period} to {end time}", never "Open"
 
 Test scenarios:
 - T-LIVE-021a (anywhere, automated by build/tests/test_live.py::test_check_published, to write). Data: the fake Suite API with a check window ending 2 hours ago (Close for Business 1) and none for a window ending 40 minutes ago. Steps: open the Capacity tab. Expected: "No check" for the latest window; the strip shows the earlier window closed with its published values.
@@ -320,7 +321,7 @@ Source: answer to Q-WS-29 ("You will need to get from a live environment"); C2.
 
 - Given the lab VCF Operations with the VCF vCommunity Adapter installed
 - When a read-only tool lists the `vCommunity|` keys, and the VCF Operations capacity keys PCM reads, that the cluster, host and VM objects hold
-- Then it writes one file in PCM's specification (proposed `spec/catalog/vcf-operations-keys.yaml`) with each key, its object type, its unit and its catalog name, plus the adapter version and the date
+- Then it writes one file in PCM's specification `spec/catalog/vcf-operations-keys.yaml` with each key, its object type, its unit and its catalog name, plus the adapter version and the date
 - And every key PCM's live demo reads is in that file
 - And the C2 check compares the file with the keys PCM reads and with what the VCF vCommunity Adapter says it publishes ([pcm-adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md))
 
@@ -419,7 +420,7 @@ Test scenarios:
 
 ### R-LIVE-030 Agent E2 names the part that moved the KPI
 
-Source: answer to Q-WS-35 (the worst part is the one that lost the most points at the worst point, under the adapter's scoring); [WD-012, release 1.0 success](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md).
+Source: answer to Q-WS-35 (the worst part is the one that lost the most points at the worst point, under the adapter's scoring); Q-WS-70 (a quiet lab is accepted: Agent E2 then says no part pulled the KPI down); [WD-012, release 1.0 success](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md).
 
 Milestone: M8, first slice.
 
@@ -435,16 +436,17 @@ Test scenarios:
 
 ### R-LIVE-031 Lab tests run automatically from the laptop
 
-Source: answer to Q-WS-37 ("You forgot you have live access"); [WD-018, the lab build and lab tests from the laptop](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md); WD-011.
+Source: answer to Q-WS-37 ("You forgot you have live access"); Q-WS-71 (the lab's VCF Operations version is read at sign-in and recorded in SYSTEM.md); [WD-018, the lab build and lab tests from the laptop](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md); WD-011.
 
 - Given the author's laptop on the VPN, the read-only credential file in `$HOME\.secrets\`, and the live demo deployed on the lab VM
-- When one command runs (proposed `pwsh tools/lab/Test-Live.ps1` in PCM)
+- When one command runs, `pwsh tools/lab/Test-Live.ps1` in PCM
 - Then it runs VCF vCommunity Adapter's validate.ps1 first and stops with its result if the pack is not collecting
 - And it runs every lab scenario of this file, writes a screenshot of each live page checked, and prints pass, fail or not run per scenario
 - And it changes nothing in VCF Operations, vCenter or the lab VM's data
+- And it prints the lab VCF Operations version read at sign-in (Q-WS-71)
 
 Test scenarios:
-- T-LIVE-031a (lab, automated by tools/lab/Test-Live.ps1, to write). Steps: run it. Expected: a result line per lab scenario; screenshots in one folder; exit code 1 if any scenario failed.
+- T-LIVE-031a (lab, automated by tools/lab/Test-Live.ps1, to write). Steps: run it. Expected: a result line per lab scenario; screenshots in one folder; the VCF Operations version printed and then written in the lab table of the workspace's [SYSTEM.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/SYSTEM.md); exit code 1 if any scenario failed.
 - T-LIVE-031b (anywhere, automated by build/tests/test_live.py::test_runner_reports_not_run, to write). Data: an unreachable address in place of the lab. Expected: every lab scenario reports "not run", and the command exits with failure.
 
 ### R-LIVE-032 The synthetic demo is unchanged
@@ -457,6 +459,31 @@ Source: answer to Q-WS-20 ("The synthetic remains as they are"); WD-003.
 
 Test scenarios:
 - T-LIVE-032a (anywhere, automated by the existing build/tests suite). Steps: run every test listed in build/README.md on the branch that adds the live demo. Expected: all pass; `git diff` shows no change under spec/tests/ and build/tests/ other than new live files.
+
+### R-LIVE-033 A live page opens within 5 seconds
+
+Source: Q-WS-69 (a page in under 5 seconds; a Suite API read stops after 10 seconds).
+
+- Given the live demo on the lab VM and a Suite API that answers
+- When a person opens a live tab, with PCM's 60-second cache empty
+- Then the tab shows its figures within 5 seconds
+
+Test scenarios:
+- T-LIVE-033a (anywhere, automated by build/tests/live.page.test.mjs::test_page_time, to write). Data: the fake Suite API answering each read after 300 milliseconds. Steps: open a cluster's Performance tab with an empty cache. Expected: the figures show within 5 seconds.
+- T-LIVE-033b (lab, automated by tools/lab/Test-Live.ps1, to write). Steps: open one lab cluster's Performance and Capacity tabs with an empty cache. Expected: each shows its figures within 5 seconds.
+
+### R-LIVE-034 Tiered clusters show their tiering parts
+
+Source: Q-WS-68; [WD-031](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md) (the lab build for memory tiering comes after release 1.0).
+
+Milestone: after release 1.0.
+
+- Given the nested tiered cluster of [R-LAB-002](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/requirements/lab-build.md)
+- When its Cluster Risk Details fold opens
+- Then the tiering parts are shown with data
+
+Test scenarios:
+- T-LIVE-034a (lab, automated by build/tests/live.lab.test.mjs::test_tiered_parts, to write). Data: the nested tiered cluster. Steps: open its Cluster Risk Details fold. Expected: the tiering parts are shown with data.
 
 ## Changes to PCM's own specification
 
