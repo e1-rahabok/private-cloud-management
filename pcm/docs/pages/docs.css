@@ -1,0 +1,12 @@
+/* GENERATED from pcm/core/spec/visual-style.md and pcm/docs/spec/pages/. Do not edit by hand (D-070). */
+.lead { color: var(--text-muted); margin: -8px 0 16px; }
+.search { font: inherit; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); width: 100%; max-width: 520px; margin-bottom: 16px; color: var(--text); background: #fff; }
+section.block { background: #fff; border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; }
+section.block h2 { margin: 0 0 8px; font-size: 20px; }
+td code, .id { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; }
+dl.def { display: grid; grid-template-columns: 200px 1fr; gap: 8px 16px; margin: 0; }
+dl.def dt { color: var(--text-muted); font-weight: 700; }
+dl.def dd { margin: 0; white-space: pre-wrap; }
+.meta { display: flex; gap: 16px; flex-wrap: wrap; color: var(--text-muted); margin-bottom: 16px; }
+.chip.proposal { background: var(--amber-soft); color: var(--amber-ink); }
+.chip.confirmed { background: var(--accent-soft); color: var(--accent-ink); }

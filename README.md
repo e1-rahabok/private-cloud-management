@@ -4,11 +4,13 @@ A web application for the operations roles of a private cloud on VMware Cloud Fo
 
 ## Files
 
-- [`spec/`](spec): what PCM is built from ([spec/README.md](spec/README.md)). AI generates all code from it (D-010).
-- [`build/`](build): the code generated from `spec/`. Do not edit it by hand (D-070). How to run and test it: [build/README.md](build/README.md).
-- [`design/`](design) and [decisions.md](decisions.md): the reasons behind the specification. Decision IDs are D-nnn.
+- [`pcm/`](pcm): the application, one folder per workspace ([`executive/`](pcm/executive), [`noc/`](pcm/noc), [`l2/`](pcm/l2), [`capacity/`](pcm/capacity), [`docs/`](pcm/docs)) and [`core/`](pcm/core) for the parts every workspace uses (D-133). Each folder holds a design note, the specification in `spec/`, and the code, pages and tests generated from them. AI generates all code from the specification (D-010); do not edit generated code by hand (D-070). How to run and test it: [pcm/README.md](pcm/README.md).
+- [`spec/`](spec): the specification's front page ([spec/README.md](spec/README.md)) and the requirements of PCM's work ([spec/requirements/](spec/requirements)).
+- [decisions.md](decisions.md): the reasons behind the specification, with the design notes. Decision IDs are D-nnn.
+- [`author-papers/`](author-papers): the author's papers that PCM is designed from ([author-papers/README.md](author-papers/README.md)).
 - [`deploy/`](deploy): installing PCM and Agent E2 on a lab VM ([deploy/README.md](deploy/README.md)).
 - [`demo/`](demo): the demo script and its rehearsal ([demo/README.md](demo/README.md)).
+- [`tools/`](tools): scripts for the lab, run from the author's laptop.
 
 ## Run
 
@@ -17,7 +19,7 @@ pip install pyyaml
 ```
 
 ```bash
-python3 -m build.pcm_proto.server --port 8080
+python3 -m pcm.core.server --port 8080
 ```
 
 Then open `http://localhost:8080/exec`.

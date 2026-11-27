@@ -54,7 +54,7 @@ curl -s "http://127.0.0.1:8080/api/exec/summary?now=2026-10-19T10:05:00%2B08:00"
 ```
 
 ```bash
-cd /opt/pcm && for t in executive noc l2 capacity store docs; do python3 -m unittest build.tests.test_$t 2>&1 | tail -1; done
+cd /opt/pcm && for t in core.tests.test_store executive.tests.test_executive noc.tests.test_noc l2.tests.test_l2 l2.tests.test_kpi_from_parts capacity.tests.test_capacity docs.tests.test_docs; do python3 -m unittest pcm.$t 2>&1 | tail -1; done
 ```
 
 Each test line must say `OK`. Then open `https://<vm-address>/exec` from a lab browser (after section HTTPS with nginx; for a trial without nginx, `http://<vm-address>:8080/exec`). The demo URLs are in [`../demo/README.md`](../demo/README.md).
@@ -205,8 +205,10 @@ ufw delete allow from 192.168.10.0/24 to any port 8080 proto tcp
 ## Update
 
 ```bash
-cd /opt/pcm && git pull && systemctl restart pcm
+cd /opt/pcm && git pull && cp deploy/pcm.service /etc/systemd/system/pcm.service && systemctl daemon-reload && systemctl restart pcm
 ```
+
+The copy keeps the installed unit file the same as the repository's, whose `ExecStart` names the server module.
 
 ## Start clean
 
