@@ -884,5 +884,5 @@ tools/               lab/, lab-vm-ssh/
 **Generated code beside the source**
 - Inside a workspace folder the source is `spec/` and the design note. Every other file is generated and opens with a GENERATED line that names the specification it comes from, so no one mistakes it for the source (specification structure, section 5).
 
-**The old path of the Agent E2 client**
-- The contract check C3 in private-cloud-workspace loads PCM's Agent E2 client as a file. Until C3 reads `pcm/core/agent_e2.py`, `build/pcm_proto/agent_e2.py` stays as a loader of that file; it goes, with `build/`, once C3 has moved (R-REPO-008: three steps).
+**The Agent E2 client for the contract check**
+- The contract check C3 in private-cloud-workspace loads PCM's Agent E2 client as a file, from `pcm/core/agent_e2.py`. Nothing remains under `build/`.

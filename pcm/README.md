@@ -309,4 +309,3 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 | `pcm/core/pages/demo/` | The demo's role switcher |
 | `pcm/<workspace>/tests/` | Catalog and PCM scenario story tests (Python), page tests (Playwright) |
 | `pcm/<workspace>/screenshots/` | Screenshots for review, written by the page test |
-| `../build/pcm_proto/agent_e2.py` | Loads `pcm/core/agent_e2.py` from its old path, for the contract check C3 (D-133) |
