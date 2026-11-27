@@ -8,6 +8,7 @@ Rules, tools and paths of private-cloud-manager, the repository of PCM (Private 
 - No hook runs here. Before acting, read the open milestone in the workspace's ROADMAP.md: the first heading that does not end with ": done".
 - Requirements of this repository: [`spec/requirements/`](spec/requirements) (WD-036). Each requirement belongs to the workspace milestone that ROADMAP.md names.
 - Decisions inside this repository: [decisions.md](decisions.md), IDs D-nnn.
+- Questions inside this repository: [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md), IDs Q-PCM-n (WD-019, WD-038).
 - Specification: one folder per workspace under [pcm/](pcm), each with its `spec/` folder; front page [spec/README.md](spec/README.md) (D-133). Reasons behind it: each workspace's `design-note.md`, the notes in [pcm/core/design-notes/](pcm/core/design-notes), and [decisions.md](decisions.md).
 
 ## Code
