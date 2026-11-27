@@ -37,7 +37,7 @@ Source: WD-030; PCM D-132.
 
 Test scenarios:
 - T-REPO-007a (anywhere, automated by PCM's own tests): every test passes after the renames, and the demo starts.
-- T-REPO-007b (anywhere, automated by a search to write in [checks](https://github.com/e1-rahabok/private-cloud-workspace/tree/main/checks)): no file in any repository names [`build/pcm_proto`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/build/pcm_proto), `pcm_proto`, [`sources/`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/sources) of PCM or `story_m5`, outside archives and dated records.
+- T-REPO-007b (anywhere, automated by a search to write in [checks](https://github.com/e1-rahabok/private-cloud-workspace/tree/main/checks)): no file in any repository, outside the requirement files that name them to forbid them, names [`build/pcm_proto`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/build/pcm_proto), `pcm_proto`, [`sources/`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/sources) of PCM or `story_m5`, outside archives and dated records.
 - T-REPO-007c (anywhere, manual): T-WS-007b on PCM finds no wrong guess.
 
 ### R-REPO-008 PCM's folders are grouped by workspace

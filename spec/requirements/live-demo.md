@@ -146,11 +146,11 @@ Source: answer to Q-WS-30 ("Agree"); WD-015.
 - When the same data is asked for twice within 60 seconds
 - Then PCM calls the Suite API once
 - And after 60 seconds it calls again
-- And PCM writes no metric value to its database, to disk or to any other store
+- And PCM writes no metric value to its database, to disk or to any other store; the answer records of R-LIVE-035, which hold Agent E2's text, are the one exception
 
 Test scenarios:
 - T-LIVE-010a (anywhere, automated by build/tests/test_live.py::test_cache_60s, to write). Data: the fake Suite API counting stats calls, and a fake clock in the cache. Steps: load a cluster's Performance tab at 0 s, 30 s and 61 s. Expected: two stats calls.
-- T-LIVE-010b (anywhere, automated by build/tests/test_live.py::test_no_metric_store, to write). Steps: load every live page, then read PCM's SQLite file and its data folder. Expected: no metric value from the fake is stored anywhere.
+- T-LIVE-010b (anywhere, automated by build/tests/test_live.py::test_no_metric_store, to write). Steps: load every live page, then read PCM's SQLite file and its data folder. Expected: no metric value from the fake is stored anywhere, outside the text of an answer record (R-LIVE-035).
 
 ### R-LIVE-011 A failed read shows "No data" for the whole page
 
@@ -488,7 +488,7 @@ Test scenarios:
 
 ### R-LIVE-035 PCM keeps each Agent E2 answer with its trace and rating
 
-Source: Q-WS-61 (PCM and isvara.io store question, answer, trace ID and rating).
+Source: Q-WS-61 (PCM and isvara.io store question, answer, trace ID and rating); WD-015 (the live demo stores no metrics: an answer's text is the exception R-LIVE-010 names).
 
 Milestone: M8.
 
@@ -517,7 +517,7 @@ Each line is a change to make in private-cloud-manager in a later pull request. 
 | [design/l2-workspace.md, 3.2](https://github.com/e1-rahabok/private-cloud-manager/blob/main/design/l2-workspace.md#L97) | Fix the Compute path to match D-087, and add the live tree. |
 | [spec/catalog/l2.yaml](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/catalog/l2.yaml#L111) (L111, L264, L285) | Placeholders become synthetic-only; "PCM keeps its own history" becomes synthetic-only; add a `key` per part from the key list. |
 | [spec/catalog/settings.yaml](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/catalog/settings.yaml) | Add the live settings: the Suite API URL, user, password and CA file variable names, cache 60 s, stale after 10 minutes, check late after 30 minutes, read timeout 10 s. |
-| `spec/catalog/vcf-operations-keys.yaml` (new) | The key list generated from the lab (R-LIVE-023). |
+| `spec/catalog/vcf-operations-keys.yaml` (new) | The key list from the adapter's module tables, confirmed on the lab (R-LIVE-023). |
 | [spec/workspaces/l2/monitor.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/workspaces/l2/monitor.md#L48) | The Details placeholder rule becomes synthetic-only; fix the stale band text and part counts at L45 and L46 (see D-108 and D-113). |
 | [spec/workspaces/l2/frame.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/workspaces/l2/frame.md) | Add the live frame: Monitor with Performance and Capacity tabs only, no class filter, the failed-read state. |
 | [spec/api/l2.yaml](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/api/l2.yaml#L6) | Add the live API prefix, the window start and end in responses, and the 400 for `now` and `enable`. |
