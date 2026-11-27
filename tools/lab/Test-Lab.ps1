@@ -8,7 +8,7 @@
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-. (Join-Path $root 'moltbot\moltbot.ps1')
+. (Join-Path $root 'lab-vm-ssh\lab-vm-ssh.ps1')
 
 Add-Type -TypeDefinition @"
 using System; using System.Runtime.InteropServices;

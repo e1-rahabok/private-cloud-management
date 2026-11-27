@@ -1,0 +1,23 @@
+openapi: 3.1.0
+info:
+  title: PCM API, Capacity part
+  version: "1"
+  description: Capacity endpoints (pcm/capacity/design-note.md). Reads take the synthetic-only parameters now and enable.
+paths:
+  /api/capacity/week:
+    get: { summary: "This week: next round, decision dates that moved against last week with the cause, groups entering their window, peak warnings, waste." }
+  /api/capacity/groups:
+    get: { summary: "Every cluster group: tightest resource, remaining, run-out, decision date, in plan, round on time, quadrant, contention override." }
+  /api/capacity/groups/{id}:
+    get: { summary: "One group: usable steps per resource, weekly peaks, forecast, 90-day trend, peak warning, register entries." }
+  /api/capacity/demand:
+    get: { summary: "The demand register." }
+    post: { summary: "Add an entry: kind, source, group, date, compute_threads, memory_gb, storage_tb, owner." }
+  /api/capacity/what-if/refresh:
+    get: { summary: "Query location, replace, new. Before and after: threads, DRAM, licensed cores; next year's growth; covers or not." }
+  /api/capacity/what-if/host:
+    get: { summary: "Query class, cores, base_ghz, memory_gb. The six SP5 numbers, the binding one, the matching DRAM." }
+  /api/capacity/plan:
+    get: { summary: "The next round: groups, hosts, delivery, cover, cost lines, total, on time." }
+  /api/capacity/waste:
+    get: { summary: "Reclamation per group: areas easiest first, what each frees, run-out before and after, cost avoidance." }

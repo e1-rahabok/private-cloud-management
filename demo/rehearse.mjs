@@ -11,7 +11,7 @@ const ROOT = new URL('../', import.meta.url).pathname;
 const PORT = 8771;
 const NOW = '2026-10-19T10:05:00+08:00';
 const DBDIR = mkdtempSync(tmpdir() + '/pcm-demo-');
-const server = spawn('python3', ['-m', 'build.pcm_proto.server', '--port', String(PORT)],
+const server = spawn('python3', ['-m', 'pcm.core.server', '--port', String(PORT)],
   { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DB: DBDIR + '/demo.sqlite', PCM_AGENT_E2_MODE: 'mock' } });
 for (let i = 0; i < 50; i++) { try { await fetch(`http://127.0.0.1:${PORT}/exec`); break; } catch { await new Promise(r => setTimeout(r, 200)); } }
 const BASE = `http://127.0.0.1:${PORT}`, q = `now=${encodeURIComponent(NOW)}`;

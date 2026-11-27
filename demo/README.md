@@ -1,8 +1,8 @@
 # PCM demo script
 
-One story across every workspace, about 17 minutes. It shows that PCM is one system with one set of numbers, not five dashboards.
+One walk through every workspace, about 17 minutes. It shows that PCM is one system with one set of numbers, not five dashboards.
 
-**The story:** a Bronze batch VM lands in a Silver cluster in Frankfurt. The NOC sees it in seconds, follows the SOP, and escalates. L2 monitors the whole estate top down, troubleshoots the escalation as a case, and closes the loop with a new check rule. L2's Capacity tab shows the same cluster open at the daily check, with contention now. Docs shows exactly which number decided it. The CIO page tells the board the same thing in plain words.
+**What happens:** a Bronze batch VM lands in a Silver cluster in Frankfurt. The NOC sees it in seconds, follows the SOP, and escalates. L2 monitors the whole estate top down, troubleshoots the escalation as a case, and closes the loop with a new check rule. L2's Capacity tab shows the same cluster open at the daily check, with contention now. Docs shows exactly which number decided it. The CIO page tells the board the same thing in plain words.
 
 **Before every demo, rehearse it.** The rehearsal clicks through every step below in a browser and checks that each screen still says what this script says. It also writes a screenshot per step to `demo/screens/`, which doubles as a handout. It needs Node and Playwright with Chromium, like the page tests.
 
@@ -15,7 +15,7 @@ node demo/rehearse.mjs
 1. Start PCM on a database of its own, so the demo always starts clean.
 
 ```bash
-PCM_DB=var/demo.sqlite python3 -m build.pcm_proto.server --port 8080
+PCM_DB=var/demo.sqlite python3 -m pcm.core.server --port 8080
 ```
 
    The server adds a thin red role switcher at the top of every page, labelled "Demo control · not part of PCM": a drop-down in demo order, with one or two lines on what the role does. It only jumps between the six URLs below and keeps the clock. It is demo scaffolding; production is one URL per person. It is on by default. Set `PCM_DEMO_SWITCHER=0` to turn it off; the page tests do, because the wall itself must have no interactive element (D-041). The switcher sits above the wall, outside it.
@@ -26,7 +26,7 @@ PCM_DB=var/demo.sqlite python3 -m build.pcm_proto.server --port 8080
 curl -s -X POST "http://localhost:8080/api/noc/_reset" -d '{}'
 ```
 
-3. Open these tabs, in order. Every URL fixes the clock at `2026-10-19T10:05:00+08:00`, Monday morning in Singapore, so every story is on screen.
+3. Open these tabs, in order. Every URL fixes the clock at `2026-10-19T10:05:00+08:00`, Monday morning in Singapore, so every PCM scenario story is on screen.
 
 | Tab | URL |
 |---|---|
@@ -171,8 +171,8 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 ## Close (1 minute)
 
 - **What is real in this demo:** every screen, every rule, every calculation, the database, the action record, Agent E2.
-- **What is synthetic:** ACME's data. A bank with five locations, about 1,200 hosts. Stories are planted so every screen has something to show.
-- **What is still planted, not computed:** class performance scores, the L2 twelve-month measures, repeated problems and goal history, and the chains Agent E2 proposes for the planted stories (its flow executor is not called yet). Next build replaces them with computed values.
+- **What is synthetic:** ACME's data. A bank with five locations, about 1,200 hosts. PCM scenario stories are planted so every screen has something to show.
+- **What is still planted, not computed:** class performance scores, the L2 twelve-month measures, repeated problems and goal history, and the chains Agent E2 proposes for the planted PCM scenario stories (its flow executor is not called yet). Next build replaces them with computed values.
 - **Next:** connect to a live VCF Operations and check every API assumption.
 
 ## Questions the audience asks

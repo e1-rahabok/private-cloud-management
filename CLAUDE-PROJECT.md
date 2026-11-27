@@ -8,16 +8,17 @@ Rules, tools and paths of private-cloud-manager, the repository of PCM (Private 
 - No hook runs here. Before acting, read the open milestone in the workspace's ROADMAP.md: the first heading that does not end with ": done".
 - Requirements of this repository: [`spec/requirements/`](spec/requirements) (WD-036). Each requirement belongs to the workspace milestone that ROADMAP.md names.
 - Decisions inside this repository: [decisions.md](decisions.md), IDs D-nnn.
-- Specification: [spec/](spec) ([spec/README.md](spec/README.md)). Reasons behind it: [design/](design).
+- Specification: one folder per workspace under [pcm/](pcm), each with its `spec/` folder; front page [spec/README.md](spec/README.md) (D-133). Reasons behind it: each workspace's `design-note.md`, the notes in [pcm/core/design-notes/](pcm/core/design-notes), and [decisions.md](decisions.md).
 
 ## Code
 
-- AI generates all code in [build/](build) from [spec/](spec) (D-010). Change the specification first.
-- Never edit [build/](build) by hand (D-070).
+- AI generates all code in [pcm/](pcm) from the `spec/` folders and design notes beside it (D-010). Change the specification first.
+- Never edit generated code by hand: in a workspace folder, every file outside `spec/` and the design note (D-070).
+- Until the contract check C3 loads `pcm/core/agent_e2.py`: keep `build/pcm_proto/agent_e2.py`, which loads that file from the old path (R-REPO-008, D-133).
 
 ## Checks before each commit
 
-- The unit tests and page tests listed in [build/README.md](build/README.md), section Tests: `python3 -m unittest build.tests.test_<workspace> -v` and `node build/tests/<workspace>.page.test.mjs`.
+- The unit tests and page tests listed in [pcm/README.md](pcm/README.md), section Test, from the repository root: `python3 -m unittest pcm.<workspace>.tests.test_<name> -v` and `node pcm/<workspace>/tests/<workspace>.page.test.mjs`.
 
 ## Deploy
 

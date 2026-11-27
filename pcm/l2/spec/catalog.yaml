@@ -1,0 +1,584 @@
+# Catalog entries read by the L2 workspace (pcm/l2/design-note.md). Shared entries live in
+# executive.yaml and noc.yaml and are reused, so L2, the NOC and the CIO read one definition.
+# The L2 workspace has three activities (Monitor, Troubleshoot, Improve) and four dimensions:
+# activity, object, pillar, time (D-083, D-086).
+
+version: 2
+
+entries:
+
+  # ---------------------------------------------------------------- the frame (L2 design, 3)
+
+  l2.tree:
+    description: >
+      The inventory tree is the menu (D-086, D-087). Five views, each a hierarchy operations uses. Selecting a
+      node scopes every view to it; the root is the whole estate.
+    views:
+      compute: [estate, region, location, vcf_instance, workload_domain, cluster, host, vm, guest_os]
+      storage: [estate, location, datastore, vm, virtual_disk]
+      network: [estate, location, distributed_switch, port_group, vm, vnic]
+      class: [estate, class_of_service, location, cluster, vm]
+      management: [estate, location, vcf_instance, appliance]
+    default_view: compute
+    expand_to: cluster
+    below_expand: "children listed worst first, found with search"
+    child_sort:
+      monitor: "worst first on the current pillar"
+      troubleshoot: "objects with open cases first"
+      improve: "largest opportunity first"
+    rules:
+      - "The Guest OS is a child of its VM, never merged into it (D-038)."
+      - "An appliance appears in Compute (as a VM in the management domain) and in Management; one object, one record."
+      - "Search covers all five views."
+    decisions: [D-086, D-087]
+
+  l2.slice_attributes:
+    description: >
+      Attributes are not trees. Every list can be grouped by them, to find what objects share (L2 design, 4.2).
+    attributes:
+      host: [host_model, esxi_build, firmware, class_of_service]
+      vm: [class_of_service, environment, guest_os, tools_version, host_model, vcpu_band]
+    decisions: [D-087]
+
+  l2.pillars:
+    description: >
+      The tabs in Monitor and Improve. Summary first, then one tab per L2 pillar. Never one combined score.
+      Inventory counts objects and their changes, so it is a provider tab: a VM, Guest OS, virtual disk or vNIC
+      has Summary, Availability, Performance, Capacity, Security and Configuration only (D-092).
+      Troubleshoot has no pillar tabs: one case crosses pillars. Compliance is out until after 1.0 (D-022);
+      cost, price and value are FinOps (D-027).
+    tabs: [summary, availability, performance, capacity, security, configuration, inventory]
+    no_inventory_on: [vm, guest_os, virtual_disk, vnic]
+    troubleshoot: { availability: true, performance: true, capacity: false, security: "breach goes to the security team (D-044)" }
+    decisions: [D-086]
+
+  l2.time_window:
+    description: >
+      One picker per page, kept when the object or tab changes. Inside a case the window is the case's own and fixed.
+    windows: ["1h", "24h", "7d", "30d", "1y"]
+    defaults: { monitor: "24h", improve: "30d" }
+    sources:
+      "24h": "the latest daily check run (D-039)"
+      "7d": "the latest weekly check run (D-042)"
+      "1y": "baselines"
+
+  # ---------------------------------------------------------------- Monitor (L2 design, 4)
+
+  l2.node_score:
+    description: >
+      An object's KPI over a window is the value it meets or beats 95% of the time: the 95th percentile of its
+      contention, read from the 20-second peak of each 5-minute interval. Not the average (it hides problems), not
+      the worst (too noisy). Source: the author's sample dashboard.
+    kpi:
+      vm: "VM Performance, Guest OS included"
+      host: "ESXi Performance"
+      cluster: "Cluster Performance: contention of its running VMs only, from the worst VM and the 90th percentile"
+      datastore: "Disk latency of every VM on it, from any cluster"
+    now: "Every row also shows the last hour, the NOC's view. A row's status is the worse of the two, so a problem that started minutes ago is not hidden by a 24-hour window."
+    bands: "SP5 bands, as the NOC (catalog.kpi_band): green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
+    note: "The green zone 75 to 100 is the sample dashboard's. The NOC alert line, 50, is th-cluster-perf-red."
+
+  l2.iceberg:
+    description: >
+      For a node and its children: how many sit just above the green line (75 to 80), and how that count moved over
+      the window. A rising count under the waterline warns before any alert fires (SP5: an alert is the tip).
+    near_line: { from: 75, to: 80 }
+    series: "the count at each of the last 7 days, dated, for a chart (D-100)"
+    decisions: [D-088, D-100]
+
+  l2.object_kpis:
+    description: >
+      The KPI of a cluster or anything under it (not a VM, which has l2.realms), over the window, one point per slot
+      (l2.statistics), with Now, Worst and the percentile figure. First on the object's Performance tab (D-100).
+    kpi:
+      cluster: ["Cluster Performance (l2.cluster_kpi_series, the same series as the Capacity tab)", "Cluster Risk"]
+      host: "ESXi Performance (vCommunity|ESXi Performance|ESXi Performance Score)"
+      port_group: "its cluster's Cluster Performance and Cluster Risk"
+      datastore: "Worst VM Performance: the lowest VM Performance of its VMs (l2.node_score)"
+      resource_pool: "Worst VM Performance"
+      guest_os: "Guest OS Performance"
+      virtual_disk: "VM Performance of its VM"
+      vnic: "VM Performance of its VM"
+    bands:
+      higher_is_better: "green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
+      higher_is_worse: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100 (Cluster Risk)"
+    decisions: [D-095, D-100]
+
+  l2.kpi_details:
+    description: >
+      The parts of Cluster Performance and Cluster Risk, over the window, the same points as the KPI, each with Now, Worst
+      (with its time) and 95th percentile. Under the KPI's chart, in a fold named Details, closed when the page opens (D-106).
+      Release 1.0: placeholder values derived from the KPI's series.
+    parts:
+      cluster_performance: "9: worst and 90th percentile of vCPU Ready, vCPU Co-stop, memory wait, disk latency; highest ESXi network packets (error + dropped)"
+      cluster_risk: "the 12 of the Agent E2 catalog (thresholds-risk.yaml, D-113): highest ESXi CPU thread utilization, worst CPU imbalance, worst ballooned, worst swapped + zipped, worst active memory and worst NVMe read latency (tiered hosts only: 10 on a cluster without one), highest CPU and memory reservation, highest CPU and memory overcommit, highest CPU and memory monster VM : host ratio"
+    host: "9 parts over the VMs on the host, under ESXi Performance (D-108): the same nine as for a cluster"
+    bands: "Every part: the band ends of the Agent E2 catalog. Risk parts: thresholds-capacity.yaml, cluster-risk rows. Performance parts: thresholds-performance.yaml, the 20-second levels applied to the 5-minute peak (a point is the highest of the 20-second values); the packets row has green equal to yellow, so only 0 is green (D-108)"
+    decisions: [D-106, D-108]
+
+  l2.consumer_hits:
+    description: >
+      For the VMs in scope (under the node, of the selected class of service): how many different VMs were below
+      green in the window, and the most below green at once, with the time. Counts only; no series (D-091).
+    kpi: "VM Performance (vCommunity|VM Performance|VM Performance Score), 20-second peaks"
+    below_green: "VM Performance below 75"
+    decisions: [D-091]
+
+  l2.worst_vms:
+    description: >
+      The VMs in scope with the lowest VM Performance in the window, worst first, each with the time of its worst
+      point, its cluster and location, and how many other VMs in scope were below green in the same 5 minutes.
+      With a selected time: the VMs below green at that time. What, when and where; never why (D-084).
+    rows: 20
+    decisions: [D-091]
+
+  l2.provider_spread:
+    description: >
+      Two lines per KPI over the window, across the clusters in scope. Actual slowness: the lowest Cluster
+      Performance, and its 10th percentile. Potential slowness: the highest Cluster Risk, and its 90th percentile.
+      The worst line says whether anything is wrong; the percentile line says whether it is narrow or wide.
+    kpi:
+      performance: "vCommunity|Cluster Performance|Cluster Performance Score, higher is better"
+      risk: "vCommunity|Cluster Risk|Cluster Risk Score, higher is worse"
+    percentile: { performance: 10, risk: 90, method: "nearest rank, as vCommunity: the cluster at position p% of the count, rounded up" }
+    bands:
+      performance: "green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
+      risk: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100"
+    vcommunity: >
+      With class All, the four lines equal vSphere World's vCommunity|Worst Cluster Performance, Worst 10 Percent
+      Cluster Performance, Worst Cluster Risk and Worst 10 Percent Cluster Risk. Those are across all clusters, so for
+      one class PCM computes the same metrics from each cluster's score.
+    class_of_service: { options: [gold, silver, bronze, all], default: gold }
+    decisions: [D-091]
+
+  l2.clusters_at:
+    description: >
+      Every cluster in scope at one selected time, worst Cluster Performance first: Performance and Risk at that
+      time, VMs below green at that time, and different VMs hit over the window. The selected time is a click on
+      any chart of the tab; before a click, the worst point of the window.
+    decisions: [D-091]
+
+  l2.node_summary:
+    description: >
+      Every node in Monitor shows three parts: a summary (its own KPI over time for the pillar, l2.object_kpis, and
+      the count of children outside the green zone), its children worst first, and the detail of the selected child.
+    decisions: [D-088, D-100]
+
+  l2.pillar_status:
+    description: >
+      One line per pillar on the Summary tab, for the selected node and window. The worst status of the pillar's
+      findings and scores under the node.
+    status: { red: "any red under the node", amber: "any amber", green: "none" }
+
+  l2.findings:
+    description: >
+      What monitoring found under a node, per pillar, worst first. The 24-hour window reads the daily check
+      (D-039); the 7-day window adds what a day cannot show (D-042): slow drift, hidden in the average,
+      configuration drift. No finding is repeated across windows. Each finding ends in an outcome.
+    outcomes:
+      problem: "present health (down, slow, a security event): opens a troubleshooting case"
+      improve: "a risk or an opportunity: shown in Improve on the same object"
+    explained_by_calendar: "drops to the bottom and names the calendar entry"
+    drift_rule: "the same direction on at least 5 of the 6 steps between the last 7 nights, and a total change of at least 10% of the first night"
+    hidden_rule: "one instance at or above its red threshold at peak while the VM total is green"
+    decisions: [D-039, D-042, D-083]
+
+  l2.slipped_alerts:
+    description: Alerts raised since the previous run that no finding predicted (D-039). Each links to the rule that would have caught it.
+
+  l2.measures:
+    description: The four L2 outcomes (L2 design, 2), for a week, against last week, and for twelve months.
+    measures:
+      urgent_alerts: "count of red alerts"
+      repeated_problems: "cases whose problem type was seen before in the last 12 months"
+      found_by_check_percent: "share of cases started by a monitoring finding, not by a complaint or an escalation"
+      diagnose_known_minutes: "median time from case open to cause, for problem types seen before"
+
+  l2.repeated_problems:
+    description: Cases per problem type over 12 months, and whether the loop closed (a check rule or an SOP added at close).
+
+  l2.inventory_counts:
+    description: Per node, its children by type and the change since the start of the window (D-020).
+
+  l2.change_explanation:
+    description: >
+      Each change is matched to what explains it, in order: the PCM action record, an approved change window,
+      a VCF Automation request, DRS (moves). Unmatched changes are unexplained until L2 records them as expected,
+      with a reason. Explained changes are counted; unexplained ones are listed (D-081).
+    order: [pcm_action, change_window, request, drs, l2_expected]
+    decisions: [D-020, D-062, D-063, D-081]
+
+  l2.configuration_variance:
+    description: >
+      Configuration under a node: drift against the standard (pcm/core/spec/catalog/standards.yaml) and variance across peers,
+      for example the ESXi builds and VMware Tools versions in use. SP5: keep variance minimal.
+
+  l2.security_hygiene:
+    description: >
+      Present security under a node: platform hygiene only (D-049). SSH or ESXi Shell enabled outside a maintenance
+      window, lockdown mode off, root logins, certificates near expiry. Read from the same numbers as the NOC and
+      the CIO page.
+    decisions: [D-044, D-049]
+
+  l2.availability_events:
+    description: >
+      Availability under a node: VMs down this month, counted or not counted against the class target (D-077),
+      hosts not connected, HA restarts.
+    decisions: [D-077]
+
+  # ---------------------------------------------------------------- statistics (D-095)
+
+  l2.statistics:
+    description: >
+      Which statistic, on which axis. Over time on one object: a point holds the worst value of its slot; the figures
+      are Now, Worst (with its time) and the percentile figure, the value 95% of the points were better than, named by
+      direction: the 5th percentile where higher is better, the 95th where higher is worse (D-131); the status is that
+      figure over the window, and the worse of that and the last hour. Across objects at one time: the worst object, and the 10th (higher is better)
+      or 90th (higher is worse) percentile. Never an average on either axis; never a sum or average of percentages
+      across clusters.
+    over_time:
+      point: "the worst value inside its slot"
+      slots: { "1h": 5m, "24h": 5m, "7d": 1h, "30d": 4h, "1y": 1d }
+      figures: [now, worst, percentile_95]
+      percentile_label: { higher_is_better: "5th percentile", higher_is_worse: "95th percentile" }
+      status: "percentile_95 over the window; the worse of that and the last hour"
+    across_objects:
+      lines: [worst, percentile]
+      percentile: { higher_is_better: 10, higher_is_worse: 90 }
+    method: "nearest rank, as vCommunity: sort, take the value at position p% of the count, rounded up"
+    naming: >
+      A statistic is labelled by what it is, and a percentile by its statistical rank, counted from the lowest value
+      (D-131). vCommunity's "Worst" check values are the worst end of the check period: the (100 - Worst Percent)th
+      percentile where higher is worse, the (Worst Percent)th where higher is better. PCM labels them "{p}th
+      percentile, {period} to {end time}". The field percentile_95 keeps its name in the API for both directions: it
+      names the value 95% of the points were better than, not the label. "Worst" on a PCM page is always the single
+      worst point.
+    never: [average, sum_across_clusters]
+    decisions: [D-088, D-091, D-092, D-095]
+
+  # ---------------------------------------------------------------- Capacity tab (D-094)
+
+  l2.cluster_kpi_series:
+    description: >
+      The three vCommunity cluster KPIs over the window, each 0 to 100%, one point per slot (l2.statistics). Read
+      through VCF Operations (D-064); PCM keeps its own history (D-006): 5-minute points for 45 days, hourly for
+      13 months (synthetic data design).
+    kpis:
+      consumption: { key: "vCommunity|Cluster Consumption|Cluster Consumption Score", label: "Cluster Consumption", better: lower, read: "cluster-wide, against usable capacity" }
+      performance: { key: "vCommunity|Cluster Performance|Cluster Performance Score", label: "Cluster Performance", better: higher, read: "from the VMs: worst and 90th percentile of their contention" }
+      risk:        { key: "vCommunity|Cluster Risk|Cluster Risk Score", label: "Cluster Risk", better: lower, read: "from the worst host" }
+    order: [consumption, performance, risk]
+    bands:
+      higher_is_worse: "green 0 to 25, yellow 25 to 50, orange 50 to 75, red 75 to 100"
+      higher_is_better: "green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0"
+    decisions: [D-094, D-095]
+
+  l2.capacity_remaining:
+    description: >
+      VCF Operations' own capacity figures for one VM, ESXi host or cluster, shown first on its Capacity tab. PCM
+      reads them; it never computes them. Not on a group: no sum across clusters (D-095).
+    source: "VCF Operations capacity engine, through the VCF Operations API (D-064)"
+    figures:
+      capacity_remaining: { label: "Capacity Remaining", unit: "%", on: [vm, host, cluster] }
+      time_remaining:     { label: "Time Remaining", unit: " days", on: [vm, host, cluster] }
+      vm_remaining:       { label: "VM Remaining", unit: " VMs", on: [host, cluster] }
+    release_1_0: "Placeholder values, stable per object, flagged placeholder: true, with no label on the page. Replaced by the read values, with their time, when PCM reads VCF Operations."
+    to_verify: "D-062: the metric keys of Capacity Remaining, Time Remaining and VM Remaining on VM, host and cluster in VCF Operations 9.1"
+    decisions: [D-094, D-100]
+
+  l2.cluster_check:
+    description: >
+      The PCM adapter's (vCommunity's, D-096) Periodic Cluster Check, read through VCF Operations, never recomputed by the
+      pages. Once per period, per cluster:
+      the worst end of each KPI over the period and Close for Business. PCM names the rule that matched, from the three
+      published inputs, and labels each input by its percentile (l2.statistics naming). Kept as its own series for 13
+      months, one point per period: the 5-minute history it was made from is kept 45 days only.
+    source: "PCM-Adapter, Management Pack/app/metrics/cluster/periodic_cluster_check.py"
+    keys:
+      performance: "vCommunity|Periodic Cluster Check|Worst Cluster Performance"
+      risk: "vCommunity|Periodic Cluster Check|Worst Cluster Risk"
+      consumption: "vCommunity|Periodic Cluster Check|Worst Cluster Consumption"
+      close_for_business: "vCommunity|Periodic Cluster Check|Close for Business"
+    adapter_settings:
+      note: "PCM settings set in the PCM adapter (vCommunity, D-096): adapter.cluster_check_period_hours, adapter.cluster_check_time_utc, adapter.cluster_check_worst_percent. Read, never held twice."
+      period_hours: { default: 24, values: [1, 2, 4, 6, 8, 12, 24] }
+      time_utc: { default: "00:00" }
+      worst_percent: { default: 5, range: [0, 50] }
+    closure_levels:
+      note: "Setting adapter.cluster_closure_levels, set in the PCM adapter (D-096). On each KPI's health (the value, or 100 minus it when higher is worse). A value on a level does not reach it."
+      performance: { red: "below 20", orange: "below 40" }
+      risk: { red: "above 80", orange: "above 60" }
+      consumption: { red: "above 80", orange: "above 60" }
+    rule:
+      - { id: 1, closes_when: "Consumption is red, or Performance is red", reason: "Consumption {c}% is above 80%. / Performance {p}% is below 20%." }
+      - { id: 2, closes_when: "Consumption and Performance are both orange, and Risk is orange or red", reason: "Consumption {c}% and Performance {p}% are both orange, and Risk {r}% is above 60%." }
+    risk_alone_never_closes: true
+    no_data: "Close for Business is not published when any input has no data. PCM shows 'No check', never 'Open'."
+    states: [open, closed, no_check, stale]
+    since: "the first check of the current unbroken run of closed periods, and the count of those checks"
+    examples:
+      note: "vCommunity's own table (periodic-cluster-check.md, The rule)"
+      rows:
+        - { performance: 15, risk: 10, consumption: 30, close: 1, rule: 1 }
+        - { performance: 90, risk: 10, consumption: 85, close: 1, rule: 1 }
+        - { performance: 35, risk: 65, consumption: 65, close: 1, rule: 2 }
+        - { performance: 35, risk: 90, consumption: 65, close: 1, rule: 2 }
+        - { performance: 35, risk: 55, consumption: 65, close: 0 }
+        - { performance: 90, risk: 90, consumption: 30, close: 0 }
+        - { performance: 35, risk: 90, consumption: 45, close: 0 }
+        - { performance: 22, risk: 10, consumption: 10, close: 0 }
+        - { performance: 90, risk: 10, consumption: 78, close: 0 }
+        - { performance: 90, risk: 10, consumption: 30, close: 0 }
+    decisions: [D-094, D-095]
+
+  l2.cluster_check_diagram:
+    description: >
+      The Periodic Cluster Check drawn as its rule: three paths (Consumption, Performance, "Both orange?" then Risk)
+      into Open or Closed. Each node holds the check's published value, its closure level and the distance to it. The page
+      compares published values with published levels to draw the path; it never decides (D-094). The last hour is not in it.
+    reads: [l2.cluster_check]
+    decisions: [D-094, D-121]
+
+  l2.contention_now:
+    description: >
+      "Contention now": the cluster's Cluster Performance over the last hour is orange or red on the display bands
+      (below 50). The NOC's own number. Shown beside the check's verdict, never folded into it: the check decides once
+      per period and ignores its worst samples, so a cluster can be open at the check while it has contention now. Never worded "VMs waiting": that reads as VMs
+      queued for deployment, and placement never waits on a closed cluster; it picks another.
+    window: "last hour"
+    below: "th-cluster-perf-red (50): the NOC's red line, the start of orange"
+    chip: "the band colour of the value: orange (25 to 50), red (below 25)"
+    decisions: [D-040, D-094]
+
+  l2.consumption_parts:
+    description: >
+      The parts of Cluster Consumption, each in % of usable capacity, cluster-wide (the hosts added up), as vCommunity
+      publishes them under vCommunity|Cluster Consumption. DRAM Consumed and Memory Tiering Consumption only where the hosts have a tier.
+    parts:
+      cpu_thread_utilization: { label: "CPU Thread Utilization", unit: "%", band_ends: [55, 70, 85] }
+      memory_consumed:        { label: "Memory Consumed",        unit: "%", band_ends: [70, 80, 90] }
+      memory_ballooned:       { label: "Memory Ballooned",       unit: "%", band_ends: [1, 2, 4] }
+      memory_zip_swap:        { label: "Memory Zip Swap",        unit: "%", band_ends: [0.25, 0.5, 1], note: "swapped and compressed" }
+      dram_consumed:          { label: "DRAM Consumed",          unit: "%", band_ends: [80, 85, 90], optional: true, note: "tiered hosts: DRAM in use (Memory Consumed minus the NVMe tier in use) against their usable DRAM" }
+      memory_tiering:         { label: "Memory Tiering Consumption", unit: "%", band_ends: [15, 30, 45], optional: true, note: "NVMe tier in use against usable DRAM, not against the tier" }
+    band_ends:
+      note: "Upper end of green, yellow and orange; above the last is red. Higher is worse. A value on an end stays in the lower band. From the Agent E2 knowledge base, knowledge/catalog/thresholds-capacity.yaml (models, rows of vsphere/object-types/cluster/models/cluster-consumption): the figures Now, Worst and the percentile figure are colored by it. The band's name is not written (D-104)."
+    figures: [now, worst, percentile_95]
+    decisions: [D-094]
+
+  l2.usable_capacity:
+    description: >
+      Usable capacity as running, the denominator of Cluster Consumption: total, minus HA, minus buffer, over the hosts
+      that can run VMs (VCF Operations' usable capacity, applied to the running hosts' threads and DRAM, as
+      vCommunity). A host in maintenance mode, disconnected, powered off or not responding adds nothing. This is not
+      capacity.usable, which plans ahead and also holds back a maintenance host (Capacity design, 3.2).
+    steps: [total, ha, buffer, usable]
+    units: { cpu: threads, memory: "GB of DRAM" }
+    also: "running hosts of all hosts"
+    buffer_owner: "capacity (D-054): shown and linked, not edited on this page"
+    decisions: [D-054, D-094]
+
+  l2.host_spread:
+    description: >
+      "Spread between hosts": at each point, the highest and the lowest host of the cluster, for CPU Thread
+      Utilization and Memory Consumed, each in % of the host's own capacity. No average. Not vCommunity's CPU
+      Imbalance (running threads per running core), which is an input of Cluster Risk.
+    lines: [highest_host, lowest_host]
+    metrics: [cpu_thread_utilization, memory_consumed]
+    decisions: [D-094, D-095]
+
+  l2.capacity_hosts:
+    description: >
+      The hosts of the cluster, worst first by the higher of their two 95th percentiles: CPU Thread Utilization and
+      Memory Consumed, each 95th percentile and Worst with a sparkline; running VMs; CPU and Memory Overcommit; state.
+    states: [running, maintenance_mode, disconnected, not_responding, powered_off]
+    decisions: [D-094]
+
+  l2.closed_count:
+    description: >
+      Per check period, the number of clusters in scope closed for new VMs, and how many closed and opened since the
+      check before. With class All under the estate, the changes equal vCommunity|Cluster Delta Close Count and Cluster
+      Delta Open Count on vSphere World. A cluster with no check in either period is not a change.
+    min_periods_for_chart: 7
+    decisions: [D-094]
+
+  l2.consumption_spread:
+    description: >
+      Two lines over the window across the clusters in scope: the highest Cluster Consumption and its 90th percentile.
+      The highest says whether any cluster is near full; the percentile says whether it is one or many.
+    percentile: 90
+    vcommunity: >
+      With class All under the estate, the two lines equal vSphere World's vCommunity|Highest Cluster Utilization and
+      Highest 10 Percent Cluster Utilization. For one class or one node, PCM computes the same from each cluster's score.
+    decisions: [D-091, D-094, D-095]
+
+  l2.near_closure:
+    description: >
+      The capacity iceberg (D-088): open clusters in scope whose Consumption at the latest check is above the orange
+      closure level (60), and that count at each check over the window, in words: rising, steady or falling (the
+      drift rule of l2.findings on the last seven counts; otherwise the sign of last minus first).
+    above: 60
+    decisions: [D-088, D-094]
+
+  l2.capacity_clusters_at:
+    description: >
+      Every cluster in scope at one selected time: closed first, then near closure, then highest Consumption. Verdict
+      at the latest check and since when; Consumption, Performance and Risk at the time; a Consumption sparkline over
+      the window; contention now. Before a click, the time is the highest point of the Consumption line.
+    decisions: [D-094]
+
+  l2.capacity_findings:
+    description: >
+      What the Capacity tab finds. Every chip on the tab has one of these behind it; no chip without a finding.
+    kinds:
+      closed_contention: { window: "24h", severity: red, outcome: problem, when: "closed at the latest check, with Performance red or by rule 2" }
+      closed_consumption: { window: "24h", severity: amber, outcome: improve, when: "closed at the latest check by Consumption red, with Performance not red" }
+      heading_to_closed: { window: "7d", severity: amber, outcome: improve, when: "open, and the last seven check values of Consumption pass the drift rule of l2.findings, rising" }
+    decisions: [D-083, D-094]
+
+  # ---------------------------------------------------------------- Troubleshoot (L2 design, 5)
+
+  l2.case:
+    description: >
+      Every troubleshooting effort is a case (D-084). A case has one trigger, an object, a symptom (slow or down),
+      a window, a chain of causes, a timeline, the layers, and a close.
+    triggers:
+      complaint: "logged by L2 in PCM (l2.complaint)"
+      escalation: "handed over by L1 after its SOP, with the evidence attached (D-040)"
+      finding: "opened from a monitoring finding (l2.findings)"
+    states: [open, closed]
+    list_order: "open first, then closed; newest first within each"
+    decisions: [D-084]
+
+  l2.complaint:
+    description: >
+      The complaint form. A complaint names a VM or its Guest OS, never an application or a transaction (D-085).
+    required: [vm, requester, symptom, since]
+    optional: [via, fine_until, already_checked, note]
+    symptoms: [slow, down]
+    decisions: [D-084, D-085]
+
+  l2.chain:
+    description: >
+      The chain of causes, a graph built one link at a time. Each link joins a cause to an effect, both inventory
+      objects or events. A link is main or contributing, and proposed, confirmed or ruled out. Ruled-out links stay
+      visible. Agent E2 proposes links with their evidence, following its flows; L2 confirms or rules them out
+      (D-089). In the prototype, the flow results for a planted PCM scenario story come from the PCM scenario story file.
+    link_kinds: [main, contributing]
+    link_states: [proposed, confirmed, ruled_out]
+    order:
+      slow: [contention, consumption, configuration, known_bug, log]
+      down: [log, saturation, configuration, known_bug]
+    start: "the Guest OS (step 1 of Agent E2's vm-slow flow): quantify where the requester sees it, then read the VM"
+    decisions: [D-084, D-085, D-089]
+
+  l2.layers:
+    description: >
+      The layers in scope, each with its own "on my court" verdict (D-085). A layer is clear, waiting, or not read.
+    layers: [guest_os, vm, host, cluster, storage, network]
+    hand_over:
+      guest_os: "Guest OS waits and the VM does not: the Windows or Linux team"
+      array: "storage device latency high while the ESXi layers are clean: the storage team"
+      application: "every layer clean: the application owner, with what was checked"
+    decisions: [D-038, D-085]
+
+  l2.realms:
+    description: >
+      The two layers of a VM, each with its "on my court" values. The Guest OS runs on top of the Virtual Motherboard
+      (the VM's virtual hardware), so the layers are stacked, Guest OS first, never side by side (D-092). If the
+      Virtual Motherboard is not waiting and the Guest OS is, the cause is inside the Guest OS: hand the evidence to
+      the Windows or Linux team. On the VM's Performance tab each metric is a chart over the window with its named
+      figures: now, worst, the percentile figure. Never an average.
+    layers:
+      guest_os:
+        title: Guest OS
+        metrics:
+          run_queue_per_vcpu:     { label: "Peak vCPU run queue length",              unit: " per vCPU", better: lower,  decimals: 2, band_ends: [2, 4, 8] }
+          context_switches_per_s: { label: "Context Switches",       unit: "/s",        better: lower,  decimals: 0 }
+          disk_queue:             { label: "Peak disk queue length",             unit: " IOs",      better: lower,  decimals: 0, band_ends: [20, 40, 80] }
+          free_memory_mb:         { label: "Free memory",            unit: " MB",       better: higher, decimals: 0, band_ends: [512, 256, 128] }  # higher is better: lower limits of green, yellow, orange
+          paging_per_s:           { label: "Memory page-out rate",                 unit: " pages/s",  better: lower,  decimals: 0, band_ends: [1000, 2000, 4000] }
+          guest_os_performance:   { label: "Guest OS Performance",   unit: "%",         better: higher, decimals: 1, scale: [0, 100] }
+      virtual_motherboard:
+        title: Virtual Motherboard
+        metrics:
+          cpu_ready_percent:      { label: "Peak CPU Ready among any vCPU",              unit: "%",         better: lower,  decimals: 1, band_ends: [2, 4, 8] }
+          co_stop_percent:        { label: "Peak CPU Co-stop among any vCPU",            unit: "%",         better: lower,  decimals: 1, band_ends: [1, 2, 4] }
+          cpu_overlap_percent:    { label: "Peak CPU Overlap",            unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
+          memory_wait_percent:   { label: "Memory wait",         unit: "%",         better: lower,  decimals: 1, band_ends: [0.5, 1, 2] }
+          disk_latency_ms:        { label: "Peak read/write latency among vDisks",           unit: " ms",       better: lower,  decimals: 1, band_ends: [10, 20, 40] }
+          network_dropped_tx_percent: { label: "Peak network TX dropped packets", unit: "%",         better: lower,  decimals: 1, band_ends: [0, 0.5, 1] }
+          cpu_run_percent:        { label: "CPU Net Run",                unit: "%",         better: lower,  decimals: 1, band_ends: [95, 97, 99] }
+          memory_ballooned_percent: { label: "VM Memory Ballooned",     unit: "%",         better: lower,  decimals: 1, band_ends: [2, 4, 8] }
+          memory_zip_swap_percent: { label: "VM swapped + zipped memory",       unit: "%",         better: lower,  decimals: 1, band_ends: [0.25, 0.5, 1] }
+          vm_performance:         { label: "VM Performance",         unit: "%",         better: higher, decimals: 1, scale: [0, 100] }
+    figures: [now, worst, percentile_95]
+    percentile_95: "the value that 95% of the points were better than (nearest rank): the 5th percentile for a metric where higher is better, the 95th where higher is worse, labelled so (l2.statistics, D-131)"
+    unit_rule: "The unit follows the number. % and /s attach to it; any other unit follows a space. The label never holds the unit."
+    decisions: [D-038, D-092]
+
+  l2.timeline:
+    description: >
+      One timeline across every object in the chain, over the case window and the weeks before it: metric anomalies,
+      events (vMotion, snapshot, maintenance, HA), log messages, changes with their explanation (l2.change_explanation),
+      calendar entries and alerts.
+    lookback_days: 42
+
+  l2.who_else:
+    description: >
+      For a symptom in a case, the same test across the estate: other objects that share the cluster, datastore,
+      host model, ESXi build or change, and show the same symptom.
+
+  l2.case_close:
+    description: >
+      A case closes only with: the root cause (a confirmed main link), a corrective action, and a detection decision
+      (new check rule, new alert, new SOP, SOP updated, or none with a reason) with its note (L2 design, 5.9).
+    detection: [new_check_rule, new_alert, new_sop, sop_updated, none_with_reason]
+    decisions: [D-084]
+
+  l2.log_validation:
+    description: >
+      Before a log message becomes a detection, PCM counts it on healthy objects over the last 5 working days.
+      A message seen on healthy objects more than setting l2.log_noise_max times is noise (SP5 VDI example).
+
+  # ---------------------------------------------------------------- Improve (L2 design, 6)
+
+  l2.opportunities:
+    description: >
+      What monitoring found that is not broken, under a node, per pillar: risk (configuration drift, short-term
+      capacity) and efficiency (reclaim, rebalance, standardize, update). Framed in capacity, never in money (D-027).
+      Counts roll up the tree.
+
+  l2.config_order:
+    description: Configuration opportunities in SP5 time order (L2 design, 6.2).
+    order: [correct_it, update_it, simplify_it, optimize_it]
+    choices: [fix_the_setting, fix_the_standard]
+
+  l2.action_policy:
+    description: >
+      Each action type's tier and guardrails, versioned, with an owner (pcm/l2/spec/action-policies.yaml). A fix runs
+      automatically only when its tier is automatic and every guardrail passes; otherwise it is a proposal with the
+      blocking guardrail named. No approval is ever recorded for an automatic run (D-079).
+    decisions: [D-029, D-079]
+
+  l2.action_record:
+    description: Per action type, approvals, rejections and rollbacks. Evidence for L2, never a gate (D-079).
+
+  l2.policy_replay:
+    description: >
+      Before a policy change is published, PCM replays it against the action type's recent history: which past runs
+      would have run automatically, and which each guardrail would have stopped.
+    decisions: [D-079]
+
+  l2.team_decision:
+    description: >
+      An improvement decision, with what, owner and due date, all required (D-043). State: done, open, or overdue
+      (open past its due date). The monthly review opens with every open decision.
+    decisions: [D-043]
+
+  # ---------------------------------------------------------------- Rules (L2 design, 7.1)
+
+  l2.threshold_replay:
+    description: >
+      Before a threshold is published, PCM counts how many alerts the new value would have raised over the
+      last setting l2.replay_days days, next to the count the current value raised (L2 design, 7.1).
