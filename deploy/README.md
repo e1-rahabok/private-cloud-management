@@ -184,7 +184,7 @@ systemctl restart pcm
 ss -ltn | grep 8080   # now 127.0.0.1:8080, no longer 0.0.0.0:8080
 ```
 
-Then drop the 8080 check from `tools/lab/Test-Lab.ps1`, which expects 8080 to answer.
+- Then drop the 8080 check from `tools/lab/Test-Lab.ps1`, which expects 8080 to answer.
 
 This section follows the lab VM. If the VM's nginx file changes, the VM is the source of truth: copy its `/etc/nginx/sites-available/pcm` here so the two agree.
 
