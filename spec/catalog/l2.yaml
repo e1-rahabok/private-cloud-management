@@ -293,7 +293,7 @@ entries:
       the worst end of each KPI over the period and Close for Business. PCM names the rule that matched, from the three
       published inputs, and labels each input by its percentile (l2.statistics naming). Kept as its own series for 13
       months, one point per period: the 5-minute history it was made from is kept 45 days only.
-    source: "VCF-vCommunity-Adapter, Management Pack/app/metrics/cluster/periodic_cluster_check.py"
+    source: "PCM-Adapter, Management Pack/app/metrics/cluster/periodic_cluster_check.py"
     keys:
       performance: "vCommunity|Periodic Cluster Check|Worst Cluster Performance"
       risk: "vCommunity|Periodic Cluster Check|Worst Cluster Risk"

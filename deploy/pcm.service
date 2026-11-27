@@ -1,6 +1,6 @@
 # systemd unit for the PCM prototype on a lab VM (deploy/README.md).
 [Unit]
-Description=PCM prototype (Private Cloud Management)
+Description=PCM (Private Cloud Manager)
 After=network-online.target
 Wants=network-online.target
 

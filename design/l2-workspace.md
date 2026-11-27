@@ -185,7 +185,7 @@ The question: **what is wrong, at risk or wasteful, across the whole estate?** M
 
 ### 4.3 The KPI model
 
-From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter`, `docs/concepts/kpi-scoring-models.md`):
+From SP5 Performance Management and the VCF vCommunity Adapter (`PCM-Adapter`, `docs/concepts/kpi-scoring-models.md`):
 - **Every KPI is 0 to 100% with the same four bands:** green 100 to 75, yellow 75 to 50, orange 50 to 25, red 25 to 0. Performance is higher-is-better. Risk is higher-is-worse, so its bands run the other way: green 0 to 25, red 75 to 100.
 - **A KPI is a weighted average of its sub-metrics,** and a worse sub-metric weighs more (1 at 100, 16 at 0). One red sub-metric among green ones still shows.
 - **VM KPI** includes the Guest OS, because the VM and its Guest OS are one logical entity for monitoring. The two stay separate objects for troubleshooting (5.6).
@@ -229,7 +229,7 @@ From SP5 Performance Management and the vCommunity pack (`VCF-vCommunity-Adapter
 ### 4.3.3 The Capacity tab: the model it reads (D-094)
 
 - **The question:** can this cluster take more VMs now, and is it heading to closed? Monitoring shows it over time, never as a snapshot.
-- **Three KPIs, one scale, one rule.** This is vCommunity's capacity model (`VCF-vCommunity-Adapter`, `docs/concepts/capacity-management.md`):
+- **Three KPIs, one scale, one rule.** This is vCommunity's capacity model (`PCM-Adapter`, `docs/concepts/capacity-management.md`):
 
 | KPI | Measures | Read how | Direction |
 |---|---|---|---|
