@@ -33,11 +33,11 @@ Source: WD-030; PCM D-132.
 - And [`spec/data/`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/spec/data) is `spec/demo-data/`
 - And "design" names one thing: [`design/`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/design) and [`spec/design-system/`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/spec/design-system) no longer share the word with two meanings
 - And [`tools/moltbot/`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/tools/moltbot) is named for what it does
-- And every reference to an old path is updated in the same change: PCM's tests, service files, deploy scripts, documents, and the requirement files of this workspace
+- And every reference to an old path is updated in the same change: PCM's tests, service files, deploy scripts, documents, and the requirement files of every repository, this one's live-demo.md included
 
 Test scenarios:
 - T-REPO-007a (anywhere, automated by PCM's own tests): every test passes after the renames, and the demo starts.
-- T-REPO-007b (anywhere, automated by a search to write in [checks](https://github.com/e1-rahabok/private-cloud-workspace/tree/main/checks)): no file in any repository, outside the requirement files that name them to forbid them, names [`build/pcm_proto`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/build/pcm_proto), `pcm_proto`, [`sources/`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/sources) of PCM or `story_m5`, outside archives and dated records.
+- T-REPO-007b (anywhere, automated by a search to write in [checks](https://github.com/e1-rahabok/private-cloud-workspace/tree/main/checks)): no file in any repository, outside the requirement files that name them to forbid them and the workspace's tutorial, which names them as examples, names [`build/pcm_proto`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/build/pcm_proto), `pcm_proto`, [`sources/`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/sources) of PCM or `story_m5`, outside archives and dated records.
 - T-REPO-007c (anywhere, manual): T-WS-007b on PCM finds no wrong guess.
 
 ### R-REPO-008 PCM's folders are grouped by workspace
@@ -59,5 +59,6 @@ Source: Q-WS-134 (round 4: "Yes, by workspace."); WD-030.
 Test scenarios:
 - T-REPO-008a (anywhere, automated by PCM's own tests): every test passes after the move, and the demo starts.
 - T-REPO-008d (anywhere, automated by the workspace's `checks/run_all.py`): C3 passes after each of the three steps.
+- T-REPO-008e (anywhere, automated by the search of T-REPO-007b): no requirement file, test or document names a path under PCM's `build/` after the move, outside dated records.
 - T-REPO-008b (anywhere, manual): list every file that only the L2 workspace uses; expect each one inside L2's folder.
 - T-REPO-008c (anywhere, manual): T-WS-007b on PCM finds no wrong guess.

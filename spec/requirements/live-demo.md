@@ -488,7 +488,7 @@ Test scenarios:
 
 ### R-LIVE-035 PCM keeps each Agent E2 answer with its trace and rating
 
-Source: Q-WS-61 (PCM and isvara.io store question, answer, trace ID and rating); WD-015 (the live demo stores no metrics: an answer's text is the exception R-LIVE-010 names).
+Source: Q-WS-61 (PCM and isvara.io store question, answer, trace ID and rating). It makes the one exception to WD-015's "stores no metrics", which R-LIVE-010 states and WD-015's status records.
 
 Milestone: M8.
 
