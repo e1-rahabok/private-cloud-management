@@ -59,6 +59,6 @@ Source: Q-WS-134 (round 4: "Yes, by workspace."); WD-030.
 Test scenarios:
 - T-REPO-008a (anywhere, automated by PCM's own tests): every test passes after the move, and the demo starts.
 - T-REPO-008d (anywhere, automated by the workspace's `checks/run_all.py`): C3 passes after each of the three steps.
-- T-REPO-008e (anywhere, automated by the search of T-REPO-007b): no requirement file, test or document names a path under PCM's `build/` after the move, outside dated records.
+- T-REPO-008e (anywhere, automated by the search of T-REPO-007b): no requirement file, test or document names a path under PCM's `build/` after the move, outside dated records and the requirement files that name it to forbid it.
 - T-REPO-008b (anywhere, manual): list every file that only the L2 workspace uses; expect each one inside L2's folder.
 - T-REPO-008c (anywhere, manual): T-WS-007b on PCM finds no wrong guess.

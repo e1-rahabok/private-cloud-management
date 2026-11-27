@@ -488,7 +488,7 @@ Test scenarios:
 
 ### R-LIVE-035 PCM keeps each Agent E2 answer with its trace and rating
 
-Source: Q-WS-61 (PCM and isvara.io store question, answer, trace ID and rating). It makes the one exception to WD-015's "stores no metrics", which R-LIVE-010 states and WD-015's status records.
+Source: Q-WS-61 (PCM and isvara.io store question, answer, trace ID and rating; Agent E2 keeps traces 30 days). PCM keeps a record for the 30 days its trace lives in Agent E2 ([R-E2-023](https://github.com/e1-rahabok/agent-e2/blob/main/project/requirements/answer-service.md#r-e2-023-every-answer-can-be-traced-for-30-days)), so every kept answer can be traced. It makes the one exception to WD-015's "stores no metrics", which R-LIVE-010 states and WD-015's status records.
 
 Milestone: M8.
 
