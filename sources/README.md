@@ -15,4 +15,4 @@ Regenerate:
 pandoc "SP5 Framework.docx" -t gfm --wrap=none --extract-media=tmp -o sp5-framework.md
 ```
 
-Then move `tmp/media/*` to `sp5-framework-media/` and fix the image paths.
+- Then move `tmp/media/*` to `sp5-framework-media/` and fix the image paths.

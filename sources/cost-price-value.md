@@ -48,7 +48,7 @@ As you keep adding VMs, you eventually reach your break-even point.
 
 #### Break-Even
 
-When planning your pricing, think of the time required to reach the breakeven point. That period should leave enough time for you recoup your expenses as you likely will make a loss in the early period. It should be way before the depreciation ends.
+- When planning your pricing, think of the time required to reach the breakeven point. That period should leave enough time for you recoup your expenses as you likely will make a loss in the early period. It should be way before the depreciation ends.
 
 In the following simplified example, the plan fails to balance cost and price. It assumes a break even that is too close to the end of the deprecation. While it’s profitable in the end, the profit is insufficient to cover the loss in the early years.
 
@@ -156,7 +156,7 @@ People cost is the full loaded cost of the infrastructure team. This includes ev
 
 ##### Cost Categorization
 
-When you add any cost to the total cost, think of how you will allocate back. Since vSphere VM runs on an ESXi, you want to associate the cost to ESXi. From here, you can always include the HA host and aggregate the cost to the cluster level.
+- When you add any cost to the total cost, think of how you will allocate back. Since vSphere VM runs on an ESXi, you want to associate the cost to ESXi. From here, you can always include the HA host and aggregate the cost to the cluster level.
 
 Since you will always have cost component that is not sold per ESXi, how do you associate to all the ESXi? For example, how do you associate the cost of network?
 
@@ -509,19 +509,15 @@ In Kubernetes, pods are by default unlimited. It can grow the size of the node. 
 
 In this case, here are the steps:
 
-1.  Work out the total cost.  
-    This means the sum of everything that you’re spending. Do it over 5 years, or whatever the depreciation time you use.
+1. Work out the total cost. This means the sum of everything that you’re spending. Do it over 5 years, or whatever the depreciation time you use.
 
-2.  Normalize the above to hourly.  
-    This gives you the hourly total cost.
+2. Normalize the above to hourly. This gives you the hourly total cost.
 
-3.  Figure out your capacity.  
-    Usable, not Total. This is your sellable capacity.
+3. Figure out your capacity. Usable, not Total. This is your sellable capacity.
 
-4.  For K8 or vSphere, allocate into Compute and Storage.  
-    Since K8 uses core instead of MHz, you charge using core or millicore as the unit. Do not charge per MHz as that complicates the formula.
+4. For K8 or vSphere, allocate into Compute and Storage. Since K8 uses core instead of MHz, you charge using core or millicore as the unit. Do not charge per MHz as that complicates the formula.
 
-5.  Project your expected utilization. If you only project 40%, then your price has to be at least 2.5x of the cost.
+5. Project your expected utilization. If you only project 40%, then your price has to be at least 2.5x of the cost.
 
 To translate into price, consider the peak hour. For example, you may mark up during office hours and provide discounts for after office hours. Some workloads need not be run immediately. By having "peak hour" pricing, you spread out the demand to weekend.
 
@@ -710,5 +706,4 @@ For VM size, we take 4 vCPU and 16 GB RAM as that’s the most popular size.
 
 Since you commit this for 3 years regardless of usage, you pay US\$ 2171 in advance for a 4 vCPU, 16 GB RAM, 1 TB SSD disk VM without Guest OS.
 
-END OF PART 1  
-Okay… now that the concept makes sense to you, let’s move into how to apply and consume them.
+END OF PART 1 Okay… now that the concept makes sense to you, let’s move into how to apply and consume them.

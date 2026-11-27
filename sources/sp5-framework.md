@@ -94,7 +94,7 @@ Capacity is measured on utilization and performance. A cluster is at full capaci
 
 It’s a good practice to assess the level of operational maturity, as it allows you to summarize where you are. There are different variants of these models, so don’t be hesitant to tailor to your goals. I’ve included a short assessment within Part 4 Chapter 1 to get you going.
 
-When scoring yourself, assign score on the following area:
+- When scoring yourself, assign score on the following area:
 
 - **Policy**: Is your policy outdated? Best Practice typically means proven or common practice.
 
@@ -348,7 +348,7 @@ Let’s zoom into the kitchen area, as that’s also undergoing a transformation
 
 ### Purpose-Driven Architecture
 
-When you architect IaaS or Desktop as a Service ([DaaS](https://www.vmware.com/topics/glossary/content/desktop-as-a-service)), what goals do you have in mind? I don’t mean the design considerations, such as availability and performance best practices. I mean the *business results* that your architecture has to deliver, viewed from the people who paid for the system, and by the people who will pay for the service. Set aside your opinion on the goal, as you neither pay for it nor use it.
+- When you architect IaaS or Desktop as a Service ([DaaS](https://www.vmware.com/topics/glossary/content/desktop-as-a-service)), what goals do you have in mind? I don’t mean the design considerations, such as availability and performance best practices. I mean the *business results* that your architecture has to deliver, viewed from the people who paid for the system, and by the people who will pay for the service. Set aside your opinion on the goal, as you neither pay for it nor use it.
 
 Logically, the answer depends on what is being sold. You can either sell application or infrastructure, broadly speaking. Some popular examples are:
 
@@ -485,17 +485,17 @@ Notice the issues here?
 
 There are at least 2 of them.
 
-1.  You probably heard of [Winston Churchill](https://en.wikipedia.org/wiki/Winston_Churchill) quotation “Sometimes doing your best is not good enough.” What you think is the best CPU may not be good enough for the workload, either in terms of GHz, number of threads, or power efficiency. For example, if your ESXi sports a 3.8 GHz speed but the application wants 5 GHz, giving it extra vCPU does not exactly meet the requirement.
+1. You probably heard of [Winston Churchill](https://en.wikipedia.org/wiki/Winston_Churchill) quotation “Sometimes doing your best is not good enough.” What you think is the best CPU may not be good enough for the workload, either in terms of GHz, number of threads, or power efficiency. For example, if your ESXi sports a 3.8 GHz speed but the application wants 5 GHz, giving it extra vCPU does not exactly meet the requirement.
 
-2.  Assuming you pass the first issue above, how do you prove that this so-called “best CPU” is actually able to handle the workload? What metrics do you use? Remember it’s just a CPU. All you have as metrics are just GHz and vCPU. If you rely on the application team metric, you need to be prepared to spend time doing testing with them. You should also apply 100% reservation to eliminate infrastructure-level contention. The problem with reservations is that you cannot overcommit. It means you defeat the purpose of virtualization to begin with.
+2. Assuming you pass the first issue above, how do you prove that this so-called “best CPU” is actually able to handle the workload? What metrics do you use? Remember it’s just a CPU. All you have as metrics are just GHz and vCPU. If you rely on the application team metric, you need to be prepared to spend time doing testing with them. You should also apply 100% reservation to eliminate infrastructure-level contention. The problem with reservations is that you cannot overcommit. It means you defeat the purpose of virtualization to begin with.
 
 So, what can you do?
 
-1.  Set the right expectation. For example, you state that your infrastructure uses dynamic power management. In most cases, this is good for the application as they get Turbo Boost when they are running hard. In situation of light use, the application may run at lower speed.
+1. Set the right expectation. For example, you state that your infrastructure uses dynamic power management. In most cases, this is good for the application as they get Turbo Boost when they are running hard. In situation of light use, the application may run at lower speed.
 
-2.  Do not promise something you can’t measure. In this case, the main metric you want to measure is “Is the CPU available when the VM asks for it”. Metrics such as Ready, Co-stop, Overlap, and Other Wait track these moments of contention. You provide great observability by showing these metrics.
+2. Do not promise something you can’t measure. In this case, the main metric you want to measure is “Is the CPU available when the VM asks for it”. Metrics such as Ready, Co-stop, Overlap, and Other Wait track these moments of contention. You provide great observability by showing these metrics.
 
-3.  Measure what is relevant to your business. If what you offer (read: the SLA) does not guarantee that the *whole core* is available to the VM, then do not measure the time the VM vCPU runs on a shared core.
+3. Measure what is relevant to your business. If what you offer (read: the SLA) does not guarantee that the *whole core* is available to the VM, then do not measure the time the VM vCPU runs on a shared core.
 
 ##### VCDX \| VCMX
 
@@ -880,12 +880,9 @@ VCF belongs to a category of software called SDDC. You use the software on commo
 
 Because of its nature as a data center defined as a software, there are 2 sides of VCF:
 
-- As an IaaS platform of customer.  
-  This is what the application team care.
+- As an IaaS platform of customer. This is what the application team care.
 
-- As a software product of Broadcom.  
-  This is what the infrastructure team care.  
-  The software takes the shape of one of these 2 forms:
+- As a software product of Broadcom. This is what the infrastructure team care. The software takes the shape of one of these 2 forms:
 
   - Virtual appliance. Examples are vCenter Server and NSX Edge
 
@@ -895,9 +892,7 @@ The 2 sides can impact one another, requiring you to see them as one. You need t
 
 - There are 2 layers: consumer and provider.
 
-- The consumer layer is where VM and containers run.  
-  This layer consists of 3 sublayers (application, Guest OS, and virtual machine).  
-  VCF scope ends at VM (BIOS & motherboard) and Tools, as the Guest OS is largely outside the influence of VCF the product.
+- The consumer layer is where VM and containers run. This layer consists of 3 sublayers (application, Guest OS, and virtual machine). VCF scope ends at VM (BIOS & motherboard) and Tools, as the Guest OS is largely outside the influence of VCF the product.
 
 - The provider layer is the virtualized platform (compute, storage, network).
 
@@ -1022,11 +1017,9 @@ Many vendors claim a very high availability SLA. This is misleading as they do n
 
 The 2 metrics names are:
 
-- Actual Availability (%).  
-  This is much easier to measure as it does not consider context. Down is down, regardless of when, who and why.
+- Actual Availability (%). This is much easier to measure as it does not consider context. Down is down, regardless of when, who and why.
 
-- Operational Availability (%)  
-  This is harder to measure.
+- Operational Availability (%) This is harder to measure.
 
 Example:
 
@@ -1036,10 +1029,7 @@ Example:
 
 - In this case, the Operational Availability (%) for the month of June is 100%. It meets SLA.
 
-- The Actual Availability (%) accounts for the 3 hours of total downtime.  
-  It’s 3x of (15 minutes + 45 minutes).  
-  In the month of June, there are 24 hours x 30 days = 720 hours.  
-  Actual Availability (%) = 717 / 720 = 99.58%
+- The Actual Availability (%) accounts for the 3 hours of total downtime. It’s 3x of (15 minutes + 45 minutes). In the month of June, there are 24 hours x 30 days = 720 hours. Actual Availability (%) = 717 / 720 = 99.58%
 
 ###### Formula
 
@@ -1816,7 +1806,7 @@ Once you know what you manage, you can then move on towards making sure those th
 
 How do you know you’ve mastered operations management? What’s the acid test?
 
-When you can go on long vacation in peace, without the worry of urgent escalation calls asking for information or decisions that only you can make or provide.
+- When you can go on long vacation in peace, without the worry of urgent escalation calls asking for information or decisions that only you can make or provide.
 
 #### Timeline
 
@@ -2613,17 +2603,15 @@ Price can help address capacity. The best way to address oversized VMs is having
 
 Using highway transportation as example: You do not add lanes because of congestion that lasts a short time or rarely happens.
 
-But what if the workload is revenue generating? For example, during annual sales you expect a much higher demand that happens only 1 day in 365 days. Do you build permanent capacity for the rest of the 364 days? Are you able to provide a burstable capacity, either in the cloud or on premises?
+- But what if the workload is revenue generating? For example, during annual sales you expect a much higher demand that happens only 1 day in 365 days. Do you build permanent capacity for the rest of the 364 days? Are you able to provide a burstable capacity, either in the cloud or on premises?
 
 Applying the above into vSphere on-premises, perhaps on that special day you need to limit other workloads, power them off, take hardware from other clusters, or move workloads to other clusters.
 
 It focuses on the consumer, while the long-term capacity view focuses on the provider. The short-term view answers questions that care about today. Examples:
 
-- “Can you deploy additional workloads?”  
-  The now part of the question is important, as the deployment is typically done by automation. You want to prevent the deployment if it will cause problem. This means you need to check both the present situation and the future situation.
+- “Can you deploy additional workloads?” The now part of the question is important, as the deployment is typically done by automation. You want to prevent the deployment if it will cause problem. This means you need to check both the present situation and the future situation.
 
-- “Can we take out resource providers temporarily?”  
-  Examples are putting ESXi hosts into maintenance mode, or doing a cluster upgrade.
+- “Can we take out resource providers temporarily?” Examples are putting ESXi hosts into maintenance mode, or doing a cluster upgrade.
 
 ##### Reclamation
 
@@ -2675,24 +2663,17 @@ Cost and Price are necessary in the transformation towards becoming a real servi
 
 What’s missing in the 5 pillars?
 
-- **Inventory**.  
-  Inventory is simply what you have. Your responsibility is a lot more than accounting of what you have where and how they change over time.  
-  Inventory is just a by-product. You plan for capacity, with certain configurations. As you manage your cost & capacity, the inventory will adjust accordingly.
+- **Inventory**. Inventory is simply what you have. Your responsibility is a lot more than accounting of what you have where and how they change over time. Inventory is just a by-product. You plan for capacity, with certain configurations. As you manage your cost & capacity, the inventory will adjust accordingly.
 
-- **Configuration**.  
-  Configuration is just a means to an end. You care about configuration only because it impacts security, capacity, performance, and availability. So it is often both the problem and solution to all the above pillars.
+- **Configuration**. Configuration is just a means to an end. You care about configuration only because it impacts security, capacity, performance, and availability. So it is often both the problem and solution to all the above pillars.
 
-- **Sustainability**.  
-  It’s covered by both capacity and cost. The only thing unique is the source of power. It’s simply looking at the same things, albeit from a different angle. It does not replace any of the existing pillars of operations management.
+- **Sustainability**. It’s covered by both capacity and cost. The only thing unique is the source of power. It’s simply looking at the same things, albeit from a different angle. It does not replace any of the existing pillars of operations management.
 
-- **Reliability**.  
-  This is just a characteristic of the system. Obviously, you want performance & available to be consistent, hence reliable and as you gain confidence, it becomes predictable. For example, if your website performance is not reliable or its uptime is not stable, you will troubleshoot from a performance or availability angle. There is no need to elevate the nature of something into an entity by itself. It complicates operations as you end up with overlap.
+- **Reliability**. This is just a characteristic of the system. Obviously, you want performance & available to be consistent, hence reliable and as you gain confidence, it becomes predictable. For example, if your website performance is not reliable or its uptime is not stable, you will troubleshoot from a performance or availability angle. There is no need to elevate the nature of something into an entity by itself. It complicates operations as you end up with overlap.
 
-- **Recoverability**.  
-  This is just a property of availability. Just like debuggability is a function of performance & availability.
+- **Recoverability**. This is just a property of availability. Just like debuggability is a function of performance & availability.
 
-- **Manageability.  
-  **This is just a property of configuration.
+- **Manageability. **This is just a property of configuration.
 
 Inventory is related, but not identical to configuration. They tend to be confused easily. For example, “configuration maximum” actually means inventory maximum.
 
@@ -3107,11 +3088,11 @@ It uses proactive as the primary, while still having reactive as the fall back.
 
 Reactive deals with 3 types of problems:
 
-1.  Is it dead? If the system is down, you don’t have performance problem. It also cannot be hacked.
+1. Is it dead? If the system is down, you don’t have performance problem. It also cannot be hacked.
 
-2.  Is it slow?
+2. Is it slow?
 
-3.  Is it safe? Security compromise, breach, leak, or hack belong here.
+3. Is it safe? Security compromise, breach, leak, or hack belong here.
 
 Proactive is a superset of reactive, as you do not if you have a problem yet. You also need to check the future, hence you include “will it be enough” question.
 
@@ -3131,11 +3112,11 @@ The following diagram shows how Level 1 Team (the frontliner) and supporting tea
 
 The daily discipline of who does what everyday matters.
 
-1.  The most important and the most basic is availability. If your system is down, you cannot have performance problem.
+1. The most important and the most basic is availability. If your system is down, you cannot have performance problem.
 
-2.  The next thing you ensure is performance. A system that is so slow is as good as down, perhaps to the point the hackers get tired of waiting
+2. The next thing you ensure is performance. A system that is so slow is as good as down, perhaps to the point the hackers get tired of waiting
 
-3.  Yes, security is number 3, not number 1 in the grand scheme of operations.
+3. Yes, security is number 3, not number 1 in the grand scheme of operations.
 
 <img src="sp5-framework-media/image51.png" style="width:6.56806in;height:2.91111in" alt="A screenshot of a computer Description automatically generated" />
 
