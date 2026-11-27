@@ -16,6 +16,7 @@ The reasons behind each item are in [`../design/`](../design) and [`../decisions
 | `data/` | Synthetic ACME estate and stories | YAML |
 | `database/` | The prototype database schema (D-080) | SQL |
 | `tests/` | Acceptance tests | YAML |
+| `requirements/` | The requirements of PCM's work for release 1.0, each with its test scenarios; the milestone of each is in the workspace's [ROADMAP](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md) | Markdown |
 
 ## Rules for builders
 

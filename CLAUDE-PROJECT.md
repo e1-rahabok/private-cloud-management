@@ -6,6 +6,7 @@ Rules, tools and paths of private-cloud-manager, the repository of PCM (Private 
 
 - Roadmap, open questions and decisions that bind several repositories: the workspace's [ROADMAP.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md), [OPEN-QUESTIONS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/OPEN-QUESTIONS.md) and [DECISIONS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md).
 - No hook runs here. Before acting, read the open milestone in the workspace's ROADMAP.md: the first heading that does not end with ": done".
+- Requirements of this repository: [`spec/requirements/`](spec/requirements) (WD-036). Each requirement belongs to the workspace milestone that ROADMAP.md names.
 - Decisions inside this repository: [decisions.md](decisions.md), IDs D-nnn.
 - Specification: [spec/](spec) ([spec/README.md](spec/README.md)). Reasons behind it: [design/](design).
 
