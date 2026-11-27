@@ -14,7 +14,6 @@ Rules, tools and paths of private-cloud-manager, the repository of PCM (Private 
 
 - AI generates all code in [pcm/](pcm) from the `spec/` folders and design notes beside it (D-010). Change the specification first.
 - Never edit generated code by hand: in a workspace folder, every file outside `spec/` and the design note (D-070).
-- Until the contract check C3 loads `pcm/core/agent_e2.py`: keep `build/pcm_proto/agent_e2.py`, which loads that file from the old path (R-REPO-008, D-133).
 
 ## Checks before each commit
 
