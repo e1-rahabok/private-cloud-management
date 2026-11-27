@@ -53,8 +53,11 @@ Source: Q-WS-134 (round 4: "Yes, by workspace."); WD-030.
 - And the parts every workspace uses (the server, the store, the object model, the database schema, the shared catalog files, the demo data generator, the fonts) sit in one shared folder named for what it holds
 - And [`build/`](https://github.com/e1-rahabok/private-cloud-manager/tree/main/build) no longer exists, and the moves are done in the same change as R-REPO-007, so no file moves twice
 - And PCM's decision log records the layout as a PCM decision
+- And the layout is set in PCM's specification first and the code is generated into it, as D-010 and D-070 require; PCM's CLAUDE-PROJECT.md and the build README move with it
+- And the contract check C3, which imports PCM's Agent E2 client, moves in three steps: the client is importable from its new path and its old one, the check moves to the new path, and the old path goes
 
 Test scenarios:
 - T-REPO-008a (anywhere, automated by PCM's own tests): every test passes after the move, and the demo starts.
+- T-REPO-008d (anywhere, automated by the workspace's `checks/run_all.py`): C3 passes after each of the three steps.
 - T-REPO-008b (anywhere, manual): list every file that only the L2 workspace uses; expect each one inside L2's folder.
 - T-REPO-008c (anywhere, manual): T-WS-007b on PCM finds no wrong guess.

@@ -1,13 +1,13 @@
 # Requirements: PCM live demo
 
-PCM's live demo is the L2 workspace reading the author's lab VCF Operations (https://10.115.1.81) through its Suite API. It is a separate demo with its own entry in the demo drop-down. The synthetic ACME demo stays as it is. The scope is performance and capacity management only. These requirements come from [WD-015, the live demo decision](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md), and from the author's answers to Q-WS-20 to Q-WS-39 in the [interview, round 1](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/interview-round-1.md) (also in [OPEN-QUESTIONS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/OPEN-QUESTIONS.md) until they move). Other short names are explained in the [glossary](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md).
+PCM's live demo is the L2 workspace reading the author's lab VCF Operations (https://10.115.1.81) through its Suite API. It is a separate demo with its own entry in the demo drop-down. The synthetic ACME demo stays as it is. The scope is performance and capacity management only. These requirements come from [WD-015, the live demo decision](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md), and from the author's answers to Q-WS-20 to Q-WS-39 in the [interview, round 1](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/interview-round-1.md). Other short names are explained in the [glossary](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md).
 
 Milestone ([ROADMAP.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md)): every requirement here belongs to M8, the PCM live demo. Its first slice is one lab cluster's Cluster Performance on the L2 Performance tab: R-LIVE-001, R-LIVE-024 and R-LIVE-030.
 
 Files involved:
 
 - PCM's L2 specification: [spec/catalog/l2.yaml](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/catalog/l2.yaml), [spec/workspaces/l2/monitor.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/workspaces/l2/monitor.md), [spec/workspaces/l2/frame.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/workspaces/l2/frame.md), [spec/api/l2.yaml](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/api/l2.yaml).
-- What VCF vCommunity Adapter publishes, and how it makes absent data and its check settings readable: [pcm-adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md), drafted in parallel. This file does not repeat it.
+- What VCF vCommunity Adapter publishes, and how it makes absent data and its check settings readable: [adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md), drafted in parallel. This file does not repeat it.
 - The contracts: [C2, KPI metric keys](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md#c2) (the keys the VCF vCommunity Adapter publishes and PCM reads) and [C3, the Agent E2 API](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md#c3) (the calls PCM makes to Agent E2), in [CONTRACTS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/CONTRACTS.md).
 
 Tests named below do not exist yet unless stated; "to write" marks them. Lab scenarios run from the author's laptop over the VPN. They use the read-only VCF Operations credential in `$HOME\.secrets\` ([WD-011, lab credentials](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md)). They start by running VCF vCommunity Adapter's [validate.ps1](https://github.com/e1-rahabok/PCM-Adapter/blob/main/tools/validate/validate.ps1), so a failure caused by a pack that is not collecting is reported as such. A lab scenario that cannot reach the lab is reported as not run, never as passed.
@@ -264,16 +264,16 @@ Test scenarios:
 
 ### R-LIVE-019 Band colours follow the statistic of each key
 
-Source: answer to Q-WS-19 ("If a metric does not have the word peak, it's likely a 5-minute average"); WD-016.
+Source: answer to Q-WS-19 ("If a metric does not have the word peak, it's likely a 5-minute average"); WD-016; Q-WS-81 (the catalog's interval is the rule).
 
-- Given a part whose catalog name contains "peak"
+- Given a part whose catalog row gives its interval as 20 seconds
 - When its figures and chart are coloured
 - Then the catalog's 20-second limits are used
-- And a part without "peak" uses the catalog's 5-minute limits
+- And a part whose row gives 5 minutes uses the catalog's 5-minute limits, whatever its name says
 - And a part with no limits for its statistic stays uncoloured
 
 Test scenarios:
-- T-LIVE-019a (anywhere, automated by build/tests/test_live.py::test_band_by_statistic, to write). Data: one peak part, one 5-minute part and one part with no 5-minute limits, from a copy of the catalog. Steps: open the Details fold. Expected: the first two coloured by the matching limits; the third plain.
+- T-LIVE-019a (anywhere, automated by build/tests/test_live.py::test_band_by_statistic, to write). Data: one 20-second part, one 5-minute part whose name says "peak", and one part with no limits for its interval, from a copy of the catalog. Steps: open the Details fold. Expected: the first two coloured by the matching limits; the third plain.
 
 ### R-LIVE-020 Parts an object does not have
 
@@ -306,27 +306,28 @@ Test scenarios:
 
 Source: answer to Q-WS-31; [PCM D-095, which statistic, on which axis](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L102).
 
-- Given the Adapter Instance's Cluster Check Period, Cluster Check Time (UTC) and Cluster Check Worst Percent, made readable by the VCF vCommunity Adapter ([pcm-adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md))
+- Given the Adapter Instance's Cluster Check Period, Cluster Check Time (UTC) and Cluster Check Worst Percent, made readable by the VCF vCommunity Adapter ([adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md))
 - When the Capacity tab labels a check value
 - Then the label uses those settings, for example "5th percentile, 24 hours to 08:00 GMT+8"
 - And when the settings cannot be read, the label omits the percentile rank and the period, and says "check settings not available"
 
 Test scenarios:
 - T-LIVE-022a (anywhere, automated by build/tests/test_live.py::test_check_labels, to write). Data: the fake with period 12 hours, time 06:00 UTC and Worst Percent 10; then the fake with no settings. Steps: open the Capacity tab, viewer zone GMT+8. Expected: "10th percentile, 12 hours to 14:00 GMT+8" for Cluster Performance; then "check settings not available".
-- T-LIVE-022b (lab, automated by tools/lab/Test-Live.ps1, to write). Steps: read the lab Adapter Instance's settings through the mechanism of pcm-adapter.md; open one cluster's Capacity tab. Expected: the labels match the settings.
+- T-LIVE-022b (lab, automated by tools/lab/Test-Live.ps1, to write). Steps: read the lab Adapter Instance's settings through the mechanism of the adapter's adapter.md; open one cluster's Capacity tab. Expected: the labels match the settings.
 
-### R-LIVE-023 The key list comes from the live environment
+### R-LIVE-023 The key list comes from the adapter, confirmed on the lab
 
-Source: answer to Q-WS-29 ("You will need to get from a live environment"); C2.
+Source: answer to Q-WS-29 ("You will need to get from a live environment"); [WD-033](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md) (PCM's key list comes from the adapter's module tables, and the lab read checks it); C2.
 
-- Given the lab VCF Operations with the VCF vCommunity Adapter installed
-- When a read-only tool lists the `vCommunity|` keys, and the VCF Operations capacity keys PCM reads, that the cluster, host and VM objects hold
-- Then it writes one file in PCM's specification `spec/catalog/vcf-operations-keys.yaml` with each key, its object type, its unit and its catalog name, plus the adapter version and the date
+- Given the keys the VCF vCommunity Adapter declares in its module tables ([R-ADP-007](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md)), and the VCF Operations capacity keys PCM reads
+- When the key tool runs
+- Then it writes one file in PCM's specification, `spec/catalog/vcf-operations-keys.yaml`, with each key, its object type, its unit and its catalog name, plus the adapter version and the date
+- And on the lab, the same tool confirms that the cluster, host and VM objects hold each key ([R-ADP-019](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md))
 - And every key PCM's live demo reads is in that file
-- And the C2 check compares the file with the keys PCM reads and with what the VCF vCommunity Adapter says it publishes ([pcm-adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md))
+- And the C2 check compares the file with the keys PCM reads and with what the VCF vCommunity Adapter says it publishes ([adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md))
 
 Test scenarios:
-- T-LIVE-023a (lab, automated by tools/lab/live_keys.py, to write). Steps: run the tool against the lab. Expected: the file lists at least the KPI score keys and their parts for cluster, host and VM; it names the adapter version shown by validate.ps1.
+- T-LIVE-023a (lab, automated by tools/lab/live_keys.py, to write). Steps: run the tool from the adapter's module tables, then against the lab. Expected: the file lists at least the KPI score keys and their parts for cluster, host and VM; each is found on a lab object; it names the adapter version shown by validate.ps1.
 - T-LIVE-023b (anywhere, automated by checks/kpi_keys.py, to write). Data: the key file and PCM's catalog. Steps: run the check; then plant a key PCM reads that the file lacks. Expected: passes on the real files; fails and names the planted key.
 - T-LIVE-023c (lab, automated by checks/kpi_keys.py --lab, to write). Expected: each listed key has a sample newer than 10 minutes on at least one lab object, or is marked conditional by PCM-Adapter.
 
@@ -348,7 +349,7 @@ Test scenarios:
 
 ### R-LIVE-025 The other KPIs match VCF Operations
 
-Source: answer to Q-WS-35; [PCM D-124, the four pages of release 1.0](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L132). The page list waits for round two, because the author has not answered Q-WS-21.
+Source: answer to Q-WS-35; [PCM D-124, the four pages of release 1.0](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L132). Q-WS-63 (round 2) decided the page list.
 
 Milestone: M8.
 
@@ -426,11 +427,11 @@ Milestone: M8, first slice.
 
 - Given one lab cluster and the 24-hour window
 - When the person asks Agent E2 "Why the worst?" on its Cluster Performance
-- Then Agent E2's answer names, as the main cause, the part the reference identifies: the part that lost the most points at the KPI's worst point under the catalog's scoring
+- Then Agent E2's answer names, as the main cause, the part the reference identifies: the part that lost the most points at the KPI's worst point, scored by the VCF vCommunity Adapter's own scoring code, which the reference script imports and does not copy
 - And when no part lost points, the answer says no part pulled the KPI down
 
 Test scenarios:
-- T-LIVE-030a (lab, automated by tools/lab/live_reference.py and build/tests/live.lab.test.mjs::test_agent_worst_part, to write). Data: Agent E2 on the lab VM with the gateway key. Steps: the reference script scores every part at the worst point; the page test asks the question and reads the answer. Expected: the answer names the reference's part, judged by the automatic grader of [WD-013, Agent E2 in release 1.0](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md) when the wording differs.
+- T-LIVE-030a (lab, automated by tools/lab/live_reference.py and build/tests/live.lab.test.mjs::test_agent_worst_part, to write). Data: Agent E2 on the lab VM with the gateway key. Steps: the reference script scores every part at the worst point; the page test asks the question and reads the answer. Expected: the answer names the reference's part as the main cause; when the wording differs, the automatic grader of [WD-013, Agent E2 in release 1.0](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md) judges it with one key point: the reference's part, named as the main cause.
 
 ## Tests and the synthetic demo
 
@@ -485,6 +486,19 @@ Milestone: after release 1.0.
 Test scenarios:
 - T-LIVE-034a (lab, automated by build/tests/live.lab.test.mjs::test_tiered_parts, to write). Data: the nested tiered cluster. Steps: open its Cluster Risk Details fold. Expected: the tiering parts are shown with data.
 
+### R-LIVE-035 PCM keeps each Agent E2 answer with its trace and rating
+
+Source: Q-WS-61 (PCM and isvara.io store question, answer, trace ID and rating).
+
+Milestone: M8.
+
+- Given an Agent E2 answer in the live demo
+- When it is shown, and when the person rates it
+- Then PCM's database keeps the question, the answer, Agent E2's `trace_id` and the rating, for 30 days
+
+Test scenarios:
+- T-LIVE-035a (anywhere, automated by build/tests/test_live.py::test_answer_record, to write). Data: a stub Agent E2 answering with a trace ID. Steps: ask one question and rate it. Expected: one record with the four fields; with the clock moved 31 days on, it is gone.
+
 ## Changes to PCM's own specification
 
 Each line is a change to make in private-cloud-manager in a later pull request. Nothing here is edited yet.
@@ -519,7 +533,7 @@ Each line is a change to make in private-cloud-manager in a later pull request. 
 
 ### R-E2-020 PCM reads an Agent E2 job every 10 seconds
 
-Source: WD-013 ("the user always sees that Agent E2 is still working"); answer to Q-WS-I3 ("how to inform user Agent E2 is not hung or dead?"); the author, 2026-11-27 ("VMware Admin does not mind 10 seconds waiting as he knows this is not a general chat").
+Source: WD-013 ("the user always sees that Agent E2 is still working"); answer to Q-WS-I3 ("how to inform user Agent E2 is not hung or dead?"); [WD-043](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md) (the author, 2026-11-27: "VMware Admin does not mind 10 seconds waiting as he knows this is not a general chat").
 
 - Given PCM's live demo waiting on an Agent E2 job (R-E2-007)
 - When the job is queued or running
@@ -536,4 +550,4 @@ Test scenarios:
 
 ## Questions for round two
 
-The questions on this file, with their decisions, are in the [interview, round 2](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/interview-round-2.md): Q-WS-63 to Q-WS-71 (and Q-WS-57). The few still open are in [OPEN-QUESTIONS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/OPEN-QUESTIONS.md).
+The questions on this file, with their decisions, are in the [interview, round 2](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/interview-round-2.md): Q-WS-63 to Q-WS-71 (and Q-WS-57). None is open.
