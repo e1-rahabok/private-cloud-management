@@ -517,13 +517,13 @@ Each line is a change to make in private-cloud-manager in a later pull request. 
 
 ## Agent E2's progress on screen
 
-### R-E2-020 A caller reads a job every 10 seconds
+### R-E2-020 PCM reads an Agent E2 job every 10 seconds
 
 Source: WD-013 ("the user always sees that Agent E2 is still working"); answer to Q-WS-I3 ("how to inform user Agent E2 is not hung or dead?"); the author, 2026-11-27 ("VMware Admin does not mind 10 seconds waiting as he knows this is not a general chat").
 
-- Given PCM or isvara.io waiting on an Agent E2 job (R-E2-007)
+- Given PCM's live demo waiting on an Agent E2 job (R-E2-007)
 - When the job is queued or running
-- Then the caller reads `GET /v1/jobs/<id>` once every 10 seconds, and not more often
+- Then PCM reads `GET /v1/jobs/<id>` once every 10 seconds, and not more often
 - And between reads, the time so far counts up every second in the browser, with no call to Agent E2
 - And the screen shows the current stage as words a person reads, never the stage's code name
 - And when `updated_at` is more than 60 seconds old, the screen says that Agent E2 is not responding and offers to try again
@@ -532,7 +532,7 @@ Source: WD-013 ("the user always sees that Agent E2 is still working"); answer t
 Test scenarios:
 - T-E2-020a (anywhere, automated in private-cloud-manager by `build/tests/agent_e2_job.test.mjs`, to write): a fake job endpoint that counts requests and runs a job for 60 seconds; expect at most 7 reads, the stage in words, and the answer at the end.
 - T-E2-020b (anywhere, the same test): the fake stops changing `updated_at`; expect "not responding" on screen within 70 seconds.
-- T-E2-020c (anywhere, automated in isvara by Ask Agent E2's tests, to write in M5): T-E2-020a and T-E2-020b on Ask Agent E2.
+- isvara.io's side is [R-ASK-002](https://github.com/e1-rahabok/isvara/blob/main/spec/requirements/ask.md#r-ask-002-the-visitor-sees-agent-e2-working), in M5.
 
 ## Questions for round two
 
