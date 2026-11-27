@@ -28,7 +28,7 @@ useradd --system --home /opt/pcm --shell /usr/sbin/nologin pcm
 ```
 
 ```bash
-git clone https://github.com/e1-rahabok/private-cloud-management /opt/pcm
+git clone https://github.com/e1-rahabok/private-cloud-manager /opt/pcm
 ```
 
 ```bash

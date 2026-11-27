@@ -4,7 +4,7 @@ Decisions on PCM scope and design. One entry each. Newest at the bottom. A chang
 
 | ID | Date | Decision | Reason |
 |---|---|---|---|
-| D-001 | 2026-11-20 | The product is named **PCM** (Private Cloud Management). | Short, vendor-neutral. |
+| D-001 | 2026-11-20 | The product is named **PCM** (Private Cloud Manager). | Short, vendor-neutral. |
 | D-002 | 2026-11-20 | PCM is not a Broadcom product. It is free, and customers download it. | It helps customers grow VMware into their complete private cloud. |
 | D-003 | 2026-11-20 | Scope is the whole private cloud, not only VMware. A private cloud has dozens of vendors, competitors included. PCM connects to them, for example ITSM, CMDB and email. | VMware is the core, not the whole estate. |
 | D-004 | 2026-11-20 | On-premises only. Customers own the full source code and personalize it. | Customer data stays on site. Large enterprises adapt tools to their own process. |
@@ -620,7 +620,7 @@ Source: Cost n Price n Value (in `sources/`).
 - Utilization against total capacity is not consumption. HA and the buffer are not available to VMs (vCommunity capacity model).
 
 **Why vCommunity's model**
-- It is already built, documented and running: `docs/concepts/capacity-management.md` in VCF-vCommunity-Adapter.
+- It is already built, documented and running: `docs/concepts/capacity-management.md` in PCM-Adapter.
 - Three measures, one scale, one rule:
   - **Consumption:** how much of the usable capacity is used, cluster-wide.
   - **Contention:** whether VMs wait now. This is the SLA, and it caps consumption: no consumption level is safe if VMs wait.
