@@ -37,7 +37,7 @@ Source: WD-030; PCM D-132.
 
 Test scenarios:
 - T-REPO-007a (anywhere, automated by PCM's own tests): every test passes after the renames, and the demo starts.
-- T-REPO-007b (anywhere, automated by a search to write in [checks](https://github.com/e1-rahabok/private-cloud-workspace/tree/main/checks)): no file in any repository, outside the requirement files that name them to forbid them and the workspace's tutorial, which names them as examples, names `build/pcm_proto`, `pcm_proto`, `sources/` of PCM or `story_m5`, outside archives and dated records.
+- T-REPO-007b (anywhere, automated by [checks/forbidden_names.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/checks/forbidden_names.py), run by run_all.py and in every repository's CI): no file in any repository, outside the requirement files that name them to forbid them and the workspace's tutorial, which names them as examples, names `build/pcm_proto`, `pcm_proto`, `sources/` of PCM or `story_m5`, outside archives and dated records.
 - T-REPO-007c (anywhere, manual): T-WS-007b on PCM finds no wrong guess.
 
 ### R-REPO-008 PCM's folders are grouped by workspace
@@ -59,6 +59,6 @@ Source: Q-WS-134 (round 4: "Yes, by workspace."); WD-030.
 Test scenarios:
 - T-REPO-008a (anywhere, automated by PCM's own tests): every test passes after the move, and the demo starts.
 - T-REPO-008d (anywhere, automated by the workspace's `checks/run_all.py`): C3 passes after each of the three steps.
-- T-REPO-008e (anywhere, automated by the search of T-REPO-007b): no requirement file, test or document names a path under PCM's `build/` after the move, outside dated records and the requirement files that name it to forbid it.
+- T-REPO-008e (anywhere, automated by the check of T-REPO-007b, [checks/forbidden_names.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/checks/forbidden_names.py)): no requirement file, test or document names a path under PCM's `build/` after the move, outside dated records and the requirement files that name it to forbid it.
 - T-REPO-008b (anywhere, manual): list every file that only the L2 workspace uses; expect each one inside L2's folder.
 - T-REPO-008c (anywhere, manual): T-WS-007b on PCM finds no wrong guess.
