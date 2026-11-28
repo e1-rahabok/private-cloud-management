@@ -7,8 +7,9 @@ Rules, tools and paths of private-cloud-manager, the repository of PCM (Private 
 - Roadmap, open questions and the specification that binds several repositories: the workspace's [ROADMAP.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md), [OPEN-QUESTIONS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/OPEN-QUESTIONS.md), [brief](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/brief.md) (goals, scope, constraints, risks) and [system design](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md) (contracts and design choices).
 - No hook runs here. Before acting, read the open milestone in the workspace's ROADMAP.md: the first heading that does not end with ": done".
 - Requirements of this repository: [`spec/requirements/`](spec/requirements) (DESIGN-4). Each requirement belongs to the workspace milestone that ROADMAP.md names.
+- Test plan of this repository: [spec/test-plan.md](spec/test-plan.md): test levels, the lab run order of `tools/lab/Test-Live.ps1`, and the reference script `tools/lab/live_reference.py`.
 - Decisions inside this repository: [decisions.md](decisions.md), IDs D-nnn. Add no new block to it: put a new outcome in a requirement or a design note, with its reason.
-- Questions inside this repository: [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md), IDs Q-PCM-n (DESIGN-23, DESIGN-23).
+- Questions inside this repository: [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md), IDs Q-PCM-n (DESIGN-23).
 - Specification: one folder per workspace under [pcm/](pcm), each with its `spec/` folder; front page [spec/README.md](spec/README.md) (D-133). Reasons behind it: each workspace's `design-note.md`, the notes in [pcm/core/design-notes/](pcm/core/design-notes), and [decisions.md](decisions.md).
 
 ## Code

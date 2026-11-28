@@ -10,7 +10,7 @@ Files involved:
 - What VCF vCommunity Adapter publishes, and how it makes absent data and its check settings readable: [adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md), drafted in parallel. This file does not repeat it.
 - The contracts: [C2, KPI metric keys](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md#c2) (the keys the VCF vCommunity Adapter publishes and PCM reads) and [C3, the Agent E2 API](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md#c3) (the calls PCM makes to Agent E2), in [contracts](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md#contracts).
 
-Tests named below do not exist yet unless stated; "to write" marks them. Lab scenarios run from the author's laptop over the VPN. They use the read-only VCF Operations credential in `$HOME\.secrets\` ([DESIGN-9, lab credentials](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md)). They start by running VCF vCommunity Adapter's [validate.ps1](https://github.com/e1-rahabok/PCM-Adapter/blob/main/tools/validate/validate.ps1), so a failure caused by a pack that is not collecting is reported as such. A lab scenario that cannot reach the lab is reported as not run, never as passed.
+The order the lab scenarios run in, the reference script that gives each expected value, and what decides a pass are in [PCM's test plan](../test-plan.md). Tests named below do not exist yet unless stated; "to write" marks them. Lab scenarios run from the author's laptop over the VPN. They use the read-only VCF Operations credential in `$HOME\.secrets\` ([DESIGN-9, lab credentials](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md)). They start by running VCF vCommunity Adapter's [validate.ps1](https://github.com/e1-rahabok/PCM-Adapter/blob/main/tools/validate/validate.ps1), so a failure caused by a pack that is not collecting is reported as such. A lab scenario that cannot reach the lab is reported as not run, never as passed.
 
 ## The demo and its scope
 
@@ -394,6 +394,7 @@ Milestone: M8, first slice.
 Test scenarios:
 - T-LIVE-024a (lab, automated by tools/lab/live_reference.py and pcm/l2/tests/live.lab.test.mjs::test_cluster_performance_matches, to write). Steps: open the tab; read its window from the API; the reference script reads the raw samples for that window and computes Now, Worst and the 5th percentile. Expected: all three equal at whole percent; Worst's time equal; a screenshot is saved.
 - T-LIVE-024b (anywhere, automated by pcm/l2/tests/test_live.py::test_figures_nearest_rank, to write). Data: a fake series of 288 known samples. Expected: Now, Worst, its time and the 5th percentile equal the values computed by hand in the test.
+- T-LIVE-024c (anywhere, automated by tools/lab/test_live_reference.py, to write). Data: the 288 samples of T-LIVE-024b, served by the fake Suite API. Steps: run the reference script on them. Expected: it prints the same hand-computed Now, Worst, its time and 5th percentile; the oracle of the lab tests is itself proved ([test-plan.md](../test-plan.md), section The oracle).
 
 ### R-LIVE-025 The other KPIs match VCF Operations
 
@@ -569,6 +570,25 @@ Milestone: M8.
 Test scenarios:
 - T-LIVE-035a (anywhere, automated by pcm/l2/tests/test_live.py::test_answer_record, to write). Data: a stub Agent E2 answering with a trace ID. Steps: ask one question and rate it. Expected: one record with the four fields; with the clock moved 31 days on, it is gone.
 
+### R-LIVE-036 The live demo runs end to end as the author shows it
+
+Why: each lab scenario proves one page, but the audience sees one walk through the live demo; a step that leads nowhere, or a number that changes between two steps, breaks the demo even when every page passes on its own.
+
+Source: answer to Q-WS-37 ("You forgot you have live access"); answer to Q-WS-35 (the audience compares with VCF Operations); [GOAL-4, release 1.0 success](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/brief.md); SCOPE-5. The steps are the live demo script in [demo/README.md](../../demo/README.md), section The live demo, to write from Q-PCM-3 in [OPEN-QUESTIONS.md](../../OPEN-QUESTIONS.md).
+
+Milestone: M8.
+
+- Given the live demo on the lab VM and the live demo script
+- When the live rehearsal walks the script's steps in a browser, from the demo drop-down to the last step
+- Then each step's screen shows what the script says, and each number on it equals the reference script's value for the same object and window
+- And the same object shows the same value on every step that shows it
+- And Agent E2's answer names the reference's part, and its rating is kept (R-LIVE-030, R-LIVE-035)
+- And a screenshot of each step is saved, as `demo/rehearse.mjs` does for the synthetic demo
+
+Test scenarios:
+- T-LIVE-036a (lab, automated by demo/rehearse.mjs --live, run as step 10 of tools/lab/Test-Live.ps1, to write). Data: the lab VCF Operations and the reference script. Steps: walk every step of the live demo script. Expected: every step passes; one line per step, and a screenshot per step in the run's folder.
+- T-LIVE-036b (anywhere, automated by demo/rehearse.mjs --live against the fake Suite API, to write). Data: the fake Suite API with one cluster, one host and one VM. Steps: as 036a. Expected: every step's link leads to the next step's page, and the fake's values show on each.
+
 ## Changes to PCM's own specification
 
 Each line is a change to make in private-cloud-manager in a later pull request. Nothing here is edited yet.
@@ -596,7 +616,7 @@ Each line is a change to make in private-cloud-manager in a later pull request. 
 | [spec/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/README.md#L49) | Add the live demo to the status table; move each verified assumption out of "to verify". |
 | [pcm/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/README.md#L279) | Remove the gap "No VCF Operations connector in 1.0"; add the live tests. |
 | [deploy/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/deploy/README.md#L3) and [deploy/pcm.env.example](https://github.com/e1-rahabok/private-cloud-manager/blob/main/deploy/pcm.env.example) | The live demo connects read-only to VCF Operations; add its variables to `pcm.env`. |
-| [demo/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/demo/README.md#L21) | The drop-down has the live entry; add a short live demo script. |
+| [demo/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/demo/README.md#L21) | The drop-down has the live entry; add the live demo script of R-LIVE-036, from Q-PCM-3. |
 | [tools/lab/Test-Lab.ps1](https://github.com/e1-rahabok/private-cloud-manager/blob/main/tools/lab/Test-Lab.ps1#L2) | Read the DPAPI files of DESIGN-9 in place of Windows Credential Manager (Q-WS-40). |
 
 ## Agent E2's progress on screen
