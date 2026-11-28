@@ -479,7 +479,7 @@ page:
       "Ask Agent E2 about {metric}"; every finding row has one, and no "Explain this finding" button remains. A click on the Peak vCPU run queue length mark
       opens the panel on the right: the content is pushed, not covered (the chart's right edge stays left of the panel), the tree folds to a strip,
       the Peak vCPU run queue length metric is outlined, the context names fr-svc-5526, Performance and the window, and up to three suggested questions show.
-      With the service running, a suggested question returns an answer with a closed "Sources (2)" control, Agent E2's opening as the first paragraph with no box (the calculator's own lines not shown), an object of the
+      With the service running, a suggested question returns an answer with a closed "Sources (2)" control, Agent E2's opening first, as one paragraph in the text's own style with no box (the calculator's own lines not shown), an object of the
       estate named in it as a link, and the footer "recorded in the action history". A click on "Sources" opens it and shows the two files as chips.
       A move to another tab keeps the panel open with the new context; Esc closes it, the tree comes back, and the focus returns to the mark.
     decisions: [D-097, D-099, D-119]
@@ -487,8 +487,9 @@ page:
     rule: >
       On fr-svc-5526's Performance tab each layer heading has a mark named "Ask Agent E2 about the {layer} layer"; it opens the panel
       with the layer in the context and suggests "Is the Guest OS layer the problem?". The top bar mark on the same tab suggests
-      "Is this VM performing well over the last 24 hours?", and a question sent from it carries both layers' figures.
-    decisions: [D-097]
+      "Is this VM performing well over the last 24 hours?", and a question sent from it carries both layers' figures. Agent E2's opening
+      for the two KPIs shows first, as a list of two bullets with no box.
+    decisions: [D-097, D-119]
   - id: LPG-23
     rule: >
       The KPI comes first (D-100). On fr-bat-6839's Performance tab the first section is "Performance" with Guest OS Performance

@@ -106,7 +106,7 @@ pcm/
 - **What:** each workspace has a vocabulary list in `catalog/vocabulary/`:
   - Executive uses D-051.
   - L1 uses plain questions with scores from 0 to 100%.
-  - L2 and Capacity use full technical terms in SP5 units.
+  - L2 and Capacity use full technical terms in SP5 units (SP5, the author's framework of five pillars: availability, performance, security, capacity and value).
 
   A test scans the page text against the list.
 - **Why:**
@@ -139,6 +139,8 @@ pcm/
   - Example: No avoided word on `/exec`; no interactive element on `/noc/wall`; every visual names a question
   - Why this level exists: The rules that make each workspace what it is.
 
+- **Page tests side by side:** each page test owns its ports. No port is used by two tests, the servers and stubs they start included, so tests can run at the same time. A stub that cannot start ends its test, and the test stops the PCM server it started.
+  - Why: the capacity page test's server and the L2 page test's stub Agent E2 both used port 8769. Run side by side, a test that found its port taken either stopped and left its PCM server running, or read the other test's server and waited out a 60-second timeout on each page.
 - **What tests cannot check:** whether a page passes the 5-second test, or whether a PCM scenario story convinces the approval audience. That is the author's review.
 
 ## 5. The build loop

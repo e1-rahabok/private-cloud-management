@@ -131,7 +131,7 @@ api: /api/l2/agent/ask
 - **Not PCM's to send:** whether a move of a KPI is a drop. That is domain knowledge, Agent E2's (D-078): its KPI change level and its calculator read the points PCM sends.
 - **While Agent E2 works:** "Agent E2 is reading the knowledge base and the facts PCM sent." with the seconds elapsed. A local model takes 10 to 40 seconds; no made-up progress steps.
 - **An answer:**
-  - first, Agent E2's opening (`lead`), when it sends one: the headline fact in plain words, written by its code from its calculator, as the first paragraph, with no box and no label (D-119);
+  - first, Agent E2's opening (`lead`), when it sends one: the headline fact in plain words, written by its code from its calculator, with no box and no label (D-119). It is Markdown, read like the text after it: one paragraph for one KPI, and one bullet per KPI when the question covers several (Agent E2 writes them so). An object of the estate named in it is a link, as in the text;
   - then the text, as Agent E2 wrote it: the cause and where to look next. One voice: the two read as one answer. The calculator's own lines (`computed`) are not shown;
   - "Sources (n)": a control, closed by default, with the number of knowledge files Agent E2 read. Open, it shows the files as chips. Closed, the answer is the opening, the text and the footer, so a long list of files does not crowd the panel (D-099). One click answers "from which sources?";
   - an object of the estate named in the text is a link to it, on the same tab and window;

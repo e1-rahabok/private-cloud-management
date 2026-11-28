@@ -1,6 +1,6 @@
 # SSH to the lab VM
 
-`lab-vm-ssh.ps1` logs in to the lab VM with an SSH key, under the host alias that `$HOME\.secrets\lab.json` names (`vm_ssh_alias`; the file's shape is [lab.example.json](../lab/lab.example.json), DESIGN-9), runs commands there and reads its sshd log. It holds no passwords.
+`lab-vm-ssh.ps1` logs in to the lab VM with an SSH key, under the host alias that `$HOME\.secrets\lab.json` names (`vm_ssh_alias`; the file's shape is [lab.example.json](../lab/lab.example.json); DESIGN-9 in the workspace's [system design](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md) keeps the lab's addresses and credentials out of every repository), runs commands there and reads its sshd log. It holds no passwords.
 
 ## One-time host setup (needs the sudo password, run once)
 
