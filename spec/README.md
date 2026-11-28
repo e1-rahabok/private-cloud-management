@@ -25,6 +25,7 @@ The specification sits beside the code generated from it, in one folder per work
 | [`pcm/core/spec/visual-style.md`](../pcm/core/spec/visual-style.md) | Tokens, colour roles, components | Markdown |
 | [`pcm/core/spec/acceptance-tests.yaml`](../pcm/core/spec/acceptance-tests.yaml) | The acceptance tests of the database | YAML |
 | [`requirements/`](requirements) | PCM's requirements for release 1.0, with test scenarios; milestones in the workspace's [ROADMAP](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md) | Markdown |
+| [`test-plan.md`](test-plan.md) | How PCM is tested: levels, lab run order, reference script, pass criteria | Markdown |
 
 ## Rules for builders
 
