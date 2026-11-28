@@ -90,7 +90,7 @@ Source: answer to Q-WS-24 ("All these are only applicable in synthetic"); WD-015
 - Then it has no class of service filter, and no text about Gold, Silver or Bronze
 - And the lines across clusters (worst and percentile) cover every cluster under the selected object
 - And no live object shows a region, location, class, environment or local time zone
-- And times are shown in the viewer's time zone with the zone named, as in the synthetic demo ([PCM D-074, three rules from the first build's review](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L81))
+- And times are shown in the viewer's time zone with the zone named, as in the synthetic demo ([PCM D-074, three rules from the first build's review](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-074-rules-from-the-first-builds-review))
 
 Test scenarios:
 - T-LIVE-006a (anywhere, automated by pcm/l2/tests/live.page.test.mjs::test_no_class, to write). Data: the fake Suite API with two clusters under one VCF instance. Steps: open the VCF instance's Performance and Capacity tabs. Expected: no class filter; the words Gold, Silver and Bronze are absent; the worst line is the lower of the two clusters at each point.
@@ -154,7 +154,7 @@ Test scenarios:
 
 ### R-LIVE-011 A failed read shows "No data" for the whole page
 
-Source: answer to Q-WS-27 ("If the data is stale, say no data"); [PCM D-041, wall behaviour: stale data turns grey, never green](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L47); Q-WS-69 (a Suite API read stops after 10 seconds).
+Source: answer to Q-WS-27 ("If the data is stale, say no data"); [PCM D-041, wall behaviour: stale data turns grey, never green](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-041-noc-wall-behaviour); Q-WS-69 (a Suite API read stops after 10 seconds).
 
 - Given the Suite API does not answer within 10 seconds, answers an HTTP error, refuses the login, or fails the certificate check
 - When a live page loads
@@ -290,7 +290,7 @@ Test scenarios:
 
 ### R-LIVE-021 The Periodic Cluster Check as the adapter publishes it
 
-Source: answer to Q-WS-31 ("PCM gets from the PCM Adapter"); Q-WS-64 (30 minutes for a check result); [PCM D-094, the Capacity tab reads the check and never recomputes it](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L101).
+Source: answer to Q-WS-31 ("PCM gets from the PCM Adapter"); Q-WS-64 (30 minutes for a check result); [PCM D-094, the Capacity tab reads the check and never recomputes it](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-094-the-l2-capacity-tab-and-vcommunitys-capacity-model).
 
 - Given a lab cluster with Periodic Cluster Check values for its latest window
 - When its Capacity tab opens
@@ -304,7 +304,7 @@ Test scenarios:
 
 ### R-LIVE-022 The check labels use the adapter's own settings
 
-Source: answer to Q-WS-31; [PCM D-095, which statistic, on which axis](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L102).
+Source: answer to Q-WS-31; [PCM D-095, which statistic, on which axis](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-095-statistics-over-time-and-across-objects).
 
 - Given the Adapter Instance's Cluster Check Period, Cluster Check Time (UTC) and Cluster Check Worst Percent, made readable by the VCF vCommunity Adapter ([adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md))
 - When the Capacity tab labels a check value
@@ -333,7 +333,7 @@ Test scenarios:
 
 ### R-LIVE-024 Cluster Performance matches VCF Operations
 
-Source: answer to Q-WS-35 ("okay"); [PCM D-131, percentiles labelled by rank](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L139).
+Source: answer to Q-WS-35 ("okay"); [PCM D-131, percentiles labelled by rank](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-131-percentile-labels-by-statistical-rank).
 
 Milestone: M8, first slice.
 
@@ -349,7 +349,7 @@ Test scenarios:
 
 ### R-LIVE-025 The other KPIs match VCF Operations
 
-Source: answer to Q-WS-35; [PCM D-124, the four pages of release 1.0](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L132). Q-WS-63 (round 2) decided the page list.
+Source: answer to Q-WS-35; [PCM D-124, the four pages of release 1.0](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-124-suggested-questions-of-a-whole-page). Q-WS-63 (round 2) decided the page list.
 
 Milestone: M8.
 
@@ -363,7 +363,7 @@ Test scenarios:
 
 ### R-LIVE-026 Lines across clusters agree with vSphere World
 
-Source: answer to Q-WS-23; [PCM D-091, the Performance tab above the cluster](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L98).
+Source: answer to Q-WS-23; [PCM D-091, the Performance tab above the cluster](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-091-the-performance-tab-above-the-cluster).
 
 Milestone: M8.
 
@@ -377,7 +377,7 @@ Test scenarios:
 
 ### R-LIVE-027 Capacity Remaining, Time Remaining and VM Remaining are read
 
-Source: answer to Q-WS-20 ("yes": live mode reads what the synthetic demo shows as placeholders); [PCM D-100, the KPI first on the Performance and Capacity tabs](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L107).
+Source: answer to Q-WS-20 ("yes": live mode reads what the synthetic demo shows as placeholders); [PCM D-100, the KPI first on the Performance and Capacity tabs](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-100-kpi-over-time-on-performance-and-capacity-tabs).
 
 Milestone: M8.
 
@@ -505,11 +505,11 @@ Each line is a change to make in private-cloud-manager in a later pull request. 
 
 | File | Change |
 |---|---|
-| [decisions.md, D-076](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L83) and its [rationale](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L406) | Say that the live demo sends lab facts to the cloud model through the gateway (Q-WS-39), and that facts never carry the VCF Operations credential, token or URL. |
+| [decisions.md, D-076](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-076-model-client-and-gateway-for-agent-e2) and its [rationale](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-076-agent-e2-in-the-demo-through-vercel-ai-gateway) | Say that the live demo sends lab facts to the cloud model through the gateway (Q-WS-39), and that facts never carry the VCF Operations credential, token or URL. |
 | [decisions.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md) | Add a PCM decision for the live demo that points to WD-015 and this file. |
-| [decisions.md, D-062](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L69) | The VCF APIs are now checked against the lab VCF Operations; record its version. |
-| [decisions.md, D-087](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L94) | Add that the live demo's tree is VCF Operations' inventory from the VCF instance down (Q-WS-25). |
-| [decisions.md, D-100 rationale](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L801) and [D-106](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#L113) | "Release 1.0: placeholder values" becomes "synthetic demo: placeholder or PCM scenario story values; live demo: read from VCF Operations". |
+| [decisions.md, D-062](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-062-checks-of-the-vcf-apis) | The VCF APIs are now checked against the lab VCF Operations; record its version. |
+| [decisions.md, D-087](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-087-the-five-views-of-the-inventory-tree) | Add that the live demo's tree is VCF Operations' inventory from the VCF instance down (Q-WS-25). |
+| [decisions.md, D-100 rationale](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-100-the-kpi-first-performance-and-capacity-tabs) and [D-106](https://github.com/e1-rahabok/private-cloud-manager/blob/main/decisions.md#d-106-the-details-fold-on-the-clusters-performance-tab) | "Release 1.0: placeholder values" becomes "synthetic demo: placeholder or PCM scenario story values; live demo: read from VCF Operations". |
 | [pcm/core/design-notes/pcm-core.md, 3.2](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/core/design-notes/pcm-core.md#L46) | PCM reads every KPI, part and check value from the VCF vCommunity Adapter and computes only for display (Q-WS-23). |
 | [pcm/core/design-notes/pcm-core.md, 3.3](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/core/design-notes/pcm-core.md#L67) | Release 1.0 stores no metrics; the live demo reads through with a 60-second cache (Q-WS-30). |
 | [pcm/core/design-notes/pcm-core.md, 3.5](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/core/design-notes/pcm-core.md#L108) | Replace "two collection cycles" with the rule of R-LIVE-015 once confirmed. |
