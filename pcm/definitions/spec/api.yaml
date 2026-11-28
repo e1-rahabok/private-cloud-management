@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: PCM API, Docs part
   version: "1"
-  description: Read-only documentation of PCM's own objects (pcm/docs/design-note.md, D-082).
+  description: Read-only documentation of PCM's own objects (pcm/definitions/design-note.md, D-082).
 paths:
   /api/docs:
     get: { summary: "Every object, grouped by kind: id, title, version, owner, status." }

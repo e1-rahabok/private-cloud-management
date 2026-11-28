@@ -2,6 +2,8 @@
 
 The reference for what PCM owns and acts on (D-082). Documentation for colleagues (architecture, decisions, user guides, team structure, learning) is private-cloud-explained, a separate product.
 
+Path: `privatecloud.acme.com/docs` (D-028). Folder: `pcm/definitions` (D-135), named for the definitions it holds; the workspace keeps the name Docs on screen and in its route.
+
 ## 1. The readers
 
 | Reader | Comes to `/docs` to | Usually from |
@@ -41,7 +43,7 @@ The reference for what PCM owns and acts on (D-082). Documentation for colleague
 - **What:** a setting whose source says "proposal" shows a "Proposal" chip until its owner confirms it.
 - **Why:** PCM must not present an invented threshold as an agreed one (spec README, rule 6). The chip makes open items visible to everyone, not only to whoever reads the YAML.
 
-### 2.6 Technical terms, with the plain label where one exists
+### 2.6 Technical terms and their plain labels
 
 - **What:** `/docs` uses the technical terms of the catalog (CPU Ready, threads, Operational Availability). Where a workspace shows a plain label, the definition says so, for example `scale.compute_cores` is shown as "computing power" on the CIO page.
 - **Why:** the reader of `/docs` wants the exact meaning. The "shown as" line is the bridge between the plain words on the CIO page and the precise definition.
@@ -57,7 +59,7 @@ The reference for what PCM owns and acts on (D-082). Documentation for colleague
 - **Needed on the private-cloud-explained side:** source type `pcm` and origin `generated`. Neither exists in its content model today.
 - **Not exported:** the definitions of every number. private-cloud-explained has no document type for a metric definition. They stay in `/docs` until it has one.
 
-### 2.8 Found while designing: thresholds and standards lived in code
+### 2.8 Thresholds and standards in the catalog
 
 - The threshold for Cluster Performance red and the configuration standards were written inside the prototype code, not in the specification.
 - That breaks the specification-driven build (D-070): a value the spec does not hold cannot be documented, tested or reviewed.

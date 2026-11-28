@@ -1,4 +1,4 @@
-// GENERATED from pcm/docs/spec/pages/. Do not edit by hand (D-070).
+// GENERATED from pcm/definitions/spec/pages/. Do not edit by hand (D-070).
 'use strict';
 const QS = new URLSearchParams(location.search);
 const PASS = ['now', 'enable'].filter(k => QS.get(k)).map(k => `${k}=${encodeURIComponent(QS.get(k))}`).join('&');
@@ -32,7 +32,7 @@ async function index() {
   main.innerHTML = `<h1>What PCM owns</h1><p class="lead">${total} objects. Each page is generated from the object PCM runs, so it cannot drift from it. Change an object in the workspace that owns it.</p>
     <label class="muted" for="q">Search by ID or text</label><br><input id="q" class="search" type="search" autocomplete="off">
     <div id="list"></div>
-    <section class="block"><h2>Export to private-cloud-explained</h2><p>SOPs (as runbooks), action policies, thresholds and standards, settings, and the inventory summary are exported as Markdown with its front matter, through its pull-request review:</p><pre><code>python3 -m pcm.docs.docs --export &lt;private-cloud-explained checkout&gt;</code></pre></section>`;
+    <section class="block"><h2>Export to private-cloud-explained</h2><p>SOPs (as runbooks), action policies, thresholds and standards, settings, and the inventory summary are exported as Markdown with its front matter, through its pull-request review:</p><pre><code>python3 -m pcm.definitions.definitions --export &lt;private-cloud-explained checkout&gt;</code></pre></section>`;
   render('');
   document.getElementById('q').addEventListener('input', e => render(e.target.value));
 }

@@ -33,7 +33,7 @@ pcm/
       demo-data/         the estate and the PCM scenario stories of the synthetic ACME data
       visual-style.md    tokens, colour roles, components, chart rules
       acceptance-tests.yaml
-  executive/  noc/  l2/  capacity/  docs/
+  executive/  noc/  l2/  capacity/  definitions/
     design-note.md
     spec/
       pages/             one file per page
@@ -44,12 +44,18 @@ pcm/
       sops/, action-policies.yaml   catalog files only one workspace reads: the NOC's SOPs, L2's action policies
 ```
 
-| File | Format | Why this format |
-|---|---|---|
-| `objects.yaml`, catalog files, `demo-data/` | YAML | They are data. L2 edits the catalog (D-045), and the generator reads the PCM scenario story file. YAML is read by people, by AI and by code without conversion, and git shows each change line by line. |
-| `api.yaml` | OpenAPI | The one contract that synthetic data and real collection both fill (PCM core, 3.13). It is a standard, so client and server code can be generated from it and checked against it. |
-| `pages/`, `visual-style.md`, `README.md` | Markdown | Pages and visuals need prose: layout, states, interactions. Markdown is what AI reads best. |
-| `acceptance-tests.yaml` | YAML | Each test is data: a PCM scenario story, a "now", an expected value. Data is easier to review than test code, and the author can add a test without writing code. |
+- **`objects.yaml`, catalog files, `demo-data/`**
+  - Format: YAML
+  - Why this format: They are data. L2 edits the catalog (D-045), and the generator reads the PCM scenario story file. YAML is read by people, by AI and by code without conversion, and git shows each change line by line.
+- **`api.yaml`**
+  - Format: OpenAPI
+  - Why this format: The one contract that synthetic data and real collection both fill (PCM core, 3.13). It is a standard, so client and server code can be generated from it and checked against it.
+- **`pages/`, `visual-style.md`, `README.md`**
+  - Format: Markdown
+  - Why this format: Pages and visuals need prose: layout, states, interactions. Markdown is what AI reads best.
+- **`acceptance-tests.yaml`**
+  - Format: YAML
+  - Why this format: Each test is data: a PCM scenario story, a "now", an expected value. Data is easier to review than test code, and the author can add a test without writing code.
 
 - **Why one folder per workspace:** a session that works on one workspace finds its whole context in one folder: its design note, its specification, its code and its tests (Q-WS-134).
 
@@ -71,7 +77,7 @@ pcm/
   - D-052 is only a rule if something checks it.
   - Putting the fields first makes the check mechanical: a test reads the header.
 
-### 3.2 A page never defines a number; it names a catalog entry
+### 3.2 Catalog entries for every number
 
 - **What:**
   - A page says "show `cluster.decision_date` for the earliest cluster group in the location".
@@ -81,7 +87,7 @@ pcm/
   - One number, one definition (PCM core, 1).
   - If a page could hold a formula, the AI would build it into that page. The next page would get its own copy, and the two would drift on the next regeneration.
 
-### 3.3 Every state is specified, not only the normal one
+### 3.3 The states of every visual
 
 - **What:** each visual lists its states:
   - normal (green)
@@ -107,7 +113,7 @@ pcm/
   - Vocabulary is part of the per-role design (D-011).
   - Without a test, terms leak across workspaces with each regeneration.
 
-### 3.5 The wall has its own rules, and they are tested
+### 3.5 The wall's own rules and their tests
 
 - **What:** `/noc/wall` must have:
   - no buttons, inputs or links;
@@ -120,11 +126,18 @@ pcm/
 
 ## 4. Tests: three levels
 
-| Level | Checks | Example | Why this level exists |
-|---|---|---|---|
-| Catalog | The maths of each definition, against worked examples | Host spec for Silver on 64 cores, 2.5 GHz, Hyper-Threading on: 28.5 VMs and 839 GB (SP5 host spec example) | The numbers must be right before any page shows them. The SP5 worked examples are free, trusted test cases. |
-| PCM scenario story | End to end: generator, API, page, with a fixed "now" (D-067) | C-1: SG-Silver's decision date is 4 weeks after "now", and it is at the top of the cluster list | Proves that the four workspaces agree on the same objects (synthetic data design, 1). |
-| Page | The spec rules in section 3 | No avoided word on `/exec`; no interactive element on `/noc/wall`; every visual names a question | The rules that make each workspace what it is. |
+- **Catalog**
+  - Checks: The maths of each definition, against worked examples
+  - Example: Host spec for Silver on 64 cores, 2.5 GHz, Hyper-Threading on: 28.5 VMs and 839 GB (SP5 host spec example)
+  - Why this level exists: The numbers must be right before any page shows them. The SP5 worked examples are free, trusted test cases.
+- **PCM scenario story**
+  - Checks: End to end: generator, API, page, with a fixed "now" (D-067)
+  - Example: C-1: SG-Silver's decision date is 4 weeks after "now", and it is at the top of the cluster list
+  - Why this level exists: Proves that the four workspaces agree on the same objects (synthetic data design, 1).
+- **Page**
+  - Checks: The spec rules in section 3
+  - Example: No avoided word on `/exec`; no interactive element on `/noc/wall`; every visual names a question
+  - Why this level exists: The rules that make each workspace what it is.
 
 - **What tests cannot check:** whether a page passes the 5-second test, or whether a PCM scenario story convinces the approval audience. That is the author's review.
 
@@ -149,7 +162,7 @@ pcm/
   - "The number changed" has two possible causes: the estate or the definition.
   - Without versions on definitions, nobody can tell which one it was.
 
-## 7. What is written first
+## 7. The first specification files
 
 - Only what the Executive prototype needs (D-053):
   - `spec/README.md`

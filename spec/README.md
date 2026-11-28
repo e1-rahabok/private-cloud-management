@@ -6,7 +6,7 @@ The specification sits beside the code generated from it, in one folder per work
 
 ## Layout
 
-`<workspace>` is one of `executive`, `noc`, `l2`, `capacity` and `docs`.
+`<workspace>` is one of `executive`, `noc`, `l2`, `capacity` and `definitions` (the Docs workspace's folder, D-135).
 
 | Path | Holds | Format |
 |---|---|---|
@@ -24,7 +24,7 @@ The specification sits beside the code generated from it, in one folder per work
 | [`pcm/core/spec/database-schema.sql`](../pcm/core/spec/database-schema.sql) | The prototype database schema (D-080) | SQL |
 | [`pcm/core/spec/visual-style.md`](../pcm/core/spec/visual-style.md) | Tokens, colour roles, components | Markdown |
 | [`pcm/core/spec/acceptance-tests.yaml`](../pcm/core/spec/acceptance-tests.yaml) | The acceptance tests of the database | YAML |
-| [`requirements/`](requirements) | The requirements of PCM's work for release 1.0, each with its test scenarios; the milestone of each is in the workspace's [ROADMAP](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md) | Markdown |
+| [`requirements/`](requirements) | PCM's requirements for release 1.0, with test scenarios; milestones in the workspace's [ROADMAP](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md) | Markdown |
 
 ## Rules for builders
 
@@ -68,4 +68,8 @@ Each item below is assumed to be available. The prototype does not depend on it,
 | Root logins | `safe.root_logins` | VCF Operations for Logs |
 | 20-second peak metrics | `fast.*`, capacity forecast | VCF Operations |
 | Capacity Remaining, Time Remaining and VM Remaining on a VM, host and cluster | `l2.capacity_remaining` (D-100) | VCF Operations capacity engine |
-| Cluster Consumption, Cluster Performance, Cluster Risk and their parts; the Periodic Cluster Check (three check values and Close for Business, with the adapter's period, time and Worst Percent); vSphere World's Highest Cluster Utilization, Highest 10 Percent Cluster Utilization, Cluster Delta Close and Open Count | `l2.cluster_kpi_series`, `l2.cluster_check`, `l2.consumption_parts`, `l2.consumption_spread`, `l2.closed_count` (D-094) | PCM adapter (vCommunity, D-096), through VCF Operations |
+
+- **The PCM adapter's cluster KPIs and check**
+  - Item: Cluster Consumption, Cluster Performance, Cluster Risk and their parts; the Periodic Cluster Check (three check values and Close for Business, with the adapter's period, time and Worst Percent); vSphere World's Highest Cluster Utilization, Highest 10 Percent Cluster Utilization, Cluster Delta Close and Open Count
+  - Used by: `l2.cluster_kpi_series`, `l2.cluster_check`, `l2.consumption_parts`, `l2.consumption_spread`, `l2.closed_count` (D-094)
+  - Assumed source: PCM adapter (vCommunity, D-096), through VCF Operations

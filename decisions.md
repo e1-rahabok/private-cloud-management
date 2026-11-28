@@ -143,6 +143,7 @@ Every decision, with a link to its block. The workspace's [tools/spec_check.py](
 | D-132 | [The term PCM scenario story](#d-132-the-term-pcm-scenario-story) |
 | D-133 | [File layout by workspace](#d-133-file-layout-by-workspace) |
 | D-134 | [Decision blocks and the style baseline](#d-134-decision-blocks-and-the-style-baseline) |
+| D-135 | [The folder name of the Docs workspace](#d-135-the-folder-name-of-the-docs-workspace) |
 
 ## D-001 The product's name
 
@@ -633,7 +634,7 @@ Every decision, with a link to its block. The workspace's [tools/spec_check.py](
 ## D-082 The Docs workspace and private-cloud-explained
 
 - **Date:** 2026-11-20
-- **Decision:** PCM `/docs` documents only what PCM owns and acts on: the definition of every number, SOPs, action policies, thresholds, configuration standards and settings, each with version, owner, where it is used and its change history. It is read-only: each object is changed in the workspace that owns it. Documentation for colleagues (architecture, decisions, guides, team structure, learning modes) is private-cloud-explained, a separate product. PCM exports its objects as Markdown into private-cloud-explained, through its review.
+- **Decision:** PCM `/docs` documents only what PCM owns and acts on: the definition of every number, SOPs, action policies, thresholds, configuration standards and settings, each with version, owner, where it is used and its change history. It is read-only: each object is changed in the workspace that owns it. Documentation for colleagues (architecture, decisions, guides, team structure, learning modes) is private-cloud-explained, a separate product. PCM exports its objects as Markdown into private-cloud-explained, through its review. Revised by D-135: the workspace's folder is `pcm/definitions`; its route stays `/docs`.
 - **Reason:** See Rationale.
 
 ## D-083 The three L2 activities
@@ -945,7 +946,7 @@ Every decision, with a link to its block. The workspace's [tools/spec_check.py](
 ## D-133 File layout by workspace
 
 - **Date:** 2026-11-27
-- **Decision:** PCM's files are grouped by workspace. `pcm/` is the application and its Python package: one folder per workspace, named in full (`executive`, `noc`, `l2`, `capacity`, `docs`), and `core` for the parts every workspace uses. Each folder holds its design notes, its specification in `spec/`, and the server code, page code (`pages/`) and tests (`tests/`) generated from them. "Design" names a design note only; the visual design system is the visual style (`pcm/core/spec/visual-style.md`). `spec/` keeps the specification's front page and the requirements. Revises the layout in D-070 and D-071.
+- **Decision:** PCM's files are grouped by workspace. `pcm/` is the application and its Python package: one folder per workspace, named in full (`executive`, `noc`, `l2`, `capacity`, `docs`), and `core` for the parts every workspace uses. Each folder holds its design notes, its specification in `spec/`, and the server code, page code (`pages/`) and tests (`tests/`) generated from them. "Design" names a design note only; the visual design system is the visual style (`pcm/core/spec/visual-style.md`). `spec/` keeps the specification's front page and the requirements. Revises the layout in D-070 and D-071. Revised by D-135: the Docs workspace's folder is `definitions`, named for what it holds; its route stays `/docs`.
 - **Reason:** Q-WS-134 (round 4: "Yes, by workspace."), WD-030: one folder is the whole context of a task on one workspace, and every name says what it holds. See Rationale.
 
 ## D-134 Decision blocks and the style baseline
@@ -953,6 +954,12 @@ Every decision, with a link to its block. The workspace's [tools/spec_check.py](
 - **Date:** 2026-11-28
 - **Decision:** This file holds one block per decision: a heading with the ID and a title, then the date, the decision and the reason, as the workspace's [DECISIONS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md) does. The index at the top lists every decision with a link to its block; the workspace's [tools/spec_check.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/spec_check.py) reads the decision IDs from its rows. The other files in [style-baseline.yaml](style-baseline.yaml), most of them design notes, keep their counts and are fixed when next edited.
 - **Reason:** The author's answer to Q-PCM-1, the style baseline of 249 problems (2026-11-28, "Agree"): option (b) for this file, whose table was read most and whose cells ran to over 100 words, and option (a) for the design notes, which change with each workspace.
+
+## D-135 The folder name of the Docs workspace
+
+- **Date:** 2026-11-28
+- **Decision:** The Docs workspace's folder is `pcm/definitions`, named for the definitions of PCM's own objects it holds. Its module and tests are named after the folder, as in the other workspaces: `definitions.py`, `tests/test_definitions.py` and `tests/definitions.page.test.mjs`. The workspace keeps its name, Docs, on screen and in its route `/docs`. The files served under the route (`pages/docs.css`, `pages/docs.js`) and the screenshots (`docs-*.png`) keep their names, as the Executive workspace's screenshots carry its route (`exec-*.png`). `spec/` stays at the root of the repository. Revises D-082 and D-133.
+- **Reason:** The author's answer to Q-PCM-2, two folder names that a newcomer misread (2026-11-28, "Agree"): a fresh session read `pcm/docs` as PCM's documentation (T-WS-007b in the workspace's [workspace.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/requirements/workspace.md)). Users know the route `/docs`, so it stays. `spec/` holds the specification's front page and the requirement files that the workspace's tools read, and the front page says where the rest of the specification is.
 
 ## Rationale
 
@@ -1685,7 +1692,7 @@ pcm/                 the application and its Python package
     pages/           fonts/, agent-e2/, demo/
     tests/
     *.py             the server, the store, the demo data generator, the Agent E2 client
-  executive/ noc/ l2/ capacity/ docs/
+  executive/ noc/ l2/ capacity/ definitions/
     design-note.md
     spec/            pages/, api.yaml, catalog.yaml, vocabulary.yaml, acceptance-tests.yaml, files only this workspace reads
     pages/           HTML, CSS and JavaScript
