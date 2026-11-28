@@ -8,7 +8,7 @@ Files involved:
 
 - PCM's L2 specification: [pcm/l2/spec/catalog.yaml](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/l2/spec/catalog.yaml), [pcm/l2/spec/pages/monitor.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/l2/spec/pages/monitor.md), [pcm/l2/spec/pages/frame.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/l2/spec/pages/frame.md), [pcm/l2/spec/api.yaml](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/l2/spec/api.yaml).
 - What VCF vCommunity Adapter publishes, and how it makes absent data and its check settings readable: [adapter.md](https://github.com/e1-rahabok/PCM-Adapter/blob/main/spec/requirements/adapter.md), drafted in parallel. This file does not repeat it.
-- The contracts: [C2, KPI metric keys](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md#c2) (the keys the VCF vCommunity Adapter publishes and PCM reads) and [C3, the Agent E2 API](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md#c3) (the calls PCM makes to Agent E2), in [CONTRACTS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/CONTRACTS.md).
+- The contracts: [C2, KPI metric keys](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md#c2) (the keys the VCF vCommunity Adapter publishes and PCM reads) and [C3, the Agent E2 API](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md#c3) (the calls PCM makes to Agent E2), in [contracts](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md#contracts).
 
 Tests named below do not exist yet unless stated; "to write" marks them. Lab scenarios run from the author's laptop over the VPN. They use the read-only VCF Operations credential in `$HOME\.secrets\` ([DESIGN-9, lab credentials](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md)). They start by running VCF vCommunity Adapter's [validate.ps1](https://github.com/e1-rahabok/PCM-Adapter/blob/main/tools/validate/validate.ps1), so a failure caused by a pack that is not collecting is reported as such. A lab scenario that cannot reach the lab is reported as not run, never as passed.
 
@@ -509,7 +509,7 @@ Source: answer to Q-WS-37 ("You forgot you have live access"); Q-WS-71 (the lab'
 - And it prints the lab VCF Operations version read at sign-in (Q-WS-71)
 
 Test scenarios:
-- T-LIVE-031a (lab, automated by tools/lab/Test-Live.ps1, to write). Steps: run it. Expected: a result line per lab scenario; screenshots in one folder; the VCF Operations version printed and then written in the lab table of the workspace's [SYSTEM.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/SYSTEM.md); exit code 1 if any scenario failed.
+- T-LIVE-031a (lab, automated by tools/lab/Test-Live.ps1, to write). Steps: run it. Expected: a result line per lab scenario; screenshots in one folder; the VCF Operations version printed and then written in the lab table of the workspace's [system design](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md#lab); exit code 1 if any scenario failed.
 - T-LIVE-031b (anywhere, automated by pcm/l2/tests/test_live.py::test_runner_reports_not_run, to write). Data: an unreachable address in place of the lab. Expected: every lab scenario reports "not run", and the command exits with failure.
 
 ### R-LIVE-032 The synthetic demo is unchanged
