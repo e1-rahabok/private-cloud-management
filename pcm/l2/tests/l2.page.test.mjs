@@ -14,7 +14,8 @@ const NOW = readFileSync(HERE + 'spec/acceptance-tests.yaml', 'utf8').match(/^no
 const avoided = readFileSync(HERE + 'spec/vocabulary.yaml', 'utf8').split('avoided:')[1].split('labels:')[0]
   .split('\n').map(l => l.trim()).filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
 // PCM points at a stub Agent E2 service (PCM_AGENT_E2_URL). It is not running for LPG-8 (the unavailable state); LPG-20 and LPG-21 start it.
-const E2_PORT = 8769;
+// Each page test owns its ports, so tests can run side by side (specification-structure.md, section 4).
+const E2_PORT = 8772;
 const server = spawn('python3', ['-m', 'pcm.core.server', '--port', String(PORT)], { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PCM_DEMO_SWITCHER: '0', PCM_AGENT_E2_MODE: 'mock', PCM_DB: ':memory:', PCM_AGENT_E2_URL: `http://127.0.0.1:${E2_PORT}` } });
 const E2_SEEN = [], E2_TOPIC = [];  // answer requests; topic requests (D-130)
 const E2_ANSWER = 'No. A Guest OS Run Queue of 0.38 per vCPU at the 95th percentile is not a CPU shortage inside fr-svc-5526.\n\nCheck next: VM CPU Ready on the same hour, then the host fr-esx-218.';
@@ -36,7 +37,10 @@ const stub = createServer((req, res) => {
     }
     E2_SEEN.push(body);
     if (!body.turns && /which counter/i.test(body.question)) return send({ type: 'clarify', content: '', questions: ['Do you mean the Guest OS Run Queue or the VM CPU Ready?'], files_read: [], computed: [], model: 'stub-model', knowledge_commit: 'abc1234' });
-    const out = { type: 'answer', content: E2_ANSWER, questions: [], files_read: ['guest-os/cpu/metrics/run-queue', 'vsphere/technology/cpu/metrics/vm/ready'], lead: 'Peak vCPU run queue length is 1.5 threads waiting, 0.38 per vCPU.', computed: ['0.38 per vCPU × 4 vCPU = 1.5 threads waiting'], topic: old ? undefined : topic, model: 'stub-model', knowledge_commit: 'abc1234' };
+    // Agent E2 writes its opening as one bullet per KPI when the facts hold several (D-119).
+    const kpis = (body.facts && body.facts.kpis) || [];
+    const lead = kpis.length > 1 ? kpis.map(k => `- ${k.label || k.name} stayed within its normal movement.`).join('\n') : 'Peak vCPU run queue length is 1.5 threads waiting, 0.38 per vCPU.';
+    const out = { type: 'answer', content: E2_ANSWER, questions: [], files_read: ['guest-os/cpu/metrics/run-queue', 'vsphere/technology/cpu/metrics/vm/ready'], lead, computed: ['0.38 per vCPU × 4 vCPU = 1.5 threads waiting'], topic: old ? undefined : topic, model: 'stub-model', knowledge_commit: 'abc1234' };
     // A slow answer, so the test can flip the topic while it is written (D-130).
     if (/slowly/i.test(body.question || '') && ch === 'continue') return setTimeout(() => send(out), 3000);
     send(out);
@@ -323,7 +327,8 @@ try {
     `same document: ${same}; ${moves}; dots ${dots.filter(Boolean).length}/${dots.length}; ${label}; back to ${back}`);
 
   // LPG-20 the Agent E2 mark and panel (D-097)
-  await new Promise(r => stub.listen(E2_PORT, '127.0.0.1', r));
+  // A taken port rejects here, so the finally below stops the PCM server.
+  await new Promise((r, j) => { stub.once('error', j); stub.listen(E2_PORT, '127.0.0.1', r); });
   await new Promise(r => setTimeout(r, 3200)); // PCM keeps a health answer for 3 seconds
   await go('/l2/monitor/compute/estate/summary');
   const e2utils = await page.$$eval('nav.utils > *', xs => xs.map(x => x.id || x.textContent.trim()));
@@ -348,8 +353,9 @@ try {
   await page.click('#e2 .e2src summary');
   const srcOpened = await page.isVisible('#e2 .srcchip');
   const chips = (await page.$$('#e2 .srcchip')).length, boxes = (await page.$$('#e2 .e2computed, #e2 .box')).length;
-  // D-119: the opening is the answer's first paragraph, in the text's own style; the calculator's lines are not shown.
-  const leadOk = await page.$eval('#e2 .e2a', a => { const p = a.querySelector('p.e2lead'); return !!p && a.firstElementChild === p && /^Peak vCPU run queue length is 1\.5/.test(p.textContent) && getComputedStyle(p).borderTopStyle === 'none' && !a.textContent.includes('×'); });
+  // D-119: the opening comes first, as one paragraph in the text's own style, no box; the calculator's lines are not shown.
+  const leadOk = await page.$eval('#e2 .e2a', a => { const l = a.querySelector('.e2lead'), p = l && l.firstElementChild; return !!l && a.firstElementChild === l && l.children.length === 1 && p.tagName === 'P' && /^Peak vCPU run queue length is 1\.5/.test(p.textContent)
+    && [l, p].every(e => getComputedStyle(e).borderTopStyle === 'none' && getComputedStyle(e).backgroundColor === 'rgba(0, 0, 0, 0)') && !a.textContent.includes('×'); });
   const objLinks = await page.$$eval('#e2 .e2a a[data-obj]', as => as.map(a => a.dataset.obj));
   const foot = await page.innerText('#e2 .e2foot');
   const sentFacts = E2_SEEN[E2_SEEN.length - 1];
@@ -377,6 +383,8 @@ try {
   const shownBefore = (await page.$$('#e2 .e2a')).length, sentBefore = E2_SEEN.length;
   await page.click('#e2 [data-sugg]'); await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n, shownBefore);
   const pageFacts = E2_SEEN[sentBefore] && E2_SEEN[sentBefore].facts;
+  // D-119: an opening on two KPIs is a list of two bullets, first in the answer, with no box.
+  const pageLead = await page.$$eval('#e2 .e2a', as => { const a = as[as.length - 1], l = a.querySelector('.e2lead'); return { first: !!l && a.firstElementChild === l, items: l ? l.querySelectorAll('ul > li').length : 0, plain: !!l && getComputedStyle(l).borderTopStyle === 'none' && getComputedStyle(l).backgroundColor === 'rgba(0, 0, 0, 0)' }; });
   await page.keyboard.press('Escape');
   // LPG-26 the mark on the KPIs at the top of a cluster's and an ESXi host's Performance tab (D-117)
   const kpiMarks = () => page.$$eval('[data-section="performance-kpis"] > .metric', ms => ms.map(m => { const b = m.querySelector('.mname .e2mark'); return b && b.getAttribute('aria-label'); }));
@@ -400,8 +408,9 @@ try {
 
   check('LPG-22', layerMarks.join() === 'Ask Agent E2 about the Guest OS layer,Ask Agent E2 about the Virtual Motherboard layer' && /Guest OS layer/.test(layerCtx)
     && layerSugg[0] === 'Is the Guest OS layer the problem?' && layerOutlined && pageSugg[0] === 'Is this VM performing well over the last 24 hours?'
-    && !!pageFacts && pageFacts.layers.length === 2 && pageFacts.layers.every(l => l.metrics.every(m => m.percentile_95 !== undefined && m.values === undefined)),
-    `${layerMarks.length} layer marks; ${layerCtx}; ${layerSugg[0]}; ${pageSugg[0]}; page facts layers ${pageFacts && pageFacts.layers.map(l => l.layer)}`);
+    && !!pageFacts && pageFacts.layers.length === 2 && pageFacts.layers.every(l => l.metrics.every(m => m.percentile_95 !== undefined && m.values === undefined))
+    && pageLead.first && pageLead.items === 2 && pageLead.plain,
+    `${layerMarks.length} layer marks; ${layerCtx}; ${layerSugg[0]}; ${pageSugg[0]}; page facts layers ${pageFacts && pageFacts.layers.map(l => l.layer)}; opening ${pageLead.items} bullets`);
 
   // LPG-21 a clarifying round carries the earlier turns; a narrow screen shows the panel as a sheet
   await go('/l2/monitor/compute/fr-svc-5526/performance');

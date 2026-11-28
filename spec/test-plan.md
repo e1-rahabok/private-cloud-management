@@ -8,8 +8,8 @@ The model is the VCF vCommunity Adapter's [Live Validation Test Plan](https://gi
 
 | Level | Command | Proves | Runs |
 | :--- | :--- | :--- | :--- |
-| Unit tests | `python3 -m unittest pcm.<workspace>.tests.test_<name> -v`, from the repository root ([pcm/README.md](../pcm/README.md), section Test) | Each workspace's code, the live reader and its figures, with the fake Suite API | Anywhere, before each commit |
-| Page tests | `node pcm/<workspace>/tests/<workspace>.page.test.mjs` | Each page's parts, states and links, in Chromium | Anywhere, before each commit |
+| Unit tests | `python3 -m unittest pcm.<workspace>.tests.test_<name> -v`, from the repository root ([pcm/README.md](../pcm/README.md), section Test) | Each workspace's code, the live reader and its figures, with the fake Suite API | Anywhere, before each commit; in CI on every pull request ([tests.yml](../.github/workflows/tests.yml)) |
+| Page tests | `node pcm/<workspace>/tests/<workspace>.page.test.mjs` | Each page's parts, states and links, in Chromium | Anywhere, before each commit; in CI on every pull request ([tests.yml](../.github/workflows/tests.yml)), one after the other |
 | Synthetic rehearsal | `node demo/rehearse.mjs` ([demo/README.md](../demo/README.md)) | The synthetic demo script, step by step, with a screenshot per step | Anywhere, before every demo |
 | Lab tests | `pwsh tools/lab/Test-Live.ps1` (R-LIVE-031, to write) | Every lab scenario of [live-demo.md](requirements/live-demo.md), then the live demo end to end | The author's laptop on the VPN, from M8 |
 

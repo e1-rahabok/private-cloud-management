@@ -375,8 +375,8 @@ Source: answer to Q-WS-29 ("You will need to get from a live environment"); [DES
 
 Test scenarios:
 - T-LIVE-023a (lab, automated by tools/lab/live_keys.py, to write). Steps: run the tool from the adapter's module tables, then against the lab. Expected: the file lists at least the KPI score keys and their parts for cluster, host and VM; each is found on a lab object; it names the adapter version shown by validate.ps1.
-- T-LIVE-023b (anywhere, automated by checks/kpi_keys.py, to write). Data: the key file and PCM's catalog. Steps: run the check; then plant a key PCM reads that the file lacks. Expected: passes on the real files; fails and names the planted key.
-- T-LIVE-023c (lab, automated by checks/kpi_keys.py --lab, to write). Expected: each listed key has a sample newer than 10 minutes on at least one lab object, or is marked conditional by PCM-Adapter.
+- T-LIVE-023b (anywhere, automated by contract-checks/kpi_keys.py, to write). Data: the key file and PCM's catalog. Steps: run the check; then plant a key PCM reads that the file lacks. Expected: passes on the real files; fails and names the planted key.
+- T-LIVE-023c (lab, automated by contract-checks/kpi_keys.py --lab, to write). Expected: each listed key has a sample newer than 10 minutes on at least one lab object, or is marked conditional by PCM-Adapter.
 
 ### R-LIVE-024 Cluster Performance matches VCF Operations
 
@@ -462,7 +462,7 @@ Source: answer to Q-WS-36 ("agree"); C3.
 
 Test scenarios:
 - T-LIVE-028a (anywhere, automated by pcm/l2/tests/test_live.py::test_agent_facts, to write). Data: the fake Suite API, with one part key stale; a stub Agent E2 that records the request. Steps: ask "Why the worst?" on Cluster Performance. Expected: the recorded facts have every field of the synthetic request; values equal the page's; the stale part is present and marked "no data".
-- T-LIVE-028b (anywhere, automated by checks/agent_e2_api.py, to extend). Data: a live-shaped request with one fact marked "no data". Expected: the real Agent E2 service in mock mode accepts it, and its answer says the fact is missing.
+- T-LIVE-028b (anywhere, automated by contract-checks/agent_e2_api.py, to extend). Data: a live-shaped request with one fact marked "no data". Expected: the real Agent E2 service in mock mode accepts it, and its answer says the fact is missing.
 
 ### R-LIVE-029 What the live facts never carry
 
