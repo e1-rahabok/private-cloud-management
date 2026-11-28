@@ -1,6 +1,6 @@
 # PCM, the application
 
-One folder per workspace, [`executive/`](executive), [`noc/`](noc), [`l2/`](l2), [`capacity/`](capacity) and [`definitions/`](definitions) (the Docs workspace, D-135), and [`core/`](core) for the parts every workspace uses (D-133). In each folder, `spec/` and the design notes are the source; the specification's front page is [`../spec/README.md`](../spec/README.md). Everything else is **generated** from them. Do not edit it by hand: the next regeneration removes hand edits (D-070). Fix the specification, then regenerate.
+One folder per workspace, [`executive/`](executive), [`noc/`](noc), [`l2/`](l2), [`capacity/`](capacity) and [`docs_workspace/`](docs_workspace) (the Docs workspace, D-135), and [`core/`](core) for the parts every workspace uses (D-133). In each folder, `spec/` and the design notes are the source; the specification's front page is [`../spec/README.md`](../spec/README.md). Everything else is **generated** from them. Do not edit it by hand: the next regeneration removes hand edits (D-070). Fix the specification, then regenerate.
 
 Prototype technology: D-071. Not the product stack.
 
@@ -86,17 +86,17 @@ python3 -m unittest pcm.core.tests.test_store -v
 ```
 
 ```bash
-python3 -m unittest pcm.definitions.tests.test_definitions -v
+python3 -m unittest pcm.docs_workspace.tests.test_docs_workspace -v
 ```
 
 ```bash
-node pcm/definitions/tests/definitions.page.test.mjs
+node pcm/docs_workspace/tests/docs_workspace.page.test.mjs
 ```
 
 Export PCM's objects for private-cloud-explained (D-082), into its checkout or any folder:
 
 ```bash
-python3 -m pcm.definitions.definitions --export ../private-cloud-explained
+python3 -m pcm.docs_workspace.docs_workspace --export ../private-cloud-explained
 ```
 
 The page test needs Node and Playwright with Chromium. It also writes the review screenshots to the workspace's `screenshots/` folder.
@@ -301,8 +301,8 @@ All seven Capacity pages: This week, Cluster groups, One group, Demand, What-if,
 | `pcm/capacity/capacity.py` | Capacity engine: usable capacity, forecast, decision dates, purchase plan, reclamation, what-if |
 | `pcm/l2/pages/` | The L2 shell page and its script: one frame for every L2 address |
 | `pcm/capacity/pages/` | The Capacity pages |
-| `pcm/definitions/definitions.py` | Docs: objects, used on, history, export for private-cloud-explained |
-| `pcm/definitions/pages/` | The Docs pages |
+| `pcm/docs_workspace/docs_workspace.py` | Docs: objects, used on, history, export for private-cloud-explained |
+| `pcm/docs_workspace/pages/` | The Docs pages |
 | `pcm/core/store.py` | The prototype database (SQLite): action record, demand register, workflow state |
 | `pcm/core/agent_e2.py` | Agent E2 client: drafts, vocabulary check, fallback |
 | `pcm/noc/agent_e2_panel.py`, `pcm/l2/agent_e2_panel.py` | The server side of the Agent E2 panel: the facts of each question |

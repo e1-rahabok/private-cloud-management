@@ -1,6 +1,6 @@
 # Requirements: clean-up of private-cloud-manager
 
-The clean-up of private-cloud-manager in milestone M2 of the workspace's [ROADMAP.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md): the product's name, and folders and files named for what they hold. Question IDs point at the interview ([round 1](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-1.md), [round 2](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-2.md), [round 3](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-3.md), [round 4](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-4.md)); other IDs are explained in the [glossary](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md).
+The clean-up of private-cloud-manager in milestone M2 of the workspace's [ROADMAP.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md): the product's name, and folders and files named for what they hold. Question IDs point at the interview ([round 1](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-1.md), [round 2](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-2.md), [round 3](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-3.md), [round 4](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-4.md), [round 6](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-6.md)); other IDs are explained in the [glossary](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md).
 
 ## Names
 
@@ -50,13 +50,14 @@ Milestone: M2.
 
 Why: a session that works on one workspace finds everything it needs in one folder.
 
-Source: Q-WS-134 (round 4: "Yes, by workspace."); DESIGN-6; D-135 (the Docs workspace's folder).
+Source: Q-WS-134 (round 4: "Yes, by workspace."); DESIGN-6; Q-PCM-4 (round 6: "OK" to users calling the workspace Docs); D-135 (the Docs workspace's folder).
 
 - Given PCM's five workspaces (executive, NOC, L2, capacity, docs) and the parts they share
 - When a session works on one workspace
 - Then one folder per workspace holds everything that workspace needs: its design note, its API, catalog and test specifications, its server code, its page code and its tests
-- And each workspace folder but the Docs workspace's has the workspace's full name, for example `executive` and not `exec`
-- And the Docs workspace's folder is `definitions`, named for the definitions of PCM's own objects it holds; its route stays `/docs` (D-135)
+- And each workspace folder has the workspace's full name, for example `executive` and not `exec`
+- And the Docs workspace's folder is `docs_workspace`: the name its users know, Docs, and the word workspace, so a reader takes it for neither the repository's documentation nor the KPI definitions; its route stays `/docs` (D-135)
+- And no folder is named with a term that the workspace's glossary or its contracts C1 to C5 give to something the folder does not hold
 - And the page code for Agent E2 is named `agent-e2` and not `e2`
 - And the parts every workspace uses (the server, the store, the object model, the database schema, the shared catalog files, the demo data generator, the fonts) sit in one shared folder named for what it holds
 - And `build/` no longer exists, and the moves are done in the same change as R-REPO-007, so no file moves twice
@@ -67,6 +68,7 @@ Source: Q-WS-134 (round 4: "Yes, by workspace."); DESIGN-6; D-135 (the Docs work
 Test scenarios:
 - T-REPO-008a (anywhere, automated by PCM's own tests): every test passes after the move, and the demo starts.
 - T-REPO-008d (anywhere, automated by the workspace's `contract-checks/run_all.py`): C3 passes after each of the three steps.
-- T-REPO-008e (anywhere, automated by the check of T-REPO-007b, [tools/forbidden_names.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/forbidden_names.py)): no requirement file, test or document names a path under PCM's `build/` after the move, outside dated records and the requirement files that name it to forbid it.
+- T-REPO-008e (anywhere, automated by the check of T-REPO-007b, [tools/forbidden_names.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/forbidden_names.py)): no requirement file, test or document names a path under PCM's `build/` after the move, or the Docs workspace's old folders `pcm/docs` and `pcm/definitions`, outside dated records and the requirement files that name them to forbid them.
 - T-REPO-008b (anywhere, manual): list every file that only the L2 workspace uses; expect each one inside L2's folder.
 - T-REPO-008c (anywhere, manual): T-WS-007b on PCM finds no wrong guess.
+- T-REPO-008f (anywhere, manual): search the workspace's [glossary](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md) and the names of contracts C1 to C5 for each folder name under `pcm/`; expect every match to name what the folder holds.

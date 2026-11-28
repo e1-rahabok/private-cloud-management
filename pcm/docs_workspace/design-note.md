@@ -2,7 +2,7 @@
 
 The reference for what PCM owns and acts on (D-082). Documentation for colleagues (architecture, decisions, user guides, team structure, learning) is private-cloud-explained, a separate product.
 
-Path: `privatecloud.acme.com/docs` (D-028). Folder: `pcm/definitions` (D-135), named for the definitions it holds; the workspace keeps the name Docs on screen and in its route.
+Path: `privatecloud.acme.com/docs` (D-028). Folder: `pcm/docs_workspace` (D-135): the name its users know and the word workspace; the workspace keeps the name Docs on screen and in its route.
 
 ## 1. The readers
 

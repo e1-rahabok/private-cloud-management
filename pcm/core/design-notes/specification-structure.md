@@ -33,7 +33,7 @@ pcm/
       demo-data/         the estate and the PCM scenario stories of the synthetic ACME data
       visual-style.md    tokens, colour roles, components, chart rules
       acceptance-tests.yaml
-  executive/  noc/  l2/  capacity/  definitions/
+  executive/  noc/  l2/  capacity/  docs_workspace/
     design-note.md
     spec/
       pages/             one file per page

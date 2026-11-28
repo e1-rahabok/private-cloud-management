@@ -3,8 +3,8 @@ page: /docs
 question: "What does PCM own, and where is it defined?"
 role: all
 cadence: [on_demand]
-vocabulary: pcm/definitions/spec/vocabulary.yaml
-design: pcm/definitions/design-note.md
+vocabulary: pcm/docs_workspace/spec/vocabulary.yaml
+design: pcm/docs_workspace/design-note.md
 decisions: [D-024, D-070, D-082]
 ---
 

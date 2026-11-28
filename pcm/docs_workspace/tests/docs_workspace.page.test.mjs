@@ -1,6 +1,6 @@
 // Page tests DPG-2 to DPG-4 for /docs, in a real browser.
-// GENERATED from pcm/definitions/spec/acceptance-tests.yaml. Do not edit by hand (D-070).
-// Run from the repository root:  node pcm/definitions/tests/definitions.page.test.mjs
+// GENERATED from pcm/docs_workspace/spec/acceptance-tests.yaml. Do not edit by hand (D-070).
+// Run from the repository root:  node pcm/docs_workspace/tests/docs_workspace.page.test.mjs
 import { spawn } from 'node:child_process';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
