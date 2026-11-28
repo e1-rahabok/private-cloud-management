@@ -589,6 +589,26 @@ Test scenarios:
 - T-LIVE-036a (lab, automated by demo/rehearse.mjs --live, run as step 10 of tools/lab/Test-Live.ps1, to write). Data: the lab VCF Operations and the reference script. Steps: walk every step of the live demo script. Expected: every step passes; one line per step, and a screenshot per step in the run's folder.
 - T-LIVE-036b (anywhere, automated by demo/rehearse.mjs --live against the fake Suite API, to write). Data: the fake Suite API with one cluster, one host and one VM. Steps: as 036a. Expected: every step's link leads to the next step's page, and the fake's values show on each.
 
+### R-LIVE-037 The lab VM is reached only through TLS, from the VPN, and stays patched
+
+Why: PCM has no sign-in in release 1.0, so the VPN is its only gate (ASSUMPTION-9); a plain-HTTP port would carry the live data unencrypted on the lab network, and an unpatched VM is the easiest way past the VPN (OWASP ASVS V9 and V14).
+
+Source: ASSUMPTION-9 and DESIGN-24 (the security baseline, in the workspace's [system design](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md)); DESIGN-25 (unattended upgrades on the lab VM); [deploy/README.md](../../deploy/README.md), section HTTPS with nginx, Close port 8080.
+
+Milestone: M8.
+
+- Given the lab VM that runs PCM and the Agent E2 service
+- When a lab browser or another host on the network connects to it
+- Then only port 443 (nginx, TLS) and SSH answer from the network
+- And PCM listens on `127.0.0.1:8080` only (`PCM_HOST=127.0.0.1` in `/etc/pcm/pcm.env`), and the Agent E2 service on `127.0.0.1:8090` only
+- And the VM's firewall accepts 443 and SSH only from the lab and VPN networks
+- And `unattended-upgrades` installs security updates every day
+- And no port of the VM answers from outside the VPN
+
+Test scenarios:
+- T-LIVE-037a (lab, automated by tools/lab/Test-Lab.ps1, to write). Steps: from the laptop on the VPN, connect to 443, 8080 and 8090 on the lab VM; on the VM, run `ss -ltn` and `systemctl is-enabled unattended-upgrades`. Expected: 443 answers with TLS; 8080 and 8090 refuse; `ss` lists 8080 and 8090 on `127.0.0.1` only; unattended upgrades are enabled.
+- T-LIVE-037b (lab, manual once, recorded in the M8 pull request). Steps: with the VPN off, connect to 443 and SSH on the lab VM's address. Expected: neither answers.
+
 ## Changes to PCM's own specification
 
 Each line is a change to make in private-cloud-manager in a later pull request. Nothing here is edited yet.
