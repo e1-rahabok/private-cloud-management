@@ -1,6 +1,5 @@
 # Known style debt: file -> number of problems found by the workspace's tools/style.py (R-WS-006).
-# May only shrink: lower a number, or remove a clean file, in the pull request that fixes it. Q-PCM-1 in OPEN-QUESTIONS.md.
-decisions.md: 133
+# May only shrink: lower a number, or remove a clean file, in the pull request that fixes it. D-134 in decisions.md.
 demo/README.md: 8
 deploy/README.md: 2
 pcm/README.md: 1

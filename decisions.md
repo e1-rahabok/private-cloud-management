@@ -1,144 +1,958 @@
 # Decisions
 
-Decisions on PCM scope and design. One entry each. Newest at the bottom. A changed decision is edited in place; git keeps the history.
+Decisions on PCM scope and design. One block per decision, newest at the bottom: a heading with its ID and title, then its date, the decision and the reason. A changed decision is edited in place; git keeps the history. Longer reasons are under [Rationale](#rationale), by the decision's ID.
 
-| ID | Date | Decision | Reason |
-|---|---|---|---|
-| D-001 | 2026-11-20 | The product is named **PCM** (Private Cloud Manager). | Short, vendor-neutral. |
-| D-002 | 2026-11-20 | PCM is not a Broadcom product. It is free, and customers download it. | It helps customers grow VMware into their complete private cloud. |
-| D-003 | 2026-11-20 | Scope is the whole private cloud, not only VMware. A private cloud has dozens of vendors, competitors included. PCM connects to them, for example ITSM, CMDB and email. | VMware is the core, not the whole estate. |
-| D-004 | 2026-11-20 | On-premises only. Customers own the full source code and personalize it. | Customer data stays on site. Large enterprises adapt tools to their own process. |
-| D-005 | 2026-11-20 | Target: large global enterprises, not small companies. | Their need for role-specific operations is greatest. |
-| D-006 | 2026-11-20 | PCM uses VCF Operations as a data source and has its own database. It does not depend 100% on VCF Operations. | VCF Operations covers only the VMware part, and PCM keeps its own data. |
-| D-007 | 2026-11-20 | PCM replaces the VCF Operations presentation layer for capacity, cost, performance, inventory, configuration and availability management. Compliance follows D-022. | These are the operations areas PCM serves by role. |
-| D-008 | 2026-11-20 | Out of scope: VCF lifecycle management (the SDDC Manager part) and security operations. | Lifecycle is Broadcom software management. Security operations is a different field with different expertise. |
-| D-009 | 2026-11-20 | New capabilities: an executive dashboard, multiple VCF Operations instances, and documentation for the private cloud. Revised by D-082: documentation for colleagues is private-cloud-explained, a separate product; PCM documents only its own objects. | Starting points: [VMW-Executive-Dashboard](https://github.com/e1-rahabok/VMW-Executive-Dashboard), [VMW-Federated-VCF-Operations](https://github.com/e1-rahabok/VMW-Federated-VCF-Operations), [private-cloud-explained](https://github.com/e1-rahabok/private-cloud-explained). Ideas are also borrowed from https://isvara.io. |
-| D-010 | 2026-11-20 | The specification is the maintained artifact. AI writes 100% of the code. Developers do not maintain code. | Generating code is cheap. The specification is what has to stay correct. |
-| D-011 | 2026-11-20 | Each role gets a workspace with its own URL. Workspaces share no menu. | One common UI for all roles weakens the experience for each of them. |
-| D-012 | 2026-11-20 | Workspaces are per role, not per pillar of operations management. First four: **NOC** (L1 operators), **L2**, **Capacity**, **Executive**. | Enterprise IT is run by people in different roles. Each role gets its own workspace. |
-| D-013 | 2026-11-20 | NOC: a few pages. L1 operators have simple needs and follow the SOP. | L1 work is SOP-driven. |
-| D-014 | 2026-11-20 | Capacity Management runs weekly, not daily. It includes what-if analysis and hardware refresh. | Capacity decisions follow a weekly cadence. |
-| D-015 | 2026-11-20 | Executive: one page, with drill-down to the next level. The [Executive Dashboard export](https://e1-rahabok.github.io/VMW-Executive-Dashboard/design/export/) is the starting point. | The CIO has no time for detail. |
-| D-016 | 2026-11-20 | PCM takes actions, not only reads. | Operations work needs action, not only viewing. |
-| D-017 | 2026-11-20 | PCM includes a local LLM, for example Agent E2. | On-premises only (D-004). |
-| D-018 | 2026-11-20 | The prototype uses synthetic ACME data. A lab with a full VCF 9.1 instance follows later. | No customer data is needed for the prototype. |
-| D-019 | 2026-11-20 | Money has three parts. **Cost** is what the company pays: hardware and software line items, used in Capacity Management. **Price** is what tenants pay: per VM, per Kubernetes pod and so on. **Value** is what the Executive sees: total cost, ROI, TCO, with no line items. | Each part answers a different role's question. |
-| D-020 | 2026-11-20 | Inventory has two parts. **Basic inventory** is foundational: every workspace has its own purpose-built variant. **Detailed inventory** tracks changes for analysis and belongs to the L2 role. | Every role needs to know what exists. Only L2 analyses how it changes. |
-| D-021 | 2026-11-20 | The L2 role covers escalation (reactive) and proactive health checks, across availability, performance and configuration. Revised by D-083 and D-084: L2 works in three activities (Monitor, Troubleshoot, Improve); escalation is one trigger of troubleshooting. | L2 is the expert behind the NOC. |
-| D-022 | 2026-11-20 | Compliance is parked under security, after release 1.0. | It needs security expertise (D-008). |
-| D-023 | 2026-11-20 | VMware is mandatory. Competitors are included only for migration into VMware, not for management. Migration runs one way only: into VMware. Red Hat OpenShift is the first. | The goal is to bring the whole private cloud infrastructure onto VMware (D-002). |
-| D-024 | 2026-11-20 | Documentation has its own URL, for example `privatecloud.acme.com/docs`. Revised by D-082: `/docs` documents PCM's own objects only. | Follows D-011. |
-| D-025 | 2026-11-20 | PCM runs actions directly through vCenter and VCF APIs, not through ITSM or automation tools. | Those tools are too slow for self-driving operations. |
-| D-026 | 2026-11-20 | Upgrading a customer-personalized specification is deferred until after the prototype is approved. | The prototype comes first. Large open-source products such as Odoo and Linux live with the same problem. |
-| D-027 | 2026-11-20 | The FinOps role owns Price: cost accounting and chargeback. FinOps works with the Capacity team. Its workspace comes after release 1.0. | Price is a FinOps job, not a Capacity or Executive one. |
-| D-028 | 2026-11-20 | All workspaces run on one host, each under its own path: `privatecloud.acme.com/noc`, `/l2`, `/capacity`, `/exec`, `/docs`. No shared menu. | One host to deploy and secure. Separate paths keep each role's experience separate (D-011). |
-| D-029 | 2026-11-20 | Action governance lives inside PCM as policy as code. Each action type has a tier (automatic, approval, never) and guardrails, versioned in the catalog with an owner. An automatic action never records an approval: if an approval could be automated, it is not needed, so it is removed from the policy. Every action is written to the action history. Revised by D-079. | Direct actions (D-025) still need control. Guardrails reduce risk; approval records do not. |
-| D-030 | 2026-11-20 | Management scope is Broadcom VMware only; competitors appear only for migration (D-023). Out of scope: end-user help desk (for example "my laptop is not working") and business transactions (for example "the payment system is slow"). Scope guide: https://isvara.io/read/part-2/role-based-contents | PCM manages the VMware private cloud, not the applications or end-user devices on it. |
-| D-031 | 2026-11-20 | L1 works in three shifts; someone always watches. Fewer people per shift than today (D-046). No mobile push for L1; mobile push is for L2. | The NOC is staffed 24x7, so L1 does not need to be paged. Even with AI, people stay on every shift: not all operational context is in a computer, so AI does not have all of it. |
-| D-032 | 2026-11-20 | L1 has two UIs. **Wall screen**: a large TV that streams the present, with no mouse and no keyboard; it auto-rotates about every 60 seconds through Inventory, Availability, Performance, Security, Compliance, Configuration. **Desktop dashboard**, assisted by Agent E2. Live screen practice: https://isvara.io/read/part-2/proactive-operations | A static screen bores the viewer. The wall is for watching; the desk is for working. |
-| D-033 | 2026-11-20 | A workspace shows only the data its role acts on. The NOC shows no cost or price data. | L1 does not decide anything with cost. Data a role does not act on is noise. |
-| D-034 | 2026-11-20 | PCM manages VMware infrastructure only. Not the mainframe, not VDI, not applications. | Keeps PCM focused on the VMware private cloud (D-030). |
-| D-035 | 2026-11-20 | L1 and the CIO see health as three plain questions, in this order: **Is it up? Is it fast? Is it safe?** They are not shown the split between security and compliance. Source: SP5 framework, https://github.com/e1-rahabok/agent-e2/tree/main/knowledge/sp5-framework | A system that is down has no security or performance problem. Up is not fast. Fast is not safe. The split between security and compliance helps experts, not L1 or the CIO. |
-| D-036 | 2026-11-20 | The NOC wall rotates through 5 screens, each titled as a question: **What changed?** (inventory), **Is it up?**, **Is it fast?**, **Is it safe?** (security and compliance together, VMware only), **Is it set right?** (configuration). This changes the 6-screen order in D-032. | Follows D-035: L1 does not need the split between security and compliance. Compliance changes slowly; a compliance drift that happens now is a safety event. Fewer screens means a shorter cycle, so red stays off screen for less time. |
-| D-037 | 2026-11-20 | The Operations Manager role has no workspace in release 1.0. | Scope control. The four workspaces come first. |
-| D-038 | 2026-11-20 | The Guest OS is in scope, limited to Windows and Linux at the OS level. Applications inside the Guest OS are out. macOS is out. | IT owns the OS build standard (SP5 People: OS teams). Applications belong to their owners (D-034). macOS on ESXi is rare in enterprises. See Rationale. |
-| D-039 | 2026-11-20 | The daily check is run by PCM, not by a person. It runs before the start and before the end of each region's business day. Platform (L2) owns the review, not L1. The human review takes about 10 minutes when there is no problem. Revised by D-083: the result is what Monitor shows for the 24-hour window; there is no daily-check page. | See Rationale. |
-| D-040 | 2026-11-20 | L1 acts only through SOP buttons in PCM, never through vCenter. The L1 action set is small, reversible and set by class of service. | See Rationale. |
-| D-041 | 2026-11-20 | Wall behaviour: a fixed status strip on every screen; red interrupts the rotation until acknowledged; stale data turns the wall grey, never green; with five or more displays, nothing rotates. | See Rationale. |
-| D-042 | 2026-11-20 | PCM also runs the weekly check, a deeper analysis. It runs when load is low, by default Sunday early morning in each region's local time. Platform (L2) reviews the result in about 1 hour. Revised by D-083: the result is what Monitor shows for the 7-day window; there is no weekly-check page. | The weekly check loads the systems it reads. See Rationale. |
+## Index
 
-| D-043 | 2026-11-20 | The monthly review (1 day) is also the bigger team meeting: everyone meets to discuss important but not urgent matters, plan the next month, and review progress for the year against goals. PCM prepares the review pack; L2 (Platform) hosts it. Revised by D-083: the pack is Improve's decision register and Monitor at the estate root with the 1-year window, on one screen; there is no monthly page (L2 design, 6.4). | See Rationale. |
-| D-044 | 2026-11-20 | A suspected breach is not investigated in PCM. L2 secures the evidence and hands it to the security team. Security is parked until after release 1.0. | "Is it breached?" is a forensic investigation, not troubleshooting (SP5), and needs security expertise (D-008, D-022). |
-| D-045 | 2026-11-20 | L2 owns PCM's own settings (class-of-service definitions, action tiers) in release 1.0. After 1.0, the Operations Manager approves changes. | L2 knows what the settings do. A second approver comes with the Operations Manager workspace. |
-| D-046 | 2026-11-20 | PCM is designed for a lean team of senior, highly experienced people. L2 is not 100% dedicated to operations; it also does architecture and engineering. Most routine and easy work is assisted by AI. | In the agentic AI era, the team is likely a few times smaller than today. |
-| D-047 | 2026-11-20 | Agent E2 is a core team member, not a tool. Assume it knows vSphere, Windows, Linux, networking and the rest of the stack, even though today it knows only vSphere. | AI does the routine work the lean team (D-046) no longer has people for. |
-| D-048 | 2026-11-20 | PCM assumes a two-layer organization. Today's top layers are cut the most. The middle layer becomes the new upper layer. | In a large IT organization with 8 layers, the top 3 are the highest paid and the furthest from ground reality: they neither do the work nor know the technology. AI removes the need for them first. |
-| D-049 | 2026-11-20 | In release 1.0, "Is it safe?" shows VMware platform hygiene only: root logins, ESXi Shell or SSH enabled, lockdown mode off, certificates near expiry. No attack or breach detection (D-044). | These are configuration checks L2 already runs. They are among the most common causes of outages and audit findings in VMware estates. Health keeps its three questions (D-035). |
-| D-050 | 2026-11-20 | Agent E2 cannot carry responsibility. Every task, action or change records two fields: the actor (a person, Agent E2's ID, or PCM running a policy) and the accountable party. For a person or Agent E2, the accountable party is the human who ordered it, which varies by task; Agent E2 can serve several managers at once. For an automatic run, it is the policy owner and the policy version. Revised by D-079. | Accountability stays with a person, and the action history answers "who ordered this", or "which policy, owned by whom", not only "what did it". |
-| D-051 | 2026-11-20 | The Executive workspace uses plain language with basic IT words. Technical terms are kept to a minimum, including in the drill-down. Allowed: server, storage, network, data centre, application, backup, recovery, outage, capacity, cost, upgrade, version, virtual machine (VM). Avoided: ESXi, vSAN, NSX, DRS, HA, vCPU, IOPS, latency, contention, cluster, host, datastore, resource pool, RTO, RPO, snapshot. A build test fails if an avoided term appears in the page text. The list lives in the specification, so customers can change it. | The CIO presents this page upward to the CEO, CFO and board. Basic IT words are understood there; product and engineering terms are not. CEOs and CFOs hear "virtual machine" in budget discussions. |
-| D-052 | 2026-11-20 | Every visual answers a named question, for a named role, at a named cadence. A visual that cannot name all three is cut. | A rich UI turns into decoration without this rule. It also gives each regeneration from the specification (D-010) a test that a visual can pass or fail. |
-| D-053 | 2026-11-20 | The prototype is built in this order: Executive, NOC, L2, then Capacity. All four stay in release 1.0 (D-012). | See Rationale. |
-| D-054 | 2026-11-20 | The Capacity team owns the capacity settings of each cluster: buffer, procurement lead time, procurement round dates. Class-of-service definitions stay with L2 (D-045). | The people who answer for the purchase date set the inputs to it. |
-| D-055 | 2026-11-20 | In release 1.0 the purchase plan is a document for IT Finance. PCM does not connect to procurement systems. | Procurement systems differ by customer and are slow to integrate. A clear document already removes most of the work. |
-| D-056 | 2026-11-20 | Release 1.0 assumes VMs are free to tenants (no chargeback). So the platform team may reclaim. | This is the most common case today (SP5). Price and chargeback come with FinOps after 1.0 (D-027). |
-| D-057 | 2026-11-20 | Storage capacity in release 1.0 covers vSAN and datastore space as vSphere sees it. External arrays come later. | Array capacity needs a vendor adapter per array. vSAN is in VCF already. |
-| D-058 | 2026-11-20 | The FinOps team owns the public-cloud comparison. In release 1.0 FinOps has no workspace (D-027), so it maintains the comparison as an input to PCM. The comparison covers the whole estate over the depreciation period, component by component. | Source: Cost n Price n Value. Comparing one VM for one day flatters whichever side picks the VM. The whole estate over 5 years, with each component marked included or excluded, is the honest comparison. |
-| D-059 | 2026-11-20 | The Executive recovery card shows site recovery test results only: VMware Live Site Recovery (formerly Site Recovery Manager) recovery plans, last test date, recovery time achieved and target, and the share of protected VMs tested. It is labelled site recovery. Backup is not claimed. | See Rationale. |
-| D-060 | 2026-11-20 | PCM follows the cost model in Cost n Price n Value. There is no VM cost: unit cost is on the provider (ESXi host, then cluster); price is on the consumer. Cost has three parts: product, service, people. Reclamation is cost avoidance, valued at today's price of new capacity in that location, and counted only when it defers a purchase. | See Rationale. |
-| D-061 | 2026-11-20 | CPU unit cost is always per physical thread. Cores are used only for licensing. | A vCPU runs on a thread, so capacity is counted in threads (Capacity design, 3.17). Cost uses the same unit, so cost and capacity can be compared. |
-| D-062 | 2026-11-20 | No check of the VCF APIs for now. They are checked later against a live VCF 9.1 system the author provides. | A live system gives a firmer answer than reading API references. |
-| D-063 | 2026-11-20 | The audit log as a compliance record (retention policy, tamper evidence, export for auditors) is phase 2, with security and compliance. Release 1.0 keeps an operational action history: what was done, to which object, by whom (both fields, D-050), why, before and after. | See Rationale. |
-| D-064 | 2026-11-20 | PCM has no collectors of its own. It reads through each region's VCF Operations, which already has a collector per region. PCM talks directly to vCenter and NSX only for actions (D-025) and for reads VCF Operations does not hold. | No duplicate collection: a second collector doubles the API load on every vCenter and adds a component to run in every region. |
-| D-065 | 2026-11-20 | ACME Corp, the synthetic customer, is a global bank. | Banking load follows a strong calendar: end-of-day batch at night, payday, month-end, quarter-end and financial year-end close, which differs by country. Banks also face the strictest regulators, so recovery and safety PCM scenario stories carry weight with the approval audience. |
-| D-066 | 2026-11-20 | Data residency is beyond release 1.0. Release 1.0 runs one central PCM that stores results from every region. | Scope control. Keeping detailed data in its region, with only model results sent to the central PCM, is the later option. |
-| D-067 | 2026-11-20 | The synthetic data uses the present time. "Now" is an input to the generator: the demo uses the present, and each acceptance test passes a fixed "now". PCM scenario stories are written relative to now and to the real calendar, never to a named date or weekday. | A live demo convinces more than a frozen one. Tests stay exact because each sets its own clock. |
-| D-068 | 2026-11-20 | The NOC wall shows every location by default. Limiting a NOC to its region is a setting, not a separate design. An alert belongs to the region of its object; that region's shift acknowledges it. | See Rationale. |
-| D-069 | 2026-11-20 | PCM groups alerts into one incident by object relationship and time, using fixed rules, not the LLM. L1 can split an incident; L1 cannot merge alerts by hand. | See Rationale. |
-| D-070 | 2026-11-20 | The specification is organised as in `pcm/core/design-notes/specification-structure.md`: a design note holds the why, a `spec/` folder holds the what, in the folder of the workspace they belong to (D-133). Pages name a catalog entry instead of defining numbers; every page and visual names its question, role and cadence; every state is specified, including stale; tests run at three levels (catalog, PCM scenario story, page); code is never edited by hand. | An AI builder implements what it is told and invents the rest. These rules leave it as little to invent as possible, and make each build checkable. |
-| D-071 | 2026-11-20 | The prototype uses: Python standard library plus PyYAML for the data generator and the mock API; plain HTML, CSS, JavaScript and SVG for the pages, with no framework and no build step; Python unittest for catalog and PCM scenario story tests; Playwright for page tests. Generated code lives beside the specification it comes from, in the workspace's folder (D-133). This choice is for the prototype only; the product stack stays deferred (PCM core, section 5). | See Rationale. |
-| D-072 | 2026-11-20 | "Is it fast?" is a KPI, not an SLA. Performance has no target and no SLA (SP5). The Executive headline is the production KPI (average of VM daily KPIs, 0 to 100). Status uses only the SP5 bands and the SP5 class promise: red if any class group is orange or red; amber if any class group is yellow, or the order Gold, Silver, Bronze is broken; green otherwise. The earlier 99% target is withdrawn. | See `pcm/core/design-notes/service-levels.md`, section 2. |
-| D-073 | 2026-11-20 | "Is it safe?" is the SP5 Security SLA, measured as unsecured time per VM per calendar month, including the VM's surroundings (host, vSAN, distributed switch, vCenter, NSX Manager), with maintenance windows excluded. Contract 99.95% for every class; internal KSI 100%. Release 1.0 checks: SSH or ESXi Shell running, lockdown off, certificate expired, root login not yet closed by L2. A certificate expiring soon is a risk, shown beside the SLA. The card is red when any production VM is below 99.95% this month. Phase 2 adds the full benchmark with the same formula. | See `pcm/core/design-notes/service-levels.md`, section 3. |
-| D-074 | 2026-11-20 | Three rules from the first build's review: times are shown in the viewer's time zone with the zone named; a value that leaves out stale locations says which ones; no request leaves the PCM host, so fonts and scripts ship with the build. | A global team reads one page from several zones. A headline that changes without a reason looks like a real change. An on-premises customer may have no internet access (D-004). |
-| D-075 | 2026-11-20 | Every red on the NOC wall belongs to something L1 can acknowledge. When a screen turns red with no alert behind it (unexpected VM changes, a risky configuration change), PCM opens a wall-finding incident with its own SOP. | Red stops the rotation until acknowledged (D-041). Inventory changes raise no alert (SP5), so without a wall finding a red "What changed?" screen could never be acknowledged, and the rotation would stay stuck. |
-| D-076 | 2026-11-20 | For demos, Agent E2 calls a model through Vercel AI Gateway, as in Agent E2's own benchmark and lab. PCM talks to Agent E2's model through one OpenAI-compatible client: the endpoint and the model are settings. Customer sites point it at a local model server (D-004, D-017). | See Rationale. |
-| D-077 | 2026-11-20 | "Is it up?" follows the SP5 Availability SLA: Operational Availability per VM per calendar month, against the class target (Gold 99.975%, Silver 99.95%, Bronze 99.9%). Downtime inside an approved change window does not count; downtime outside it counts, even when planned. PCM reads approved change windows from the ITSM change calendar through a connector, or from its own business calendar where no ITSM is connected. Actual Availability is shown in the drill-down. A VM breaches when its counted minutes exceed the allowance for the whole calendar month; the same rule now applies to the Security SLA. | See `pcm/core/design-notes/service-levels.md`, section 4. |
-| D-078 | 2026-11-20 | Agent E2 is a service behind PCM: it owns the knowledge base, the reading plan, the flow executor and the model call, behind one HTTP endpoint (`POST /v1/answer`, Agent E2 `harness/answer_service.py`). PCM owns the data, the actions, the user's identity and every screen, and sends the question with the live facts and the role. The Agent E2 repository becomes part of PCM eventually. | See Rationale. |
-| D-079 | 2026-11-20 | Replace the trust ladder with policy as code. No "Make automatic" button and no promotion thresholds. The approval and rollback record per action type is evidence for L2, never a gate. L2 changes an action type's tier and guardrails through "Propose a policy change": versioned, replayed against recent history, owned (L2 in 1.0; the Operations Manager reviews after 1.0). Guardrails make automatic safe: blast-radius limits, maintenance windows, class-of-service conditions, automatic expiry and undo, and a service account scoped to the action type. | See Rationale. |
-| D-080 | 2026-11-20 | The prototype keeps what people and policies do in SQLite: the action record (append-only), the demand register, and workflow state. Synthetic metrics are generated from "now" and never stored. Plain SQL, so the schema ports to the product database. This does not choose the product database (PCM core, 5). | See Rationale. |
-| D-081 | 2026-11-20 | Detailed inventory matches every change to what explains it, in a fixed order: the PCM action record, an approved change window, a VCF Automation request, DRS. Explained changes are counted; unexplained ones are listed one by one, production and Gold first. L2 can record an unexplained change as expected, with a reason. | Tens of thousands of changes a week cannot be read one by one. L2's question is "is it expected?", so PCM answers it and shows only the exceptions. Details: L2 design, 4.7 and 5.7. |
-| D-082 | 2026-11-20 | PCM `/docs` documents only what PCM owns and acts on: the definition of every number, SOPs, action policies, thresholds, configuration standards and settings, each with version, owner, where it is used and its change history. It is read-only: each object is changed in the workspace that owns it. Documentation for colleagues (architecture, decisions, guides, team structure, learning modes) is private-cloud-explained, a separate product. PCM exports its objects as Markdown into private-cloud-explained, through its review. | See Rationale. |
-| D-083 | 2026-11-21 | L2 works in three activities, SP5's Day 2 verbs: **Monitor**, **Troubleshoot**, **Improve**. They are the top bar of the L2 workspace. Monitoring ends in a problem (→ Troubleshoot) or an opportunity (→ Improve). Daily, weekly and monthly are time windows, not activities and not pages: PCM still runs the checks (D-039, D-042), and Monitor shows their results by window. | See Rationale. |
-| D-084 | 2026-11-21 | Every troubleshooting effort is a case, with one of three triggers: a complaint that L2 logs in PCM, an L1 escalation, or a monitoring finding. Escalation is a handover with entry criteria, not an activity. A case builds a chain of causes over several layers, as a graph: main and contributing causes, ruled-out links kept. It closes only with confirmed causes, a corrective action and a detection decision. | See Rationale. |
-| D-085 | 2026-11-21 | Troubleshooting covers infrastructure only: server, storage as ESXi sees it, network, Windows and Linux. No application troubleshooting and no business transaction correlation. A chain starts at the Guest OS. When the evidence points outside scope (the Guest OS, the storage array, the application), the case hands the evidence to the owning team. | Follows D-030, D-034 and D-038. The infrastructure team can act on these layers; it can only hand over the others. |
-| D-086 | 2026-11-21 | The L2 workspace has four dimensions, each in its own place: **activity** in the top bar; **object** in the left pane, where the inventory tree is the menu; **pillar** as tabs in Monitor and Improve (Summary, Availability, Performance, Capacity, Security, Configuration, Inventory); **time** as one picker per page. Troubleshoot has no pillar tabs: a case crosses pillars. Compliance is left out until after 1.0 (D-022). Cost, price and value are FinOps (D-027). | One menu that mixes time, activity and pillar tells the user none of them. vCenter and VCF Operations are the starting point; their top bar groups product functions, and their tabs mix pillars with types of data. L2 design, 3. |
-| D-087 | 2026-11-21 | The inventory tree has five views: Compute (Estate → Region → Location → VCF instance → Workload domain → Cluster → ESXi host → VM → Guest OS), Storage, Network, Class of service, and Management (the appliances that run VCF). Attributes such as host model, firmware, ESXi build and Tools version are not trees; every list can be grouped by them. | Each view is a hierarchy operations uses; vCenter's datacenters and folders are admin constructs. SP5's two sides of VCF need the Management view. Grouping by attribute is how a shared cause is found across the estate. L2 design, 3.2. |
-| D-088 | 2026-11-21 | Monitor works on the whole estate, top down: on every node, a summary, its children worst first, and the detail one level down. An object's score over a window is its 95th percentile. Monitor shows the count just below each red line and its trend, not only what crossed it. | SP5: insight is top down and needs the whole data set; an alert is the tip of the iceberg. Source: the author's sample dashboards in `author-papers/`. L2 design, 4. |
-| D-089 | 2026-11-21 | Agent E2's flows decide the order of checks in a case: at each node the SP5 order, and a failed step proposes the next object. Agent E2 proposes links with evidence; L2 confirms or rules them out. Agent E2 never closes a case. | The flows are already written and benchmarked in Agent E2. PCM supplies the data; Agent E2 supplies the order (D-078). A human confirmation keeps a wrong link out of the SOPs (D-050). |
-| D-090 | 2026-11-21 | The L2 demo's troubleshooting PCM scenario stories come from Agent E2's benchmark, renamed into the ACME estate: `L4-037` (complaint), `L4-074` (L1 escalation), `L4-049` and `L4-045` (monitoring findings). | Each has several layers, causes that build up over time, and red herrings. Together they show all three triggers. L2 design, 11. |
-| D-091 | 2026-11-21 | The Performance tab above the cluster is two sections, consumer first: **VM**, then **Cluster**. VM: how many VMs were hit at each moment and how many different VMs over the window, and the worst VMs with the time and the cluster. Cluster: two charts on the same 0 to 100% scale, actual slowness (worst Cluster Performance and its 10th percentile) and potential slowness (worst Cluster Risk and its 90th percentile), the same metrics as vCommunity's Worst and Worst 10 Percent. A click on a time lists every cluster at that time. A class of service filter scopes both sections; Gold is the default. Monitoring shows what, when, where and how wide; never why. | Cluster Performance is built from its VMs' contention, so the consumer is read first. A large cluster can stay green while many of its VMs take turns. The worst line says whether anything is wrong; the percentile line says whether it is narrow or wide. Gold is the class that must always be green; Bronze is read when there is time. The why is the case's job (D-084). L2 design, 4.3. |
-| D-092 | 2026-11-21 | The Performance tab of a VM shows detail, not a summary: two stacked layers of trend charts, **Guest OS** on top and **Virtual Motherboard** (the VM's virtual hardware) under it, because the Guest OS runs on the Virtual Motherboard. Each metric has its own chart over the window, and its figures say which statistic they are: now, worst, 95th percentile. Never an average. A VM page has no Group by and no Inventory tab, and the cards that count VMs go too: they describe a group. A number always carries its unit, after the number; a metric name is Title Case and never holds its unit; abbreviations are capitals (CPU, VM, OS). | A single figure such as "CPU Ready 2.5" does not say whether it is now, the worst or a percentile, and an average hides the peak that the VM's owner felt. The Guest OS is not beside the Virtual Motherboard: it is on top of it, and a wait in one shows in the other. Group by, the VM counts and Inventory describe more than one object. Rationale: D-092. |
-| D-093 | 2026-11-21 | In the L2 frame the window is a drop-down, the pillars are tabs joined to a panel, and moving between pages does not load the page. The window list is Last hour, 24 hours, 7 days, 30 days, last year; a custom range comes later. A tab has no status dot (one dot cannot summarise a pillar). The run line under the path is removed. | A pill row for time and a pill row for pillars looked alike, and a full page load on every click lost the tree and the scroll. See Rationale. |
-| D-094 | 2026-11-21 | The L2 Capacity tab shows capacity over time and reads vCommunity's capacity model: **Cluster Consumption** (against usable capacity: total, minus HA, minus buffer), **Cluster Performance** (contention), **Cluster Risk**, and the **Periodic Cluster Check**'s Close for Business. **On a cluster:** the check's verdict and the rule that decided it, beside contention now (Cluster Performance over the last hour); one chart per KPI with the closure levels and the check's verdict under them; what consumption is made of; the spread between hosts; the hosts. **Above the cluster:** clusters closed per check; the highest Cluster Consumption and its 90th percentile; every cluster at a selected time; open clusters near closure; one class of service filter. PCM reads the check and never recomputes it or sets it. The tab shows no forecast, run-out date, decision date, Capacity Remaining or Time Remaining: those belong to the Capacity workspace. | A snapshot table cannot say whether 90% is rising, flat or one spike, and capacity is managed on its trend. vCommunity already decides, every period, whether each cluster takes new VMs; a second rule in PCM would give two answers for one cluster. A cluster is a group of hosts, so the page goes down to them. The boundary keeps two horizons apart: L2 answers "can it take more VMs now, and is it heading to closed?"; Capacity answers "when do we buy?". Rationale: D-094. |
-| D-095 | 2026-11-21 | Which statistic, on which axis. **Over time, on one object:** a point holds the worst value of its slot (D-091); the figures are Now, Worst (with its time) and the percentile figure, named by direction, 5th or 95th (D-092, D-131); the object's status over the window is that figure (D-088), and the worse of that and its last hour. **Across objects, at one time:** the worst object, and the 10th or 90th percentile at the bad end (D-091). **Never an average** on either axis, and never a sum or average of percentages across clusters. vCommunity's "Worst" check values are a percentile of the check period; PCM names them by what they are ("95th percentile, 24 hours to 08:00"), never "Worst". | The two axes answer different questions. Over time, one bad 5 minutes is too noisy to decide on, but it must stay visible: the chart shows every point and Worst names the peak. Across objects, the worst one is a real cluster with real VMs, and the percentile says how wide. One word for two statistics (vCommunity's Worst is a percentile, PCM's Worst is a peak) makes the same cluster read two ways. Rationale: D-095. |
-| D-096 | 2026-11-21 | vCommunity is part of PCM, not a third-party source. PCM requires it, and it will be renamed the **PCM adapter**. Its metrics are PCM's definitions; its settings and thresholds are PCM settings, set in the adapter and listed in the catalog with their owner. PCM still reads them through VCF Operations (D-064), where the adapter runs. | The capacity model, the KPIs and the Periodic Cluster Check are already built in vCommunity. A second copy in PCM would give two answers for one cluster. Spec rule 6 holds: every threshold is a named setting; it is set in one place, the adapter. Rationale: D-096. |
-| D-097 | 2026-11-21 | Agent E2 is on every L2 page, in one place. An **E2 mark** in the top bar says whether it is available; the same mark sits on each metric, KPI, finding, chain link and layer, where the question comes up. A click opens the **Agent E2 panel**, docked on the right: it pushes the content, never covers it, and the inventory tree folds to a narrow strip while it is open. PCM sends the facts of what was clicked; Agent E2 answers with its sources. The panel stays open across pages. Revises the L2 frame rule "no other item in the top bar". | The screen is full, and a panel on top would hide the chart being asked about. While L2 talks to Agent E2 they are not browsing the tree. An avatar mark, not a sparkle: Agent E2 is a team member who explains with sources (D-047), not magic. See Rationale. |
-| D-098 | 2026-11-22 | The NOC desk has the same Agent E2 mark and panel as L2 (D-097): the mark in the top bar, on each tile, on the cluster drill-down, on each incident row, on the incident header and on each SOP step. PCM sends L1's facts (scores from 0 to 100, the SOP and its results) with the role l1. Every answer is checked against the NOC vocabulary; one that still uses an L2 word after one rewrite is not shown. "Explain this incident" and "Draft the escalation note" become the panel's first suggestions on an incident. The wall has no mark. | One mark and one panel for every workspace: an operator who moves to L2 already knows them. L1 must never get raw counters (NOC vocabulary), and must never be told to act outside the SOP (NOC design, 3.8). The wall has no mouse or keyboard (D-032). |
-| D-099 | 2026-11-22 | In the Agent E2 panel an answer shows its sources behind a closed control, "Sources (n)", where n is the number of knowledge files it read. One click opens the list as chips. Applies to L2 and the NOC desk. Refines D-097 ("answers with its sources"): the sources are still there, one click away. | An answer reads 10 or more knowledge files. Showing them all as chips crowded a 400 px panel and pushed the answer and the footer out of sight. The file list is for checking an answer, not for reading it. |
-| D-100 | 2026-11-22 | The L2 Performance and Capacity tabs lead with the object's KPI over time. **Performance:** on a VM the two Performance (%) scores (Guest OS Performance, VM Performance) come first, above the layers; on a cluster and anything under it, the object's own KPI as a trend chart (Cluster Performance and Cluster Risk, ESXi Performance), in place of the four summary cards. **Capacity:** on a VM, ESXi host and cluster, a summary first: Capacity Remaining (%) and Time Remaining (days), plus VM Remaining on a host and a cluster, read from VCF Operations, placeholder values in release 1.0. **KPI figures** (Now, Worst, 95th percentile) carry the band of their value. Revises D-092 (order of the VM tab) and D-094 (no Capacity Remaining or Time Remaining on L2), for VM, host and cluster only. | The author: the trend chart on the Capacity tab says more than four cards with one number each; the Performance (%) KPI is the main counter, so it goes first; L2 wants the remaining figures before the detail. |
-| D-101 | 2026-11-22 | L2 percentages: Consumption, Performance and Risk (%) show whole numbers (63%, not 63.1%), because the decimal is not significant. A value above 0 that shows as 0 reads 0.0+% (0.00+% at two decimals), never a plain 0%. The Capacity tab's placeholder line under the summary is removed. | The author: a decimal on a KPI that moves by a fraction a day is noise; a tiny value must not read as exactly zero; the placeholder line added nothing the page did not already show. |
-| D-102 | 2026-11-22 | Agent E2 panel: it is fixed to the window (below the demo bar when shown) and its answers scroll inside it. Each question with its answer is a fold: the newest open, older ones one line. The context label shows on a question only when it differs from the one above. | The author: a long answer pushed the panel off screen and could not scroll; the same context line repeated on every question. Cause of the first: `align-self: start` in l2.css shrank the fixed panel to its content. |
-| D-103 | 2026-11-22 | Every question to Agent E2 carries the **screen**: who asks, the page (object, tab, window), what was clicked, what that card shows, the object a KPI belongs to when it is not the page's, and for a KPI where to look next (drill_down) with what PCM does not show yet. Whether a KPI moved enough to be a drop is Agent E2's to decide, from its knowledge base (a KPI change level per KPI) and its calculator, not PCM's. | Agent E2 answered "Why the worst at 18 Oct, 10:10?" on a steady Cluster Performance chart (80.2% to 82.2% all day) by explaining a "dip", spoke of "the provided JSON" to an engineer who had typed one line, and pointed at knowledge-base flows instead of a PCM tab. The model saw data, not a screen; and no rule said what size of move is a drop. PCM owns the screens (D-078), so it describes them; Agent E2 owns the domain knowledge. See Rationale. |
-| D-104 | 2026-11-22 | Band figures do not write the band's name. A figure in a band (green, yellow, orange, red) is a tinted pill with a bar; the word GREEN, YELLOW, ORANGE or RED after it, in the figure and in the chart tooltip and the risk sentence, is removed, on every object. The four parts of Cluster Consumption (CPU Thread Utilization, Memory Consumed, Memory Ballooned, Memory Zip Swap, and Memory Tiering) now carry a band too, from the Agent E2 catalog knowledge/catalog/thresholds-capacity.yaml (band ends 55/70/85, 70/80/90, 1/2/4, 0.25/0.5/1; DRAM Consumed 80/85/90 and Memory Tiering Consumption 15/30/45 on tiered hosts, changed on 2026-11-22 to follow Agent E2). Revises D-100 (the name beside the figure). | The author: the color already says it, the word repeats it. Exception to the rule that color is never the only signal; the pill and bar stay, and the author owns the call. |
-| D-105 | 2026-11-22 | The "Just above the line" section (VMs between 75 and 80, 7-day chart and sentence) is removed from the L2 Performance tab. The data (l2.iceberg) stays for the headline and Group by. | The author: not needed on the page. |
-| D-106 | 2026-11-22 | The cluster's Performance tab gets a fold named **Details** under each of Cluster Performance and Cluster Risk, **closed when the page opens**. Opened, one chart per part, with Now, Worst and 95th percentile: 9 parts for Cluster Performance (worst and 90th percentile of vCPU Ready, vCPU Co-stop, memory wait and disk latency; highest ESXi packets), 11 for Cluster Risk (the worst host's CPU and memory utilization, CPU imbalance, ballooning, swap and zip, reservations, overcommit, monster VMs). Risk parts carry the band of the catalog's band ends; Performance parts carry none, except packets, because the catalog has no 5-minute level for the others. Release 1.0: placeholder values derived from the KPI's series. Not on a host or below. Settles the open item of D-103 ("no sub-metric chart for Cluster Performance"). | The author: the Capacity tab already shows what Consumption is made of; Performance and Risk showed only the score, so L2 could not tell which resource moved. A fold, closed, because a good value needs no explanation and L2 may never open it. |
-| D-107 | 2026-11-22 | The NOC wall has six screens named by what they watch: **Availability, Performance, Security, Volatility, Configuration, Capacity**, in that order. This replaces the five questions of D-036 on the wall and on the NOC desk; the CIO page is not changed. The screens are tabs with the active one marked. The tabs are not coloured and carry no summary word (no "Good", "Watch", "Act now"): a tab shows only a count of open incidents, "In hand" or "No data". Colour stays on the tile, cell or row that is wrong. A banner names the estate (ACME Corp Private Cloud) with the running VMs and running ESXi hosts. Performance carries a one-hour chart: the average of all clusters and the lowest cluster. Capacity is new: per location, the share of usable capacity in use for compute, memory and storage, and the days remaining of the tightest cluster group, from the existing capacity engine. | A title above a row of questions made it hard to tell the title from the content. One summary word per screen cannot be one instruction. A red tile already says what is wrong, so a coloured tab only repeated it and hid the neutral count. The average alone hides a single failed cluster, so the lowest is drawn with it. Replaces D-036 (screen names and count) and changes D-041 (the strip is now six tabs, and display only; its rules for rotation, red pin and grey stale data stand). |
-| D-108 | 2026-11-22 | Three repairs to the L2 monitor. (1) The NOC wall's chart rules (`.chart`, `.legend`) apply only inside the wall's panels (`.panel-w`); they had pulled every L2 chart out of the page flow, so charts overlapped the headings, tables and charts below them on the Capacity tab. (2) Every part under Details, and every VM counter that has a catalog row, is coloured by its band ends: figures as band pills, the chart with the four tinted zones and a line in the band of each value. Performance parts take the catalog's 20-second levels: a 5-minute point is the highest of the 20-second values, so the same levels read it. VM: Paging, CPU Ready, CPU Co-Stop, Memory Wait, Disk Latency. Run Queue (a count in the catalog, per vCPU here) and Context Switches (no row) stay plain. The packets row has green equal to yellow, so only 0 is green: its ends are 0, 0.2, 0.4 (D-106 had 0.2, 0.4, 0.8). (3) ESXi Performance gets the Details fold, closed, with nine parts over the VMs on the host, as a cluster has. Changes D-106 ("Not on a host"; "Performance parts carry none"). | The author: a cluster's Performance had parts and colours that a host and a VM lacked, and the Capacity tab was unreadable. The catalog has the levels; the wall and the monitor must not share CSS by accident. |
-| D-109 | 2026-11-22 | PCM scenario story M-5: one Silver cluster has a 24-hour PCM scenario story whose scores are rebuilt from their parts. SG-S-01 (12 hosts, 344 VMs), its host sg-esx-110 (28 VMs) and the VM sg-api-1617 each get their own series at 5 minutes, relative to now (`pcm/l2/kpi_from_parts.py`, PCM scenario story M-5 in `pcm/core/spec/demo-data/scenario-stories.yaml`). Cluster Performance (9 parts), ESXi Performance (9 parts), VM Performance (9 rows) and Cluster Risk (11 parts) are computed from their parts with the vCommunity scoring: five limits per row, weight 2^((100 - score) / 25), weighted average, rows marked skip-when-green left out while green; Risk is 100 minus the score. The three objects are scored separately and share only the PCM scenario story clock. Cluster Performance goes from about 90 to a worst of 42 to 55 now; ESXi Performance 91 to 31 to 44; VM Performance 95 to 17 to 32; Cluster Risk 11 (green) to 60 (orange). The NOC wall, the Performance and Capacity tabs, the tree status and the worst-VM list read the same series (one definition). The VM tab shows the five rows of VM Performance it hid (CPU Overlap, Network Dropped Tx, CPU Run, Memory Ballooned, Memory Zip Swap) for this VM. Longer windows read the worst of the PCM scenario story's points; before the PCM scenario story the objects are calm. | The author: one cluster with meaningful data, a numbers-supported PCM scenario story, three objects and three levels of breakdown. Open: the Risk part list of the prototype (DRAM memory consumed) is the one in monitor.md; the vCommunity pack has since replaced it with Active Memory, so the prototype's list needs its own decision. Settled by D-113. |
-| D-110 | 2026-11-22 | The figures beside a trend chart (Now, Worst, 95th percentile) start level with the top of the chart, not 18 px below it, and are indented by 2 characters from the metric title. | The author: the legend sat lower than the chart's top and flush with the title, which made the title harder to see. |
-| D-111 | 2026-11-22 | A question about Cluster Performance or Cluster Risk sends the KPI's parts at its worst point of the window (`parts_at_worst`): per part the catalog name, unit, value at that point, median and worst of the window with the time, the same values the Details fold shows. The drill_down points to the fold Details on the cluster's Performance tab and no longer says the parts are not shown. PCM sends no score, ranking or verdict: Agent E2 scores the parts with its catalog limits, rebuilds the KPI and splits the points it lost among them. The 90th percentile disk latency part says "peak", as the Agent E2 catalog now does. Settles the item of D-103 ("No sub-metric chart"), done in D-106 but not passed to Agent E2. | Agent E2 answered "Why the worst at 19 Oct, 08:30?" on SG-S-01 (41.9%) with "cannot be identified with the current data": PCM sent the KPI only, and its drill_down still said no PCM page shows the 9 parts, which was out of date since D-106. Knowing what a KPI is made of does not say which part moved; the values do. See Rationale. |
-| D-112 | 2026-11-22 | The Details parts take the Agent E2 catalog's new row names (its Memory Wait change of 2026-11-22): "Worst peak disk latency among all VM virtual disks", "90th percentile peak disk latency among VM virtual disks"; on a host, memory wait instead of memory latency, and the disk names in the same form. Keys and values unchanged. | One name per part across PCM, Agent E2 and the pack; Agent E2 finds a part's limits by its catalog name (D-111), so a stale name leaves that part unscored. |
-| D-113 | 2026-11-23 | The Cluster Risk parts follow the Agent E2 catalog (knowledge/catalog/thresholds-risk.yaml): Highest ESXi DRAM Memory Consumed is removed, and Worst ESXi active memory (tiered hosts) and Worst ESXi NVMe read latency are added, under the catalog names and limits, after swapped + zipped memory. The two memory tiering parts show only on a cluster with a tiered host; the estate has none, so a cluster shows 10 parts. PCM scenario story M-5 scores Cluster Risk from the same 10 rows. Settles the open item of D-109 (the prototype's Risk list). | The author (2026-11-23): one list of Risk parts across the adapter, Agent E2 and PCM. The extra row also stopped Agent E2 from naming the part that moved Cluster Risk: the parts did not rebuild the score (63.9 against 62.8). Now they do (62.4 against 62.4). |
-| D-114 | 2026-11-23 | An Agent E2 answer starts with the values its calculator computed, boxed, with no label; the text follows. The label "Computed, not written by the model" is removed. The boxes keep their look, so the exact figures stay easy to spot. Revised by D-119: no box; Agent E2's opening in plain words leads the answer. | The author (2026-11-23): Agent E2 is one solution of four parts (the agent code, the harness, the knowledge, the LLM). The label split it into "the model" and "not the model", as if the two were unrelated, and confused the reader. The figure first, then the cause, reads as one answer. Not done: Agent E2's text still repeats the figures in its first paragraph; dropping them is Agent E2's (its answer instructions). |
-| D-114 | 2026-11-23 | The VM's Virtual Motherboard layer shows **Memory Wait** (key `memory_wait_percent`) in place of Memory Contention: Memory Contention plus NVMe wait, the memory row of VM Performance in the vCommunity adapter (its pull request 98) and the Agent E2 catalog. Same limits (0.5, 1, 2). The mapping that renamed a planted `memory_wait_percent` to `memory_contention_percent` is removed. Taken from PR 43, which is otherwise superseded by D-112 and D-113. | One name per metric across the three repositories. With memory tiering, cold pages go to NVMe instead of being compressed or swapped, so Memory Contention reads near 0 while the VM waits on NVMe; a layer that showed Memory Contention would hide that wait. The rename mapping also broke PCM scenario story M-5 (`test_vm_is_its_rows`: the layer looked up a key the PCM scenario story never produces). |
-| D-115 | 2026-11-23 | The cards of a VM's two layers take the Agent E2 catalog names (thresholds-performance.yaml, VirtualMachine and Guest OS lines), as the Details parts already do: e.g. CPU Ready becomes "Peak CPU Ready among any vCPU", Run Queue "Peak vCPU run queue length", Memory Zip Swap "VM swapped + zipped memory". Context Switches has no catalog line and keeps its name. The naming rule of monitor.md changes: a sub-metric with a catalog line takes the catalog name as written there; Title Case only for other counters. Keys unchanged. | The author (2026-11-23): one name per sub-metric across the catalog, the adapter (its labels and docs) and PCM, the catalog names, since PCM already used them for the Details parts. Two names for one counter made the VM layer read as different metrics from the KPI parts and the adapter docs. |
-| D-116 | 2026-11-23 | Whole percent (D-101) reaches every trend chart's figures, tooltip and Agent E2 label: the Cluster, ESXi and VM Performance and Risk KPIs; the parts of Consumption on the Capacity tab (CPU Thread Utilization, Memory Consumed, Memory Ballooned, Memory Zip Swap); and the parts under a cluster or ESXi KPI (Details) whose band ends are all whole numbers. A part with a fractional band end (0.5%, 0.25%) keeps its decimals, because they are its band scale. A VM's counters keep theirs. The alignment of D-110 is unchanged. | The author: the parts still showed 47.9% and 0.00%, where the decimal is not significant. The D-101 change had only reached the KPIs on the Capacity tab. |
-| D-117 | 2026-11-23 | The Agent E2 mark is on every KPI at the top of a Performance tab (Cluster Performance, Cluster Risk, ESXi Performance and the KPI of the other objects under a cluster), as on the Capacity tab and a VM's Performance tab. The small mark on a card is dark with white "E2", like the top bar mark, without the status dot. | The mark was on the Capacity tab and the VM tab but not on the cluster and ESXi Performance tabs: the same KPI chart must offer the same question. A white small mark looked like a different control from the dark top bar mark; one dot in the top bar says whether Agent E2 is available. |
-| D-118 | 2026-11-23 | The Agent E2 panel names the failure and the next step instead of "Could not reach PCM": browser lost the connection (status 0), session ended (401, 403), PCM or the proxy cut the wait (502, 503, 504, or a reply that is not JSON), any other status with its code. nginx `proxy_read_timeout` is 200 s, above the 180 s PCM waits for the Agent E2 service. | The old message covered all three failures and was false: the page came from PCM, so PCM was up. A slow model behind a 120 s proxy timeout returned an HTML 504, the JSON parse failed and the catch printed the message. The person could not tell what failed or what to do. |
-| D-119 | 2026-11-23 | An Agent E2 answer opens with Agent E2's `lead`: one paragraph in plain words, written by its code from its calculator's numbers (for a KPI: where it fell to and when, how far from its median, and whether that is a real drop). It shows as the first paragraph of the answer, like the text after it: no box, no border, no label. The text Agent E2's model writes follows it, from the cause on. `computed`, the calculator's own lines, is no longer shown; it stays in the response for review. | The author (2026-11-23, sg-api-1617, VM Performance): the box read "VM Performance across the window (288 points): median 67.95 ... KPI change level: 8 points. Verdict: worsened", machine words in a second format above the chat text, which repeated it. A VMware administrator sees one entity, Agent E2: one voice, one format. The figures stay exact: code writes them (Agent E2 plan, 2026-11-23). Revises D-114. |
-| D-120 | 2026-11-23 | The object header of a cluster, an ESXi host and a VM drops the type line above the name ("CLUSTER"). The type shows as the inventory tree's icon at the left of the name; hovering over the icon or the name, or keyboard focus, pops up the type name. Other objects keep the type line. | The author (2026-11-23): the type line took a row of the header to say what the icon already says. |
-| D-121 | 2026-11-23 | The L2 Capacity tab explains the Periodic Cluster Check as a diagram with the check's own values, in place of the paragraph under the verdict. Three paths into Open or Closed: Consumption, Performance, "Both orange?" then Risk. Each node: the value, its closure level, the distance in whole points; a node past its level and its arrow are red; Risk is greyed "not checked" when the gate fails. One Risk level (orange, above 60%) for every cluster, as vCommunity: no production and non-production split. The last hour is not in the diagram. The "Contention now" chip takes the band colour of its value (orange or red), no longer always red. | The author (2026-11-23): "Open for new VMs" beside "Contention now" read as a contradiction, and the paragraph was hard to read. They are two clocks and two levels: the check (24 hours, worst 5% left out, closes below 20%, or below 40% with Consumption above 60%) and the last hour (below 50%). The paragraph said "Nothing is red" beside three values in the orange display band, and used "orange" for both the display band and the closure level. A diagram with the numbers in it shows which level each value is measured against. A red chip for 46% over-alarmed. |
-| D-122 | 2026-11-23 | The L2 Capacity tab of a cluster is cleaner. (1) The page starts with the three Remaining cards: no "Summary" title (other objects keep it). (2) The "Key Trends" note (last 24 hours, one point every 5 minutes, worst value) is removed. (3) The "Contention now" chip and its sentence beside the verdict are removed; the verdict stays. (4) What makes up Consumption moves into a closed Details fold under the Cluster Consumption chart. | The author (2026-11-23): the title adds no information; the note is confusing because a point is not always the worst value; the chip and sentence confuse beside the verdict. The parts explain one KPI, so they sit under it, hidden until asked. Supersedes the chip in D-121 on this page; the Contention now chip stays on the group and NOC views. |
-| D-123 | 2026-11-23 | A conversation in the Agent E2 panel can be deleted: "Delete" in the head, then "Delete? Yes / No". It removes that context's questions and answers from the browser and shows the suggestions again; other contexts keep theirs. It does not touch the action history, which keeps a record of each question (D-050), and sends nothing to Agent E2. | Author, during development: some answers are outdated or no longer correct, and the panel had no way to remove them. The audit record must stay whole, so the delete is the screen's copy only. |
-| D-124 | 2026-11-23 | The suggested questions of a whole page follow its situation, read by **Agent E2**. On the four pages of release 1.0 (cluster Performance and Capacity, ESXi host Performance, VM Performance) PCM sends Agent E2 the page's KPI series and shows the three questions it returns (`POST /api/l2/agent/suggest`, Agent E2 `POST /v1/suggest`). Agent E2 reads a level (good, medium, bad) and a movement (declining, dip, rising) with its calculator and catalog, and chooses from its own question table. Other pages keep the general questions; so does a page when Agent E2 does not answer. KPI and metric cards keep their templated questions. | The author: "Are the VMs in this cluster served well?" makes no sense when Cluster Performance is very good, and SG-S-01, falling all morning, should be asked "Why is performance declining?". Which situation a page is in is domain knowledge (bands, KPI change level, the close-for-business rule), so it is Agent E2's, not PCM's (D-078, D-103). |
-| D-125 | 2026-11-23 | A KPI question on a Performance tab also sends the KPI's parts once an hour over the window (`parts_hourly`) and the tab's other KPIs with their series, compact. Agent E2 finds the moment the KPI changed level, scores the parts before and after it, and says whether the other KPI followed. PCM scenario story M-5's release (17.5 hours before now: 6 VMs with reservations on sg-esx-110) is on the calendar as a `release` entry. | The author's demo question on SG-S-01, "Risk went up from green to yellow, but Performance did not drop. Explain to me why.", was answered at Risk's worst point (19 Oct, 10:00), when Performance had already dropped: PCM sent the parts at the worst point only, and Cluster Performance without its series. The moment that matters is the step at about 17:00 the day before. Values only: the step and the scoring are Agent E2's (D-078). |
-| D-126 | 2026-11-23 | A VM's Capacity tab shows the VM's own counters, not its cluster's. Summary (Capacity Remaining, Time Remaining), then Key Trends: **CPU** (VM Net Run; Guest OS CPU Run Queue, per vCPU) and **Memory** (Guest OS Used Memory; Peak Guest OS Paging activity). Net Run and the run queue carry the catalog band ends (95, 97, 99; 2, 4, 8); paging takes the page-out rate ends (1000, 2000, 4000); Used Memory has no catalog row, so no band. Same points as the Performance tab for the counters they share; Used Memory is configured memory minus Guest OS free memory. The cluster's verdict, charts and hosts leave a VM's page: one sentence links to the cluster's Capacity tab. A host keeps the cluster's page. Revises D-094 and D-100 for a VM. | The author: the VM page showed cluster metrics; VM capacity must use VM metrics. Guest OS sizing reads the run queue and paging, not hypervisor counters. Open: the exact Agent E2 name and band of "Peak Guest OS Paging activity" (the catalog has Memory page-out rate). |
-| D-127 | 2026-11-23 | Three demo fixes. (1) The first suggested question of a card (a KPI, a metric, a case link or layer) is Agent E2's showcase question for that card, chosen from the card's figures (`POST /api/l2/agent/suggest` with the card's context; Agent E2 `POST /v1/suggest` with `card`): e.g. on Cluster Risk, "Risk went from green to yellow, but Performance did not drop. Explain to me why." only when Risk stepped while Performance held. The card's own questions follow, three in all. A capacity KPI question also sends what Consumption is made of. (2) A VM metric in % is never above 100 (CPU Net Run showed 299% on sg-db-1001). (3) Agent E2 gives each metric's band from its catalog limits (a computed line), not the model's reading. | The author's demo: the card questions must show what Agent E2 does best, not what the eye already sees, and a question such as the Cluster Risk one fits only the situation it was written for. Which question fits is domain knowledge, so it is Agent E2's (D-078, D-124). A 299% CPU Net Run is impossible and the model explained it wrongly. The model called Co-stop 7.7% orange; its limits make it red. |
-| D-128 | 2026-11-24 | Agent E2 is asked with the whole conversation. Every question from the Agent E2 panel goes with all the earlier questions and answers of its context, oldest first, uncut (`history`, each turn {question, answer}; the answer is what the person read: the opening, then the text). The panel keeps every turn of a context for the browser session; no turn is dropped. A turn that failed, a draft and the pending turn of a clarifying round (sent as `turns`) are not in `history`. | A model call holds no memory: it reads only what is sent with it. PCM sent only the new question, so "I don't understand. Explain again" reached Agent E2 with the page's facts and nothing else, and got a summary of the page. Agent E2 stays stateless (D-078); PCM owns the conversation as it owns the screen. No cap: the hardware is enterprise GPU, up to four large GPUs (Agent E2 MISSION.md), and Agent E2 flags a prompt above its model's window. |
-| D-129 | 2026-11-24 | A conversation holds topics; a topic holds turns. Agent E2 decides whether a question continues the current topic (Agent E2 `harness/topic_decision.py`: the person's choice, then code for a question that points back or is too short to stand alone, then one model call); PCM sends only the current topic's turns, uncut, with `topic_choice` (auto, new, continue). The panel shows the decision: a "New topic" divider, or "Continuing: “{first question}”" above the answer; the newest answer has one button to flip it, which asks the question again. "New topic" beside Ask forces the next question to start one. A suggested question starts a new topic. Refines D-128, which sent every turn of the context. | Two kinds of follow-up: the same topic needs the earlier turns; a new topic is better read alone, or an earlier topic crowds its reading and its answer. The panel is too small for a list of conversations, so topics live inside the one conversation of a context. Asking the person every time is friction most would skip; Agent E2 decides, and a wrong decision costs one click. Measured in Agent E2 `benchmark/runner/topic_check.py` on 32 labelled pairs: always continue 21 of 32; with the decision 28 of 32 and no lost context, the worse error. |
-| D-130 | 2026-11-24 | The topic decision shows before the answer. For a question typed with a topic in progress, PCM first asks Agent E2 for the decision alone (Agent E2 `POST /v1/topic`; PCM `/api/l2/agent/topic`, `/api/noc/agent/topic`) and shows it in the waiting area with the one button to flip it; the answer request then carries topic_choice new or continue. A flip while waiting drops the answer being written and asks again. With no decision from Agent E2, a question sent with the topic's turns continues the topic. Refines D-129. | The flip of D-129 came only after the answer, so a wrong decision cost a whole wrong answer and its wait before the person could act (author, 2026-11-24). Decided apart, the decision costs no extra time: the answer call no longer decides. The fallback fixes a real fault: an Agent E2 service older than topics returned no decision, and the panel read that as a new topic. |
-| D-131 | 2026-11-24 | A percentile is labelled by its statistical rank, counted from the lowest value, so its name follows the direction of the metric. Beside a trend chart, the value 95% of the points were better than reads **5th percentile** where higher is better (the Performance scores, Guest OS free memory) and **95th percentile** where higher is worse. The check value follows: Cluster Performance's reads "5th percentile, 24 hours to 08:00", Consumption's and Risk's "95th percentile". The API field `percentile_95` keeps its name in both directions. Refines D-095. | The author chose this rule (option B of three; A was to keep "95th percentile" everywhere, C a phrase such as "95% of the time"). On SG-S-01 the card read "95th percentile 48.2%" under a median of 85%: a 95th percentile below the median looks impossible to anyone who reads statistics. The same statistic also had three names: "95th percentile" on one object's card, "10th percentile" across clusters, "5th percentile" in Agent E2's Capacity opening. Across objects PCM already names it by rank (10th, 90th, D-091). Cost: the label differs between a Performance card and a Risk card on the same tab. |
-| D-132 | 2026-11-27 | A condition planted in the synthetic ACME data, with the result each workspace must show, is a **PCM scenario story**. The word replaces "story" in every file: design notes, decisions, spec, tests and generated code. Its IDs stay (N-2, O-1, M-5). The rename is done with the folder renames of R-REPO-007 and R-REPO-008, in workspace milestone M2. | The author, 2026-11-27. "Story" alone reads as a planning item, beside release, milestone and requirement; `l2_story_m5.py` was read as milestone 5. |
-| D-133 | 2026-11-27 | PCM's files are grouped by workspace. `pcm/` is the application and its Python package: one folder per workspace, named in full (`executive`, `noc`, `l2`, `capacity`, `docs`), and `core` for the parts every workspace uses. Each folder holds its design notes, its specification in `spec/`, and the server code, page code (`pages/`) and tests (`tests/`) generated from them. "Design" names a design note only; the visual design system is the visual style (`pcm/core/spec/visual-style.md`). `spec/` keeps the specification's front page and the requirements. Revises the layout in D-070 and D-071. | Q-WS-134 (round 4: "Yes, by workspace."), WD-030: one folder is the whole context of a task on one workspace, and every name says what it holds. See Rationale. |
+Every decision, with a link to its block. The workspace's [tools/spec_check.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/spec_check.py) reads the IDs of PCM's decisions from this table.
+
+| ID | Decision |
+|---|---|
+| D-001 | [The product's name](#d-001-the-products-name) |
+| D-002 | [PCM's relation to Broadcom and its price](#d-002-pcms-relation-to-broadcom-and-its-price) |
+| D-003 | [Connections to the private cloud's other vendors](#d-003-connections-to-the-private-clouds-other-vendors) |
+| D-004 | [On-premises deployment and source code ownership](#d-004-on-premises-deployment-and-source-code-ownership) |
+| D-005 | [Target customers](#d-005-target-customers) |
+| D-006 | [VCF Operations as a data source](#d-006-vcf-operations-as-a-data-source) |
+| D-007 | [Replacement of the VCF Operations presentation layer](#d-007-replacement-of-the-vcf-operations-presentation-layer) |
+| D-008 | [VCF lifecycle management and security operations](#d-008-vcf-lifecycle-management-and-security-operations) |
+| D-009 | [PCM's new capabilities](#d-009-pcms-new-capabilities) |
+| D-010 | [The specification as the maintained artifact](#d-010-the-specification-as-the-maintained-artifact) |
+| D-011 | [A workspace and URL per role](#d-011-a-workspace-and-url-per-role) |
+| D-012 | [Workspaces by role and the first four](#d-012-workspaces-by-role-and-the-first-four) |
+| D-013 | [The NOC pages for L1 operators](#d-013-the-noc-pages-for-l1-operators) |
+| D-014 | [The weekly cadence of Capacity Management](#d-014-the-weekly-cadence-of-capacity-management) |
+| D-015 | [The Executive page and its drill-down](#d-015-the-executive-page-and-its-drill-down) |
+| D-016 | [Actions taken by PCM](#d-016-actions-taken-by-pcm) |
+| D-017 | [A local LLM in PCM](#d-017-a-local-llm-in-pcm) |
+| D-018 | [Synthetic ACME data for the prototype](#d-018-synthetic-acme-data-for-the-prototype) |
+| D-019 | [Cost, price and value](#d-019-cost-price-and-value) |
+| D-020 | [Basic and detailed inventory](#d-020-basic-and-detailed-inventory) |
+| D-021 | [The scope of the L2 role](#d-021-the-scope-of-the-l2-role) |
+| D-022 | [Compliance after release 1.0](#d-022-compliance-after-release-10) |
+| D-023 | [VMware and migration from competitors](#d-023-vmware-and-migration-from-competitors) |
+| D-024 | [The documentation URL](#d-024-the-documentation-url) |
+| D-025 | [Direct actions through vCenter and VCF APIs](#d-025-direct-actions-through-vcenter-and-vcf-apis) |
+| D-026 | [Upgrades of a personalized specification](#d-026-upgrades-of-a-personalized-specification) |
+| D-027 | [The FinOps role and Price](#d-027-the-finops-role-and-price) |
+| D-028 | [One host with a path per workspace](#d-028-one-host-with-a-path-per-workspace) |
+| D-029 | [Action governance as policy as code](#d-029-action-governance-as-policy-as-code) |
+| D-030 | [Management scope and its exclusions](#d-030-management-scope-and-its-exclusions) |
+| D-031 | [L1 shifts and mobile push](#d-031-l1-shifts-and-mobile-push) |
+| D-032 | [The two L1 user interfaces](#d-032-the-two-l1-user-interfaces) |
+| D-033 | [The data each workspace shows](#d-033-the-data-each-workspace-shows) |
+| D-034 | [The infrastructure PCM manages](#d-034-the-infrastructure-pcm-manages) |
+| D-035 | [Health as three plain questions](#d-035-health-as-three-plain-questions) |
+| D-036 | [The five NOC wall screens](#d-036-the-five-noc-wall-screens) |
+| D-037 | [The Operations Manager role in release 1.0](#d-037-the-operations-manager-role-in-release-10) |
+| D-038 | [Guest OS scope](#d-038-guest-os-scope) |
+| D-039 | [The daily check and its review](#d-039-the-daily-check-and-its-review) |
+| D-040 | [L1 actions through SOP buttons](#d-040-l1-actions-through-sop-buttons) |
+| D-041 | [NOC wall behaviour](#d-041-noc-wall-behaviour) |
+| D-042 | [The weekly check and its review](#d-042-the-weekly-check-and-its-review) |
+| D-043 | [The monthly review and team meeting](#d-043-the-monthly-review-and-team-meeting) |
+| D-044 | [Suspected breaches](#d-044-suspected-breaches) |
+| D-045 | [Ownership of PCM's own settings](#d-045-ownership-of-pcms-own-settings) |
+| D-046 | [A lean team of senior people](#d-046-a-lean-team-of-senior-people) |
+| D-047 | [Agent E2 as a team member](#d-047-agent-e2-as-a-team-member) |
+| D-048 | [A two-layer organization](#d-048-a-two-layer-organization) |
+| D-049 | [VMware platform hygiene in release 1.0](#d-049-vmware-platform-hygiene-in-release-10) |
+| D-050 | [Actor and accountable party](#d-050-actor-and-accountable-party) |
+| D-051 | [Plain language in the Executive workspace](#d-051-plain-language-in-the-executive-workspace) |
+| D-052 | [Question, role and cadence of every visual](#d-052-question-role-and-cadence-of-every-visual) |
+| D-053 | [Build order of the four workspaces](#d-053-build-order-of-the-four-workspaces) |
+| D-054 | [Ownership of cluster capacity settings](#d-054-ownership-of-cluster-capacity-settings) |
+| D-055 | [The purchase plan in release 1.0](#d-055-the-purchase-plan-in-release-10) |
+| D-056 | [Free VMs and reclamation](#d-056-free-vms-and-reclamation) |
+| D-057 | [Storage capacity in release 1.0](#d-057-storage-capacity-in-release-10) |
+| D-058 | [The public-cloud comparison](#d-058-the-public-cloud-comparison) |
+| D-059 | [The Executive recovery card](#d-059-the-executive-recovery-card) |
+| D-060 | [The cost model and reclamation value](#d-060-the-cost-model-and-reclamation-value) |
+| D-061 | [The basis of CPU unit cost](#d-061-the-basis-of-cpu-unit-cost) |
+| D-062 | [Checks of the VCF APIs](#d-062-checks-of-the-vcf-apis) |
+| D-063 | [Audit log and operational action history](#d-063-audit-log-and-operational-action-history) |
+| D-064 | [Collectors and reads through VCF Operations](#d-064-collectors-and-reads-through-vcf-operations) |
+| D-065 | [ACME Corp, the synthetic customer](#d-065-acme-corp-the-synthetic-customer) |
+| D-066 | [Data residency and one central PCM](#d-066-data-residency-and-one-central-pcm) |
+| D-067 | [The present time in the synthetic data](#d-067-the-present-time-in-the-synthetic-data) |
+| D-068 | [NOC wall locations and regional scope](#d-068-noc-wall-locations-and-regional-scope) |
+| D-069 | [Alert grouping into incidents](#d-069-alert-grouping-into-incidents) |
+| D-070 | [Organisation of the specification](#d-070-organisation-of-the-specification) |
+| D-071 | [Technology of the prototype](#d-071-technology-of-the-prototype) |
+| D-072 | [The Executive performance KPI and its status](#d-072-the-executive-performance-kpi-and-its-status) |
+| D-073 | [The SP5 Security SLA](#d-073-the-sp5-security-sla) |
+| D-074 | [Rules from the first build's review](#d-074-rules-from-the-first-builds-review) |
+| D-075 | [Wall findings for reds with no alert](#d-075-wall-findings-for-reds-with-no-alert) |
+| D-076 | [Model client and gateway for Agent E2](#d-076-model-client-and-gateway-for-agent-e2) |
+| D-077 | [The SP5 Availability SLA](#d-077-the-sp5-availability-sla) |
+| D-078 | [Division of work between PCM and Agent E2](#d-078-division-of-work-between-pcm-and-agent-e2) |
+| D-079 | [Policy as code replacing the trust ladder](#d-079-policy-as-code-replacing-the-trust-ladder) |
+| D-080 | [The prototype's SQLite database](#d-080-the-prototypes-sqlite-database) |
+| D-081 | [Matching inventory changes to their explanations](#d-081-matching-inventory-changes-to-their-explanations) |
+| D-082 | [The Docs workspace and private-cloud-explained](#d-082-the-docs-workspace-and-private-cloud-explained) |
+| D-083 | [The three L2 activities](#d-083-the-three-l2-activities) |
+| D-084 | [Troubleshooting cases and their triggers](#d-084-troubleshooting-cases-and-their-triggers) |
+| D-085 | [The scope of troubleshooting](#d-085-the-scope-of-troubleshooting) |
+| D-086 | [The four dimensions of the L2 workspace](#d-086-the-four-dimensions-of-the-l2-workspace) |
+| D-087 | [The five views of the inventory tree](#d-087-the-five-views-of-the-inventory-tree) |
+| D-088 | [Monitor's walk of the estate and window score](#d-088-monitors-walk-of-the-estate-and-window-score) |
+| D-089 | [Agent E2's flows in troubleshooting cases](#d-089-agent-e2s-flows-in-troubleshooting-cases) |
+| D-090 | [The L2 demo's troubleshooting PCM scenario stories](#d-090-the-l2-demos-troubleshooting-pcm-scenario-stories) |
+| D-091 | [The Performance tab above the cluster](#d-091-the-performance-tab-above-the-cluster) |
+| D-092 | [The VM's Performance tab](#d-092-the-vms-performance-tab) |
+| D-093 | [Window, tabs and navigation in the L2 frame](#d-093-window-tabs-and-navigation-in-the-l2-frame) |
+| D-094 | [The L2 Capacity tab and vCommunity's capacity model](#d-094-the-l2-capacity-tab-and-vcommunitys-capacity-model) |
+| D-095 | [Statistics over time and across objects](#d-095-statistics-over-time-and-across-objects) |
+| D-096 | [vCommunity as the PCM adapter](#d-096-vcommunity-as-the-pcm-adapter) |
+| D-097 | [The Agent E2 mark and panel in L2](#d-097-the-agent-e2-mark-and-panel-in-l2) |
+| D-098 | [The Agent E2 panel at the NOC desk](#d-098-the-agent-e2-panel-at-the-noc-desk) |
+| D-099 | [Answer sources in the Agent E2 panel](#d-099-answer-sources-in-the-agent-e2-panel) |
+| D-100 | [KPI over time on Performance and Capacity tabs](#d-100-kpi-over-time-on-performance-and-capacity-tabs) |
+| D-101 | [L2 percentages and near-zero values](#d-101-l2-percentages-and-near-zero-values) |
+| D-102 | [Layout of the Agent E2 panel](#d-102-layout-of-the-agent-e2-panel) |
+| D-103 | [The screen sent with each Agent E2 question](#d-103-the-screen-sent-with-each-agent-e2-question) |
+| D-104 | [Band figures without band names](#d-104-band-figures-without-band-names) |
+| D-105 | [Removal of the "Just above the line" section](#d-105-removal-of-the-just-above-the-line-section) |
+| D-106 | [The Details fold on the cluster's Performance tab](#d-106-the-details-fold-on-the-clusters-performance-tab) |
+| D-107 | [The six NOC wall screens](#d-107-the-six-noc-wall-screens) |
+| D-108 | [Three repairs to the L2 monitor](#d-108-three-repairs-to-the-l2-monitor) |
+| D-109 | [PCM scenario story M-5](#d-109-pcm-scenario-story-m-5) |
+| D-110 | [Position of the figures beside a trend chart](#d-110-position-of-the-figures-beside-a-trend-chart) |
+| D-111 | [KPI parts at the worst point](#d-111-kpi-parts-at-the-worst-point) |
+| D-112 | [Catalog names of the Details parts](#d-112-catalog-names-of-the-details-parts) |
+| D-113 | [The Cluster Risk parts](#d-113-the-cluster-risk-parts) |
+| D-114 | [Computed values at the start of an answer](#d-114-computed-values-at-the-start-of-an-answer) |
+| D-114 | [Memory Wait on the Virtual Motherboard layer](#d-114-memory-wait-on-the-virtual-motherboard-layer) |
+| D-115 | [Catalog names on a VM's layer cards](#d-115-catalog-names-on-a-vms-layer-cards) |
+| D-116 | [Whole percent on every trend chart](#d-116-whole-percent-on-every-trend-chart) |
+| D-117 | [The Agent E2 mark on Performance tab KPIs](#d-117-the-agent-e2-mark-on-performance-tab-kpis) |
+| D-118 | [Failure messages in the Agent E2 panel](#d-118-failure-messages-in-the-agent-e2-panel) |
+| D-119 | [Agent E2's lead paragraph](#d-119-agent-e2s-lead-paragraph) |
+| D-120 | [Object headers without the type line](#d-120-object-headers-without-the-type-line) |
+| D-121 | [The Periodic Cluster Check diagram](#d-121-the-periodic-cluster-check-diagram) |
+| D-122 | [Clean-up of a cluster's Capacity tab](#d-122-clean-up-of-a-clusters-capacity-tab) |
+| D-123 | [Deletion of an Agent E2 conversation](#d-123-deletion-of-an-agent-e2-conversation) |
+| D-124 | [Suggested questions of a whole page](#d-124-suggested-questions-of-a-whole-page) |
+| D-125 | [Hourly KPI parts sent with a question](#d-125-hourly-kpi-parts-sent-with-a-question) |
+| D-126 | [A VM's own counters on its Capacity tab](#d-126-a-vms-own-counters-on-its-capacity-tab) |
+| D-127 | [Three demo fixes](#d-127-three-demo-fixes) |
+| D-128 | [The whole conversation in each question](#d-128-the-whole-conversation-in-each-question) |
+| D-129 | [Topics and turns in a conversation](#d-129-topics-and-turns-in-a-conversation) |
+| D-130 | [The topic decision before the answer](#d-130-the-topic-decision-before-the-answer) |
+| D-131 | [Percentile labels by statistical rank](#d-131-percentile-labels-by-statistical-rank) |
+| D-132 | [The term PCM scenario story](#d-132-the-term-pcm-scenario-story) |
+| D-133 | [File layout by workspace](#d-133-file-layout-by-workspace) |
+| D-134 | [Decision blocks and the style baseline](#d-134-decision-blocks-and-the-style-baseline) |
+
+## D-001 The product's name
+
+- **Date:** 2026-11-20
+- **Decision:** The product is named **PCM** (Private Cloud Manager).
+- **Reason:** Short, vendor-neutral.
+
+## D-002 PCM's relation to Broadcom and its price
+
+- **Date:** 2026-11-20
+- **Decision:** PCM is not a Broadcom product. It is free, and customers download it.
+- **Reason:** It helps customers grow VMware into their complete private cloud.
+
+## D-003 Connections to the private cloud's other vendors
+
+- **Date:** 2026-11-20
+- **Decision:** Scope is the whole private cloud, not only VMware. A private cloud has dozens of vendors, competitors included. PCM connects to them, for example ITSM, CMDB and email.
+- **Reason:** VMware is the core, not the whole estate.
+
+## D-004 On-premises deployment and source code ownership
+
+- **Date:** 2026-11-20
+- **Decision:** On-premises only. Customers own the full source code and personalize it.
+- **Reason:** Customer data stays on site. Large enterprises adapt tools to their own process.
+
+## D-005 Target customers
+
+- **Date:** 2026-11-20
+- **Decision:** Target: large global enterprises, not small companies.
+- **Reason:** Their need for role-specific operations is greatest.
+
+## D-006 VCF Operations as a data source
+
+- **Date:** 2026-11-20
+- **Decision:** PCM uses VCF Operations as a data source and has its own database. It does not depend 100% on VCF Operations.
+- **Reason:** VCF Operations covers only the VMware part, and PCM keeps its own data.
+
+## D-007 Replacement of the VCF Operations presentation layer
+
+- **Date:** 2026-11-20
+- **Decision:** PCM replaces the VCF Operations presentation layer for capacity, cost, performance, inventory, configuration and availability management. Compliance follows D-022.
+- **Reason:** These are the operations areas PCM serves by role.
+
+## D-008 VCF lifecycle management and security operations
+
+- **Date:** 2026-11-20
+- **Decision:** Out of scope: VCF lifecycle management (the SDDC Manager part) and security operations.
+- **Reason:** Lifecycle is Broadcom software management. Security operations is a different field with different expertise.
+
+## D-009 PCM's new capabilities
+
+- **Date:** 2026-11-20
+- **Decision:** New capabilities: an executive dashboard, multiple VCF Operations instances, and documentation for the private cloud. Revised by D-082: documentation for colleagues is private-cloud-explained, a separate product; PCM documents only its own objects.
+- **Reason:** Starting points: [VMW-Executive-Dashboard](https://github.com/e1-rahabok/VMW-Executive-Dashboard), [VMW-Federated-VCF-Operations](https://github.com/e1-rahabok/VMW-Federated-VCF-Operations), [private-cloud-explained](https://github.com/e1-rahabok/private-cloud-explained). Ideas are also borrowed from https://isvara.io.
+
+## D-010 The specification as the maintained artifact
+
+- **Date:** 2026-11-20
+- **Decision:** The specification is the maintained artifact. AI writes 100% of the code. Developers do not maintain code.
+- **Reason:** Generating code is cheap. The specification is what has to stay correct.
+
+## D-011 A workspace and URL per role
+
+- **Date:** 2026-11-20
+- **Decision:** Each role gets a workspace with its own URL. Workspaces share no menu.
+- **Reason:** One common UI for all roles weakens the experience for each of them.
+
+## D-012 Workspaces by role and the first four
+
+- **Date:** 2026-11-20
+- **Decision:** Workspaces are per role, not per pillar of operations management. First four: **NOC** (L1 operators), **L2**, **Capacity**, **Executive**.
+- **Reason:** Enterprise IT is run by people in different roles. Each role gets its own workspace.
+
+## D-013 The NOC pages for L1 operators
+
+- **Date:** 2026-11-20
+- **Decision:** NOC: a few pages. L1 operators have simple needs and follow the SOP.
+- **Reason:** L1 work is SOP-driven.
+
+## D-014 The weekly cadence of Capacity Management
+
+- **Date:** 2026-11-20
+- **Decision:** Capacity Management runs weekly, not daily. It includes what-if analysis and hardware refresh.
+- **Reason:** Capacity decisions follow a weekly cadence.
+
+## D-015 The Executive page and its drill-down
+
+- **Date:** 2026-11-20
+- **Decision:** Executive: one page, with drill-down to the next level. The [Executive Dashboard export](https://e1-rahabok.github.io/VMW-Executive-Dashboard/design/export/) is the starting point.
+- **Reason:** The CIO has no time for detail.
+
+## D-016 Actions taken by PCM
+
+- **Date:** 2026-11-20
+- **Decision:** PCM takes actions, not only reads.
+- **Reason:** Operations work needs action, not only viewing.
+
+## D-017 A local LLM in PCM
+
+- **Date:** 2026-11-20
+- **Decision:** PCM includes a local LLM, for example Agent E2.
+- **Reason:** On-premises only (D-004).
+
+## D-018 Synthetic ACME data for the prototype
+
+- **Date:** 2026-11-20
+- **Decision:** The prototype uses synthetic ACME data. A lab with a full VCF 9.1 instance follows later.
+- **Reason:** No customer data is needed for the prototype.
+
+## D-019 Cost, price and value
+
+- **Date:** 2026-11-20
+- **Decision:** Money has three parts. **Cost** is what the company pays: hardware and software line items, used in Capacity Management. **Price** is what tenants pay: per VM, per Kubernetes pod and so on. **Value** is what the Executive sees: total cost, ROI, TCO, with no line items.
+- **Reason:** Each part answers a different role's question.
+
+## D-020 Basic and detailed inventory
+
+- **Date:** 2026-11-20
+- **Decision:** Inventory has two parts. **Basic inventory** is foundational: every workspace has its own purpose-built variant. **Detailed inventory** tracks changes for analysis and belongs to the L2 role.
+- **Reason:** Every role needs to know what exists. Only L2 analyses how it changes.
+
+## D-021 The scope of the L2 role
+
+- **Date:** 2026-11-20
+- **Decision:** The L2 role covers escalation (reactive) and proactive health checks, across availability, performance and configuration. Revised by D-083 and D-084: L2 works in three activities (Monitor, Troubleshoot, Improve); escalation is one trigger of troubleshooting.
+- **Reason:** L2 is the expert behind the NOC.
+
+## D-022 Compliance after release 1.0
+
+- **Date:** 2026-11-20
+- **Decision:** Compliance is parked under security, after release 1.0.
+- **Reason:** It needs security expertise (D-008).
+
+## D-023 VMware and migration from competitors
+
+- **Date:** 2026-11-20
+- **Decision:** VMware is mandatory. Competitors are included only for migration into VMware, not for management. Migration runs one way only: into VMware. Red Hat OpenShift is the first.
+- **Reason:** The goal is to bring the whole private cloud infrastructure onto VMware (D-002).
+
+## D-024 The documentation URL
+
+- **Date:** 2026-11-20
+- **Decision:** Documentation has its own URL, for example `privatecloud.acme.com/docs`. Revised by D-082: `/docs` documents PCM's own objects only.
+- **Reason:** Follows D-011.
+
+## D-025 Direct actions through vCenter and VCF APIs
+
+- **Date:** 2026-11-20
+- **Decision:** PCM runs actions directly through vCenter and VCF APIs, not through ITSM or automation tools.
+- **Reason:** Those tools are too slow for self-driving operations.
+
+## D-026 Upgrades of a personalized specification
+
+- **Date:** 2026-11-20
+- **Decision:** Upgrading a customer-personalized specification is deferred until after the prototype is approved.
+- **Reason:** The prototype comes first. Large open-source products such as Odoo and Linux live with the same problem.
+
+## D-027 The FinOps role and Price
+
+- **Date:** 2026-11-20
+- **Decision:** The FinOps role owns Price: cost accounting and chargeback. FinOps works with the Capacity team. Its workspace comes after release 1.0.
+- **Reason:** Price is a FinOps job, not a Capacity or Executive one.
+
+## D-028 One host with a path per workspace
+
+- **Date:** 2026-11-20
+- **Decision:** All workspaces run on one host, each under its own path: `privatecloud.acme.com/noc`, `/l2`, `/capacity`, `/exec`, `/docs`. No shared menu.
+- **Reason:** One host to deploy and secure. Separate paths keep each role's experience separate (D-011).
+
+## D-029 Action governance as policy as code
+
+- **Date:** 2026-11-20
+- **Decision:** Action governance lives inside PCM as policy as code. Each action type has a tier (automatic, approval, never) and guardrails, versioned in the catalog with an owner. An automatic action never records an approval: if an approval could be automated, it is not needed, so it is removed from the policy. Every action is written to the action history. Revised by D-079.
+- **Reason:** Direct actions (D-025) still need control. Guardrails reduce risk; approval records do not.
+
+## D-030 Management scope and its exclusions
+
+- **Date:** 2026-11-20
+- **Decision:** Management scope is Broadcom VMware only; competitors appear only for migration (D-023). Out of scope: end-user help desk (for example "my laptop is not working") and business transactions (for example "the payment system is slow"). Scope guide: https://isvara.io/read/part-2/role-based-contents
+- **Reason:** PCM manages the VMware private cloud, not the applications or end-user devices on it.
+
+## D-031 L1 shifts and mobile push
+
+- **Date:** 2026-11-20
+- **Decision:** L1 works in three shifts; someone always watches. Fewer people per shift than today (D-046). No mobile push for L1; mobile push is for L2.
+- **Reason:** The NOC is staffed 24x7, so L1 does not need to be paged. Even with AI, people stay on every shift: not all operational context is in a computer, so AI does not have all of it.
+
+## D-032 The two L1 user interfaces
+
+- **Date:** 2026-11-20
+- **Decision:** L1 has two UIs. **Wall screen**: a large TV that streams the present, with no mouse and no keyboard; it auto-rotates about every 60 seconds through Inventory, Availability, Performance, Security, Compliance, Configuration. **Desktop dashboard**, assisted by Agent E2. Live screen practice: https://isvara.io/read/part-2/proactive-operations
+- **Reason:** A static screen bores the viewer. The wall is for watching; the desk is for working.
+
+## D-033 The data each workspace shows
+
+- **Date:** 2026-11-20
+- **Decision:** A workspace shows only the data its role acts on. The NOC shows no cost or price data.
+- **Reason:** L1 does not decide anything with cost. Data a role does not act on is noise.
+
+## D-034 The infrastructure PCM manages
+
+- **Date:** 2026-11-20
+- **Decision:** PCM manages VMware infrastructure only. Not the mainframe, not VDI, not applications.
+- **Reason:** Keeps PCM focused on the VMware private cloud (D-030).
+
+## D-035 Health as three plain questions
+
+- **Date:** 2026-11-20
+- **Decision:** L1 and the CIO see health as three plain questions, in this order: **Is it up? Is it fast? Is it safe?** They are not shown the split between security and compliance. Source: SP5 framework, https://github.com/e1-rahabok/agent-e2/tree/main/knowledge/sp5-framework
+- **Reason:** A system that is down has no security or performance problem. Up is not fast. Fast is not safe. The split between security and compliance helps experts, not L1 or the CIO.
+
+## D-036 The five NOC wall screens
+
+- **Date:** 2026-11-20
+- **Decision:** The NOC wall rotates through 5 screens, each titled as a question: **What changed?** (inventory), **Is it up?**, **Is it fast?**, **Is it safe?** (security and compliance together, VMware only), **Is it set right?** (configuration). This changes the 6-screen order in D-032.
+- **Reason:** Follows D-035: L1 does not need the split between security and compliance. Compliance changes slowly; a compliance drift that happens now is a safety event. Fewer screens means a shorter cycle, so red stays off screen for less time.
+
+## D-037 The Operations Manager role in release 1.0
+
+- **Date:** 2026-11-20
+- **Decision:** The Operations Manager role has no workspace in release 1.0.
+- **Reason:** Scope control. The four workspaces come first.
+
+## D-038 Guest OS scope
+
+- **Date:** 2026-11-20
+- **Decision:** The Guest OS is in scope, limited to Windows and Linux at the OS level. Applications inside the Guest OS are out. macOS is out.
+- **Reason:** IT owns the OS build standard (SP5 People: OS teams). Applications belong to their owners (D-034). macOS on ESXi is rare in enterprises. See Rationale.
+
+## D-039 The daily check and its review
+
+- **Date:** 2026-11-20
+- **Decision:** The daily check is run by PCM, not by a person. It runs before the start and before the end of each region's business day. Platform (L2) owns the review, not L1. The human review takes about 10 minutes when there is no problem. Revised by D-083: the result is what Monitor shows for the 24-hour window; there is no daily-check page.
+- **Reason:** See Rationale.
+
+## D-040 L1 actions through SOP buttons
+
+- **Date:** 2026-11-20
+- **Decision:** L1 acts only through SOP buttons in PCM, never through vCenter. The L1 action set is small, reversible and set by class of service.
+- **Reason:** See Rationale.
+
+## D-041 NOC wall behaviour
+
+- **Date:** 2026-11-20
+- **Decision:** Wall behaviour: a fixed status strip on every screen; red interrupts the rotation until acknowledged; stale data turns the wall grey, never green; with five or more displays, nothing rotates.
+- **Reason:** See Rationale.
+
+## D-042 The weekly check and its review
+
+- **Date:** 2026-11-20
+- **Decision:** PCM also runs the weekly check, a deeper analysis. It runs when load is low, by default Sunday early morning in each region's local time. Platform (L2) reviews the result in about 1 hour. Revised by D-083: the result is what Monitor shows for the 7-day window; there is no weekly-check page.
+- **Reason:** The weekly check loads the systems it reads. See Rationale.
+
+## D-043 The monthly review and team meeting
+
+- **Date:** 2026-11-20
+- **Decision:** The monthly review (1 day) is also the bigger team meeting: everyone meets to discuss important but not urgent matters, plan the next month, and review progress for the year against goals. PCM prepares the review pack; L2 (Platform) hosts it. Revised by D-083: the pack is Improve's decision register and Monitor at the estate root with the 1-year window, on one screen; there is no monthly page (L2 design, 6.4).
+- **Reason:** See Rationale.
+
+## D-044 Suspected breaches
+
+- **Date:** 2026-11-20
+- **Decision:** A suspected breach is not investigated in PCM. L2 secures the evidence and hands it to the security team. Security is parked until after release 1.0.
+- **Reason:** "Is it breached?" is a forensic investigation, not troubleshooting (SP5), and needs security expertise (D-008, D-022).
+
+## D-045 Ownership of PCM's own settings
+
+- **Date:** 2026-11-20
+- **Decision:** L2 owns PCM's own settings (class-of-service definitions, action tiers) in release 1.0. After 1.0, the Operations Manager approves changes.
+- **Reason:** L2 knows what the settings do. A second approver comes with the Operations Manager workspace.
+
+## D-046 A lean team of senior people
+
+- **Date:** 2026-11-20
+- **Decision:** PCM is designed for a lean team of senior, highly experienced people. L2 is not 100% dedicated to operations; it also does architecture and engineering. Most routine and easy work is assisted by AI.
+- **Reason:** In the agentic AI era, the team is likely a few times smaller than today.
+
+## D-047 Agent E2 as a team member
+
+- **Date:** 2026-11-20
+- **Decision:** Agent E2 is a core team member, not a tool. Assume it knows vSphere, Windows, Linux, networking and the rest of the stack, even though today it knows only vSphere.
+- **Reason:** AI does the routine work the lean team (D-046) no longer has people for.
+
+## D-048 A two-layer organization
+
+- **Date:** 2026-11-20
+- **Decision:** PCM assumes a two-layer organization. Today's top layers are cut the most. The middle layer becomes the new upper layer.
+- **Reason:** In a large IT organization with 8 layers, the top 3 are the highest paid and the furthest from ground reality: they neither do the work nor know the technology. AI removes the need for them first.
+
+## D-049 VMware platform hygiene in release 1.0
+
+- **Date:** 2026-11-20
+- **Decision:** In release 1.0, "Is it safe?" shows VMware platform hygiene only: root logins, ESXi Shell or SSH enabled, lockdown mode off, certificates near expiry. No attack or breach detection (D-044).
+- **Reason:** These are configuration checks L2 already runs. They are among the most common causes of outages and audit findings in VMware estates. Health keeps its three questions (D-035).
+
+## D-050 Actor and accountable party
+
+- **Date:** 2026-11-20
+- **Decision:** Agent E2 cannot carry responsibility. Every task, action or change records two fields: the actor (a person, Agent E2's ID, or PCM running a policy) and the accountable party. For a person or Agent E2, the accountable party is the human who ordered it, which varies by task; Agent E2 can serve several managers at once. For an automatic run, it is the policy owner and the policy version. Revised by D-079.
+- **Reason:** Accountability stays with a person, and the action history answers "who ordered this", or "which policy, owned by whom", not only "what did it".
+
+## D-051 Plain language in the Executive workspace
+
+- **Date:** 2026-11-20
+- **Decision:** The Executive workspace uses plain language with basic IT words. Technical terms are kept to a minimum, including in the drill-down. Allowed: server, storage, network, data centre, application, backup, recovery, outage, capacity, cost, upgrade, version, virtual machine (VM). Avoided: ESXi, vSAN, NSX, DRS, HA, vCPU, IOPS, latency, contention, cluster, host, datastore, resource pool, RTO, RPO, snapshot. A build test fails if an avoided term appears in the page text. The list lives in the specification, so customers can change it.
+- **Reason:** The CIO presents this page upward to the CEO, CFO and board. Basic IT words are understood there; product and engineering terms are not. CEOs and CFOs hear "virtual machine" in budget discussions.
+
+## D-052 Question, role and cadence of every visual
+
+- **Date:** 2026-11-20
+- **Decision:** Every visual answers a named question, for a named role, at a named cadence. A visual that cannot name all three is cut.
+- **Reason:** A rich UI turns into decoration without this rule. It also gives each regeneration from the specification (D-010) a test that a visual can pass or fail.
+
+## D-053 Build order of the four workspaces
+
+- **Date:** 2026-11-20
+- **Decision:** The prototype is built in this order: Executive, NOC, L2, then Capacity. All four stay in release 1.0 (D-012).
+- **Reason:** See Rationale.
+
+## D-054 Ownership of cluster capacity settings
+
+- **Date:** 2026-11-20
+- **Decision:** The Capacity team owns the capacity settings of each cluster: buffer, procurement lead time, procurement round dates. Class-of-service definitions stay with L2 (D-045).
+- **Reason:** The people who answer for the purchase date set the inputs to it.
+
+## D-055 The purchase plan in release 1.0
+
+- **Date:** 2026-11-20
+- **Decision:** In release 1.0 the purchase plan is a document for IT Finance. PCM does not connect to procurement systems.
+- **Reason:** Procurement systems differ by customer and are slow to integrate. A clear document already removes most of the work.
+
+## D-056 Free VMs and reclamation
+
+- **Date:** 2026-11-20
+- **Decision:** Release 1.0 assumes VMs are free to tenants (no chargeback). So the platform team may reclaim.
+- **Reason:** This is the most common case today (SP5). Price and chargeback come with FinOps after 1.0 (D-027).
+
+## D-057 Storage capacity in release 1.0
+
+- **Date:** 2026-11-20
+- **Decision:** Storage capacity in release 1.0 covers vSAN and datastore space as vSphere sees it. External arrays come later.
+- **Reason:** Array capacity needs a vendor adapter per array. vSAN is in VCF already.
+
+## D-058 The public-cloud comparison
+
+- **Date:** 2026-11-20
+- **Decision:** The FinOps team owns the public-cloud comparison. In release 1.0 FinOps has no workspace (D-027), so it maintains the comparison as an input to PCM. The comparison covers the whole estate over the depreciation period, component by component.
+- **Reason:** Source: Cost n Price n Value. Comparing one VM for one day flatters whichever side picks the VM. The whole estate over 5 years, with each component marked included or excluded, is the honest comparison.
+
+## D-059 The Executive recovery card
+
+- **Date:** 2026-11-20
+- **Decision:** The Executive recovery card shows site recovery test results only: VMware Live Site Recovery (formerly Site Recovery Manager) recovery plans, last test date, recovery time achieved and target, and the share of protected VMs tested. It is labelled site recovery. Backup is not claimed.
+- **Reason:** See Rationale.
+
+## D-060 The cost model and reclamation value
+
+- **Date:** 2026-11-20
+- **Decision:** PCM follows the cost model in Cost n Price n Value. There is no VM cost: unit cost is on the provider (ESXi host, then cluster); price is on the consumer. Cost has three parts: product, service, people. Reclamation is cost avoidance, valued at today's price of new capacity in that location, and counted only when it defers a purchase.
+- **Reason:** See Rationale.
+
+## D-061 The basis of CPU unit cost
+
+- **Date:** 2026-11-20
+- **Decision:** CPU unit cost is always per physical thread. Cores are used only for licensing.
+- **Reason:** A vCPU runs on a thread, so capacity is counted in threads (Capacity design, 3.17). Cost uses the same unit, so cost and capacity can be compared.
+
+## D-062 Checks of the VCF APIs
+
+- **Date:** 2026-11-20
+- **Decision:** No check of the VCF APIs for now. They are checked later against a live VCF 9.1 system the author provides.
+- **Reason:** A live system gives a firmer answer than reading API references.
+
+## D-063 Audit log and operational action history
+
+- **Date:** 2026-11-20
+- **Decision:** The audit log as a compliance record (retention policy, tamper evidence, export for auditors) is phase 2, with security and compliance. Release 1.0 keeps an operational action history: what was done, to which object, by whom (both fields, D-050), why, before and after.
+- **Reason:** See Rationale.
+
+## D-064 Collectors and reads through VCF Operations
+
+- **Date:** 2026-11-20
+- **Decision:** PCM has no collectors of its own. It reads through each region's VCF Operations, which already has a collector per region. PCM talks directly to vCenter and NSX only for actions (D-025) and for reads VCF Operations does not hold.
+- **Reason:** No duplicate collection: a second collector doubles the API load on every vCenter and adds a component to run in every region.
+
+## D-065 ACME Corp, the synthetic customer
+
+- **Date:** 2026-11-20
+- **Decision:** ACME Corp, the synthetic customer, is a global bank.
+- **Reason:** Banking load follows a strong calendar: end-of-day batch at night, payday, month-end, quarter-end and financial year-end close, which differs by country. Banks also face the strictest regulators, so recovery and safety PCM scenario stories carry weight with the approval audience.
+
+## D-066 Data residency and one central PCM
+
+- **Date:** 2026-11-20
+- **Decision:** Data residency is beyond release 1.0. Release 1.0 runs one central PCM that stores results from every region.
+- **Reason:** Scope control. Keeping detailed data in its region, with only model results sent to the central PCM, is the later option.
+
+## D-067 The present time in the synthetic data
+
+- **Date:** 2026-11-20
+- **Decision:** The synthetic data uses the present time. "Now" is an input to the generator: the demo uses the present, and each acceptance test passes a fixed "now". PCM scenario stories are written relative to now and to the real calendar, never to a named date or weekday.
+- **Reason:** A live demo convinces more than a frozen one. Tests stay exact because each sets its own clock.
+
+## D-068 NOC wall locations and regional scope
+
+- **Date:** 2026-11-20
+- **Decision:** The NOC wall shows every location by default. Limiting a NOC to its region is a setting, not a separate design. An alert belongs to the region of its object; that region's shift acknowledges it.
+- **Reason:** See Rationale.
+
+## D-069 Alert grouping into incidents
+
+- **Date:** 2026-11-20
+- **Decision:** PCM groups alerts into one incident by object relationship and time, using fixed rules, not the LLM. L1 can split an incident; L1 cannot merge alerts by hand.
+- **Reason:** See Rationale.
+
+## D-070 Organisation of the specification
+
+- **Date:** 2026-11-20
+- **Decision:** The specification is organised as in `pcm/core/design-notes/specification-structure.md`: a design note holds the why, a `spec/` folder holds the what, in the folder of the workspace they belong to (D-133). Pages name a catalog entry instead of defining numbers; every page and visual names its question, role and cadence; every state is specified, including stale; tests run at three levels (catalog, PCM scenario story, page); code is never edited by hand.
+- **Reason:** An AI builder implements what it is told and invents the rest. These rules leave it as little to invent as possible, and make each build checkable.
+
+## D-071 Technology of the prototype
+
+- **Date:** 2026-11-20
+- **Decision:** The prototype uses: Python standard library plus PyYAML for the data generator and the mock API; plain HTML, CSS, JavaScript and SVG for the pages, with no framework and no build step; Python unittest for catalog and PCM scenario story tests; Playwright for page tests. Generated code lives beside the specification it comes from, in the workspace's folder (D-133). This choice is for the prototype only; the product stack stays deferred (PCM core, section 5).
+- **Reason:** See Rationale.
+
+## D-072 The Executive performance KPI and its status
+
+- **Date:** 2026-11-20
+- **Decision:** "Is it fast?" is a KPI, not an SLA. Performance has no target and no SLA (SP5). The Executive headline is the production KPI (average of VM daily KPIs, 0 to 100). Status uses only the SP5 bands and the SP5 class promise: red if any class group is orange or red; amber if any class group is yellow, or the order Gold, Silver, Bronze is broken; green otherwise. The earlier 99% target is withdrawn.
+- **Reason:** See `pcm/core/design-notes/service-levels.md`, section 2.
+
+## D-073 The SP5 Security SLA
+
+- **Date:** 2026-11-20
+- **Decision:** "Is it safe?" is the SP5 Security SLA, measured as unsecured time per VM per calendar month, including the VM's surroundings (host, vSAN, distributed switch, vCenter, NSX Manager), with maintenance windows excluded. Contract 99.95% for every class; internal KSI 100%. Release 1.0 checks: SSH or ESXi Shell running, lockdown off, certificate expired, root login not yet closed by L2. A certificate expiring soon is a risk, shown beside the SLA. The card is red when any production VM is below 99.95% this month. Phase 2 adds the full benchmark with the same formula.
+- **Reason:** See `pcm/core/design-notes/service-levels.md`, section 3.
+
+## D-074 Rules from the first build's review
+
+- **Date:** 2026-11-20
+- **Decision:** Three rules from the first build's review: times are shown in the viewer's time zone with the zone named; a value that leaves out stale locations says which ones; no request leaves the PCM host, so fonts and scripts ship with the build.
+- **Reason:** A global team reads one page from several zones. A headline that changes without a reason looks like a real change. An on-premises customer may have no internet access (D-004).
+
+## D-075 Wall findings for reds with no alert
+
+- **Date:** 2026-11-20
+- **Decision:** Every red on the NOC wall belongs to something L1 can acknowledge. When a screen turns red with no alert behind it (unexpected VM changes, a risky configuration change), PCM opens a wall-finding incident with its own SOP.
+- **Reason:** Red stops the rotation until acknowledged (D-041). Inventory changes raise no alert (SP5), so without a wall finding a red "What changed?" screen could never be acknowledged, and the rotation would stay stuck.
+
+## D-076 Model client and gateway for Agent E2
+
+- **Date:** 2026-11-20
+- **Decision:** For demos, Agent E2 calls a model through Vercel AI Gateway, as in Agent E2's own benchmark and lab. PCM talks to Agent E2's model through one OpenAI-compatible client: the endpoint and the model are settings. Customer sites point it at a local model server (D-004, D-017).
+- **Reason:** See Rationale.
+
+## D-077 The SP5 Availability SLA
+
+- **Date:** 2026-11-20
+- **Decision:** "Is it up?" follows the SP5 Availability SLA: Operational Availability per VM per calendar month, against the class target (Gold 99.975%, Silver 99.95%, Bronze 99.9%). Downtime inside an approved change window does not count; downtime outside it counts, even when planned. PCM reads approved change windows from the ITSM change calendar through a connector, or from its own business calendar where no ITSM is connected. Actual Availability is shown in the drill-down. A VM breaches when its counted minutes exceed the allowance for the whole calendar month; the same rule now applies to the Security SLA.
+- **Reason:** See `pcm/core/design-notes/service-levels.md`, section 4.
+
+## D-078 Division of work between PCM and Agent E2
+
+- **Date:** 2026-11-20
+- **Decision:** Agent E2 is a service behind PCM: it owns the knowledge base, the reading plan, the flow executor and the model call, behind one HTTP endpoint (`POST /v1/answer`, Agent E2 `harness/answer_service.py`). PCM owns the data, the actions, the user's identity and every screen, and sends the question with the live facts and the role. The Agent E2 repository becomes part of PCM eventually.
+- **Reason:** See Rationale.
+
+## D-079 Policy as code replacing the trust ladder
+
+- **Date:** 2026-11-20
+- **Decision:** Replace the trust ladder with policy as code. No "Make automatic" button and no promotion thresholds. The approval and rollback record per action type is evidence for L2, never a gate. L2 changes an action type's tier and guardrails through "Propose a policy change": versioned, replayed against recent history, owned (L2 in 1.0; the Operations Manager reviews after 1.0). Guardrails make automatic safe: blast-radius limits, maintenance windows, class-of-service conditions, automatic expiry and undo, and a service account scoped to the action type.
+- **Reason:** See Rationale.
+
+## D-080 The prototype's SQLite database
+
+- **Date:** 2026-11-20
+- **Decision:** The prototype keeps what people and policies do in SQLite: the action record (append-only), the demand register, and workflow state. Synthetic metrics are generated from "now" and never stored. Plain SQL, so the schema ports to the product database. This does not choose the product database (PCM core, 5).
+- **Reason:** See Rationale.
+
+## D-081 Matching inventory changes to their explanations
+
+- **Date:** 2026-11-20
+- **Decision:** Detailed inventory matches every change to what explains it, in a fixed order: the PCM action record, an approved change window, a VCF Automation request, DRS. Explained changes are counted; unexplained ones are listed one by one, production and Gold first. L2 can record an unexplained change as expected, with a reason.
+- **Reason:** Tens of thousands of changes a week cannot be read one by one. L2's question is "is it expected?", so PCM answers it and shows only the exceptions. Details: L2 design, 4.7 and 5.7.
+
+## D-082 The Docs workspace and private-cloud-explained
+
+- **Date:** 2026-11-20
+- **Decision:** PCM `/docs` documents only what PCM owns and acts on: the definition of every number, SOPs, action policies, thresholds, configuration standards and settings, each with version, owner, where it is used and its change history. It is read-only: each object is changed in the workspace that owns it. Documentation for colleagues (architecture, decisions, guides, team structure, learning modes) is private-cloud-explained, a separate product. PCM exports its objects as Markdown into private-cloud-explained, through its review.
+- **Reason:** See Rationale.
+
+## D-083 The three L2 activities
+
+- **Date:** 2026-11-21
+- **Decision:** L2 works in three activities, SP5's Day 2 verbs: **Monitor**, **Troubleshoot**, **Improve**. They are the top bar of the L2 workspace. Monitoring ends in a problem (→ Troubleshoot) or an opportunity (→ Improve). Daily, weekly and monthly are time windows, not activities and not pages: PCM still runs the checks (D-039, D-042), and Monitor shows their results by window.
+- **Reason:** See Rationale.
+
+## D-084 Troubleshooting cases and their triggers
+
+- **Date:** 2026-11-21
+- **Decision:** Every troubleshooting effort is a case, with one of three triggers: a complaint that L2 logs in PCM, an L1 escalation, or a monitoring finding. Escalation is a handover with entry criteria, not an activity. A case builds a chain of causes over several layers, as a graph: main and contributing causes, ruled-out links kept. It closes only with confirmed causes, a corrective action and a detection decision.
+- **Reason:** See Rationale.
+
+## D-085 The scope of troubleshooting
+
+- **Date:** 2026-11-21
+- **Decision:** Troubleshooting covers infrastructure only: server, storage as ESXi sees it, network, Windows and Linux. No application troubleshooting and no business transaction correlation. A chain starts at the Guest OS. When the evidence points outside scope (the Guest OS, the storage array, the application), the case hands the evidence to the owning team.
+- **Reason:** Follows D-030, D-034 and D-038. The infrastructure team can act on these layers; it can only hand over the others.
+
+## D-086 The four dimensions of the L2 workspace
+
+- **Date:** 2026-11-21
+- **Decision:** The L2 workspace has four dimensions, each in its own place: **activity** in the top bar; **object** in the left pane, where the inventory tree is the menu; **pillar** as tabs in Monitor and Improve (Summary, Availability, Performance, Capacity, Security, Configuration, Inventory); **time** as one picker per page. Troubleshoot has no pillar tabs: a case crosses pillars. Compliance is left out until after 1.0 (D-022). Cost, price and value are FinOps (D-027).
+- **Reason:** One menu that mixes time, activity and pillar tells the user none of them. vCenter and VCF Operations are the starting point; their top bar groups product functions, and their tabs mix pillars with types of data. L2 design, 3.
+
+## D-087 The five views of the inventory tree
+
+- **Date:** 2026-11-21
+- **Decision:** The inventory tree has five views: Compute (Estate → Region → Location → VCF instance → Workload domain → Cluster → ESXi host → VM → Guest OS), Storage, Network, Class of service, and Management (the appliances that run VCF). Attributes such as host model, firmware, ESXi build and Tools version are not trees; every list can be grouped by them.
+- **Reason:** Each view is a hierarchy operations uses; vCenter's datacenters and folders are admin constructs. SP5's two sides of VCF need the Management view. Grouping by attribute is how a shared cause is found across the estate. L2 design, 3.2.
+
+## D-088 Monitor's walk of the estate and window score
+
+- **Date:** 2026-11-21
+- **Decision:** Monitor works on the whole estate, top down: on every node, a summary, its children worst first, and the detail one level down. An object's score over a window is its 95th percentile. Monitor shows the count just below each red line and its trend, not only what crossed it.
+- **Reason:** SP5: insight is top down and needs the whole data set; an alert is the tip of the iceberg. Source: the author's sample dashboards in `author-papers/`. L2 design, 4.
+
+## D-089 Agent E2's flows in troubleshooting cases
+
+- **Date:** 2026-11-21
+- **Decision:** Agent E2's flows decide the order of checks in a case: at each node the SP5 order, and a failed step proposes the next object. Agent E2 proposes links with evidence; L2 confirms or rules them out. Agent E2 never closes a case.
+- **Reason:** The flows are already written and benchmarked in Agent E2. PCM supplies the data; Agent E2 supplies the order (D-078). A human confirmation keeps a wrong link out of the SOPs (D-050).
+
+## D-090 The L2 demo's troubleshooting PCM scenario stories
+
+- **Date:** 2026-11-21
+- **Decision:** The L2 demo's troubleshooting PCM scenario stories come from Agent E2's benchmark, renamed into the ACME estate: `L4-037` (complaint), `L4-074` (L1 escalation), `L4-049` and `L4-045` (monitoring findings).
+- **Reason:** Each has several layers, causes that build up over time, and red herrings. Together they show all three triggers. L2 design, 11.
+
+## D-091 The Performance tab above the cluster
+
+- **Date:** 2026-11-21
+- **Decision:** The Performance tab above the cluster is two sections, consumer first: **VM**, then **Cluster**. VM: how many VMs were hit at each moment and how many different VMs over the window, and the worst VMs with the time and the cluster. Cluster: two charts on the same 0 to 100% scale, actual slowness (worst Cluster Performance and its 10th percentile) and potential slowness (worst Cluster Risk and its 90th percentile), the same metrics as vCommunity's Worst and Worst 10 Percent. A click on a time lists every cluster at that time. A class of service filter scopes both sections; Gold is the default. Monitoring shows what, when, where and how wide; never why.
+- **Reason:** Cluster Performance is built from its VMs' contention, so the consumer is read first. A large cluster can stay green while many of its VMs take turns. The worst line says whether anything is wrong; the percentile line says whether it is narrow or wide. Gold is the class that must always be green; Bronze is read when there is time. The why is the case's job (D-084). L2 design, 4.3.
+
+## D-092 The VM's Performance tab
+
+- **Date:** 2026-11-21
+- **Decision:** The Performance tab of a VM shows detail, not a summary: two stacked layers of trend charts, **Guest OS** on top and **Virtual Motherboard** (the VM's virtual hardware) under it, because the Guest OS runs on the Virtual Motherboard. Each metric has its own chart over the window, and its figures say which statistic they are: now, worst, 95th percentile. Never an average. A VM page has no Group by and no Inventory tab, and the cards that count VMs go too: they describe a group. A number always carries its unit, after the number; a metric name is Title Case and never holds its unit; abbreviations are capitals (CPU, VM, OS).
+- **Reason:** A single figure such as "CPU Ready 2.5" does not say whether it is now, the worst or a percentile, and an average hides the peak that the VM's owner felt. The Guest OS is not beside the Virtual Motherboard: it is on top of it, and a wait in one shows in the other. Group by, the VM counts and Inventory describe more than one object. Rationale: D-092.
+
+## D-093 Window, tabs and navigation in the L2 frame
+
+- **Date:** 2026-11-21
+- **Decision:** In the L2 frame the window is a drop-down, the pillars are tabs joined to a panel, and moving between pages does not load the page. The window list is Last hour, 24 hours, 7 days, 30 days, last year; a custom range comes later. A tab has no status dot (one dot cannot summarise a pillar). The run line under the path is removed.
+- **Reason:** A pill row for time and a pill row for pillars looked alike, and a full page load on every click lost the tree and the scroll. See Rationale.
+
+## D-094 The L2 Capacity tab and vCommunity's capacity model
+
+- **Date:** 2026-11-21
+- **Decision:** The L2 Capacity tab shows capacity over time and reads vCommunity's capacity model: **Cluster Consumption** (against usable capacity: total, minus HA, minus buffer), **Cluster Performance** (contention), **Cluster Risk**, and the **Periodic Cluster Check**'s Close for Business. **On a cluster:** the check's verdict and the rule that decided it, beside contention now (Cluster Performance over the last hour); one chart per KPI with the closure levels and the check's verdict under them; what consumption is made of; the spread between hosts; the hosts. **Above the cluster:** clusters closed per check; the highest Cluster Consumption and its 90th percentile; every cluster at a selected time; open clusters near closure; one class of service filter. PCM reads the check and never recomputes it or sets it. The tab shows no forecast, run-out date, decision date, Capacity Remaining or Time Remaining: those belong to the Capacity workspace.
+- **Reason:** A snapshot table cannot say whether 90% is rising, flat or one spike, and capacity is managed on its trend. vCommunity already decides, every period, whether each cluster takes new VMs; a second rule in PCM would give two answers for one cluster. A cluster is a group of hosts, so the page goes down to them. The boundary keeps two horizons apart: L2 answers "can it take more VMs now, and is it heading to closed?"; Capacity answers "when do we buy?". Rationale: D-094.
+
+## D-095 Statistics over time and across objects
+
+- **Date:** 2026-11-21
+- **Decision:** Which statistic, on which axis. **Over time, on one object:** a point holds the worst value of its slot (D-091); the figures are Now, Worst (with its time) and the percentile figure, named by direction, 5th or 95th (D-092, D-131); the object's status over the window is that figure (D-088), and the worse of that and its last hour. **Across objects, at one time:** the worst object, and the 10th or 90th percentile at the bad end (D-091). **Never an average** on either axis, and never a sum or average of percentages across clusters. vCommunity's "Worst" check values are a percentile of the check period; PCM names them by what they are ("95th percentile, 24 hours to 08:00"), never "Worst".
+- **Reason:** The two axes answer different questions. Over time, one bad 5 minutes is too noisy to decide on, but it must stay visible: the chart shows every point and Worst names the peak. Across objects, the worst one is a real cluster with real VMs, and the percentile says how wide. One word for two statistics (vCommunity's Worst is a percentile, PCM's Worst is a peak) makes the same cluster read two ways. Rationale: D-095.
+
+## D-096 vCommunity as the PCM adapter
+
+- **Date:** 2026-11-21
+- **Decision:** vCommunity is part of PCM, not a third-party source. PCM requires it, and it will be renamed the **PCM adapter**. Its metrics are PCM's definitions; its settings and thresholds are PCM settings, set in the adapter and listed in the catalog with their owner. PCM still reads them through VCF Operations (D-064), where the adapter runs.
+- **Reason:** The capacity model, the KPIs and the Periodic Cluster Check are already built in vCommunity. A second copy in PCM would give two answers for one cluster. Spec rule 6 holds: every threshold is a named setting; it is set in one place, the adapter. Rationale: D-096.
+
+## D-097 The Agent E2 mark and panel in L2
+
+- **Date:** 2026-11-21
+- **Decision:** Agent E2 is on every L2 page, in one place. An **E2 mark** in the top bar says whether it is available; the same mark sits on each metric, KPI, finding, chain link and layer, where the question comes up. A click opens the **Agent E2 panel**, docked on the right: it pushes the content, never covers it, and the inventory tree folds to a narrow strip while it is open. PCM sends the facts of what was clicked; Agent E2 answers with its sources. The panel stays open across pages. Revises the L2 frame rule "no other item in the top bar".
+- **Reason:** The screen is full, and a panel on top would hide the chart being asked about. While L2 talks to Agent E2 they are not browsing the tree. An avatar mark, not a sparkle: Agent E2 is a team member who explains with sources (D-047), not magic. See Rationale.
+
+## D-098 The Agent E2 panel at the NOC desk
+
+- **Date:** 2026-11-22
+- **Decision:** The NOC desk has the same Agent E2 mark and panel as L2 (D-097): the mark in the top bar, on each tile, on the cluster drill-down, on each incident row, on the incident header and on each SOP step. PCM sends L1's facts (scores from 0 to 100, the SOP and its results) with the role l1. Every answer is checked against the NOC vocabulary; one that still uses an L2 word after one rewrite is not shown. "Explain this incident" and "Draft the escalation note" become the panel's first suggestions on an incident. The wall has no mark.
+- **Reason:** One mark and one panel for every workspace: an operator who moves to L2 already knows them. L1 must never get raw counters (NOC vocabulary), and must never be told to act outside the SOP (NOC design, 3.8). The wall has no mouse or keyboard (D-032).
+
+## D-099 Answer sources in the Agent E2 panel
+
+- **Date:** 2026-11-22
+- **Decision:** In the Agent E2 panel an answer shows its sources behind a closed control, "Sources (n)", where n is the number of knowledge files it read. One click opens the list as chips. Applies to L2 and the NOC desk. Refines D-097 ("answers with its sources"): the sources are still there, one click away.
+- **Reason:** An answer reads 10 or more knowledge files. Showing them all as chips crowded a 400 px panel and pushed the answer and the footer out of sight. The file list is for checking an answer, not for reading it.
+
+## D-100 KPI over time on Performance and Capacity tabs
+
+- **Date:** 2026-11-22
+- **Decision:** The L2 Performance and Capacity tabs lead with the object's KPI over time. **Performance:** on a VM the two Performance (%) scores (Guest OS Performance, VM Performance) come first, above the layers; on a cluster and anything under it, the object's own KPI as a trend chart (Cluster Performance and Cluster Risk, ESXi Performance), in place of the four summary cards. **Capacity:** on a VM, ESXi host and cluster, a summary first: Capacity Remaining (%) and Time Remaining (days), plus VM Remaining on a host and a cluster, read from VCF Operations, placeholder values in release 1.0. **KPI figures** (Now, Worst, 95th percentile) carry the band of their value. Revises D-092 (order of the VM tab) and D-094 (no Capacity Remaining or Time Remaining on L2), for VM, host and cluster only.
+- **Reason:** The author: the trend chart on the Capacity tab says more than four cards with one number each; the Performance (%) KPI is the main counter, so it goes first; L2 wants the remaining figures before the detail.
+
+## D-101 L2 percentages and near-zero values
+
+- **Date:** 2026-11-22
+- **Decision:** L2 percentages: Consumption, Performance and Risk (%) show whole numbers (63%, not 63.1%), because the decimal is not significant. A value above 0 that shows as 0 reads 0.0+% (0.00+% at two decimals), never a plain 0%. The Capacity tab's placeholder line under the summary is removed.
+- **Reason:** The author: a decimal on a KPI that moves by a fraction a day is noise; a tiny value must not read as exactly zero; the placeholder line added nothing the page did not already show.
+
+## D-102 Layout of the Agent E2 panel
+
+- **Date:** 2026-11-22
+- **Decision:** Agent E2 panel: it is fixed to the window (below the demo bar when shown) and its answers scroll inside it. Each question with its answer is a fold: the newest open, older ones one line. The context label shows on a question only when it differs from the one above.
+- **Reason:** The author: a long answer pushed the panel off screen and could not scroll; the same context line repeated on every question. Cause of the first: `align-self: start` in l2.css shrank the fixed panel to its content.
+
+## D-103 The screen sent with each Agent E2 question
+
+- **Date:** 2026-11-22
+- **Decision:** Every question to Agent E2 carries the **screen**: who asks, the page (object, tab, window), what was clicked, what that card shows, the object a KPI belongs to when it is not the page's, and for a KPI where to look next (drill_down) with what PCM does not show yet. Whether a KPI moved enough to be a drop is Agent E2's to decide, from its knowledge base (a KPI change level per KPI) and its calculator, not PCM's.
+- **Reason:** Agent E2 answered "Why the worst at 18 Oct, 10:10?" on a steady Cluster Performance chart (80.2% to 82.2% all day) by explaining a "dip", spoke of "the provided JSON" to an engineer who had typed one line, and pointed at knowledge-base flows instead of a PCM tab. The model saw data, not a screen; and no rule said what size of move is a drop. PCM owns the screens (D-078), so it describes them; Agent E2 owns the domain knowledge. See Rationale.
+
+## D-104 Band figures without band names
+
+- **Date:** 2026-11-22
+- **Decision:** Band figures do not write the band's name. A figure in a band (green, yellow, orange, red) is a tinted pill with a bar; the word GREEN, YELLOW, ORANGE or RED after it, in the figure and in the chart tooltip and the risk sentence, is removed, on every object. The four parts of Cluster Consumption (CPU Thread Utilization, Memory Consumed, Memory Ballooned, Memory Zip Swap, and Memory Tiering) now carry a band too, from the Agent E2 catalog knowledge/catalog/thresholds-capacity.yaml (band ends 55/70/85, 70/80/90, 1/2/4, 0.25/0.5/1; DRAM Consumed 80/85/90 and Memory Tiering Consumption 15/30/45 on tiered hosts, changed on 2026-11-22 to follow Agent E2). Revises D-100 (the name beside the figure).
+- **Reason:** The author: the color already says it, the word repeats it. Exception to the rule that color is never the only signal; the pill and bar stay, and the author owns the call.
+
+## D-105 Removal of the "Just above the line" section
+
+- **Date:** 2026-11-22
+- **Decision:** The "Just above the line" section (VMs between 75 and 80, 7-day chart and sentence) is removed from the L2 Performance tab. The data (l2.iceberg) stays for the headline and Group by.
+- **Reason:** The author: not needed on the page.
+
+## D-106 The Details fold on the cluster's Performance tab
+
+- **Date:** 2026-11-22
+- **Decision:** The cluster's Performance tab gets a fold named **Details** under each of Cluster Performance and Cluster Risk, **closed when the page opens**. Opened, one chart per part, with Now, Worst and 95th percentile: 9 parts for Cluster Performance (worst and 90th percentile of vCPU Ready, vCPU Co-stop, memory wait and disk latency; highest ESXi packets), 11 for Cluster Risk (the worst host's CPU and memory utilization, CPU imbalance, ballooning, swap and zip, reservations, overcommit, monster VMs). Risk parts carry the band of the catalog's band ends; Performance parts carry none, except packets, because the catalog has no 5-minute level for the others. Release 1.0: placeholder values derived from the KPI's series. Not on a host or below. Settles the open item of D-103 ("no sub-metric chart for Cluster Performance").
+- **Reason:** The author: the Capacity tab already shows what Consumption is made of; Performance and Risk showed only the score, so L2 could not tell which resource moved. A fold, closed, because a good value needs no explanation and L2 may never open it.
+
+## D-107 The six NOC wall screens
+
+- **Date:** 2026-11-22
+- **Decision:** The NOC wall has six screens named by what they watch: **Availability, Performance, Security, Volatility, Configuration, Capacity**, in that order. This replaces the five questions of D-036 on the wall and on the NOC desk; the CIO page is not changed. The screens are tabs with the active one marked. The tabs are not coloured and carry no summary word (no "Good", "Watch", "Act now"): a tab shows only a count of open incidents, "In hand" or "No data". Colour stays on the tile, cell or row that is wrong. A banner names the estate (ACME Corp Private Cloud) with the running VMs and running ESXi hosts. Performance carries a one-hour chart: the average of all clusters and the lowest cluster. Capacity is new: per location, the share of usable capacity in use for compute, memory and storage, and the days remaining of the tightest cluster group, from the existing capacity engine.
+- **Reason:** A title above a row of questions made it hard to tell the title from the content. One summary word per screen cannot be one instruction. A red tile already says what is wrong, so a coloured tab only repeated it and hid the neutral count. The average alone hides a single failed cluster, so the lowest is drawn with it. Replaces D-036 (screen names and count) and changes D-041 (the strip is now six tabs, and display only; its rules for rotation, red pin and grey stale data stand).
+
+## D-108 Three repairs to the L2 monitor
+
+- **Date:** 2026-11-22
+- **Decision:** Three repairs to the L2 monitor. (1) The NOC wall's chart rules (`.chart`, `.legend`) apply only inside the wall's panels (`.panel-w`); they had pulled every L2 chart out of the page flow, so charts overlapped the headings, tables and charts below them on the Capacity tab. (2) Every part under Details, and every VM counter that has a catalog row, is coloured by its band ends: figures as band pills, the chart with the four tinted zones and a line in the band of each value. Performance parts take the catalog's 20-second levels: a 5-minute point is the highest of the 20-second values, so the same levels read it. VM: Paging, CPU Ready, CPU Co-Stop, Memory Wait, Disk Latency. Run Queue (a count in the catalog, per vCPU here) and Context Switches (no row) stay plain. The packets row has green equal to yellow, so only 0 is green: its ends are 0, 0.2, 0.4 (D-106 had 0.2, 0.4, 0.8). (3) ESXi Performance gets the Details fold, closed, with nine parts over the VMs on the host, as a cluster has. Changes D-106 ("Not on a host"; "Performance parts carry none").
+- **Reason:** The author: a cluster's Performance had parts and colours that a host and a VM lacked, and the Capacity tab was unreadable. The catalog has the levels; the wall and the monitor must not share CSS by accident.
+
+## D-109 PCM scenario story M-5
+
+- **Date:** 2026-11-22
+- **Decision:** PCM scenario story M-5: one Silver cluster has a 24-hour PCM scenario story whose scores are rebuilt from their parts. SG-S-01 (12 hosts, 344 VMs), its host sg-esx-110 (28 VMs) and the VM sg-api-1617 each get their own series at 5 minutes, relative to now (`pcm/l2/kpi_from_parts.py`, PCM scenario story M-5 in `pcm/core/spec/demo-data/scenario-stories.yaml`). Cluster Performance (9 parts), ESXi Performance (9 parts), VM Performance (9 rows) and Cluster Risk (11 parts) are computed from their parts with the vCommunity scoring: five limits per row, weight 2^((100 - score) / 25), weighted average, rows marked skip-when-green left out while green; Risk is 100 minus the score. The three objects are scored separately and share only the PCM scenario story clock. Cluster Performance goes from about 90 to a worst of 42 to 55 now; ESXi Performance 91 to 31 to 44; VM Performance 95 to 17 to 32; Cluster Risk 11 (green) to 60 (orange). The NOC wall, the Performance and Capacity tabs, the tree status and the worst-VM list read the same series (one definition). The VM tab shows the five rows of VM Performance it hid (CPU Overlap, Network Dropped Tx, CPU Run, Memory Ballooned, Memory Zip Swap) for this VM. Longer windows read the worst of the PCM scenario story's points; before the PCM scenario story the objects are calm.
+- **Reason:** The author: one cluster with meaningful data, a numbers-supported PCM scenario story, three objects and three levels of breakdown. Open: the Risk part list of the prototype (DRAM memory consumed) is the one in monitor.md; the vCommunity pack has since replaced it with Active Memory, so the prototype's list needs its own decision. Settled by D-113.
+
+## D-110 Position of the figures beside a trend chart
+
+- **Date:** 2026-11-22
+- **Decision:** The figures beside a trend chart (Now, Worst, 95th percentile) start level with the top of the chart, not 18 px below it, and are indented by 2 characters from the metric title.
+- **Reason:** The author: the legend sat lower than the chart's top and flush with the title, which made the title harder to see.
+
+## D-111 KPI parts at the worst point
+
+- **Date:** 2026-11-22
+- **Decision:** A question about Cluster Performance or Cluster Risk sends the KPI's parts at its worst point of the window (`parts_at_worst`): per part the catalog name, unit, value at that point, median and worst of the window with the time, the same values the Details fold shows. The drill_down points to the fold Details on the cluster's Performance tab and no longer says the parts are not shown. PCM sends no score, ranking or verdict: Agent E2 scores the parts with its catalog limits, rebuilds the KPI and splits the points it lost among them. The 90th percentile disk latency part says "peak", as the Agent E2 catalog now does. Settles the item of D-103 ("No sub-metric chart"), done in D-106 but not passed to Agent E2.
+- **Reason:** Agent E2 answered "Why the worst at 19 Oct, 08:30?" on SG-S-01 (41.9%) with "cannot be identified with the current data": PCM sent the KPI only, and its drill_down still said no PCM page shows the 9 parts, which was out of date since D-106. Knowing what a KPI is made of does not say which part moved; the values do. See Rationale.
+
+## D-112 Catalog names of the Details parts
+
+- **Date:** 2026-11-22
+- **Decision:** The Details parts take the Agent E2 catalog's new row names (its Memory Wait change of 2026-11-22): "Worst peak disk latency among all VM virtual disks", "90th percentile peak disk latency among VM virtual disks"; on a host, memory wait instead of memory latency, and the disk names in the same form. Keys and values unchanged.
+- **Reason:** One name per part across PCM, Agent E2 and the pack; Agent E2 finds a part's limits by its catalog name (D-111), so a stale name leaves that part unscored.
+
+## D-113 The Cluster Risk parts
+
+- **Date:** 2026-11-23
+- **Decision:** The Cluster Risk parts follow the Agent E2 catalog (knowledge/catalog/thresholds-risk.yaml): Highest ESXi DRAM Memory Consumed is removed, and Worst ESXi active memory (tiered hosts) and Worst ESXi NVMe read latency are added, under the catalog names and limits, after swapped + zipped memory. The two memory tiering parts show only on a cluster with a tiered host; the estate has none, so a cluster shows 10 parts. PCM scenario story M-5 scores Cluster Risk from the same 10 rows. Settles the open item of D-109 (the prototype's Risk list).
+- **Reason:** The author (2026-11-23): one list of Risk parts across the adapter, Agent E2 and PCM. The extra row also stopped Agent E2 from naming the part that moved Cluster Risk: the parts did not rebuild the score (63.9 against 62.8). Now they do (62.4 against 62.4).
+
+## D-114 Computed values at the start of an answer
+
+- **Date:** 2026-11-23
+- **Decision:** An Agent E2 answer starts with the values its calculator computed, boxed, with no label; the text follows. The label "Computed, not written by the model" is removed. The boxes keep their look, so the exact figures stay easy to spot. Revised by D-119: no box; Agent E2's opening in plain words leads the answer.
+- **Reason:** The author (2026-11-23): Agent E2 is one solution of four parts (the agent code, the harness, the knowledge, the LLM). The label split it into "the model" and "not the model", as if the two were unrelated, and confused the reader. The figure first, then the cause, reads as one answer. Not done: Agent E2's text still repeats the figures in its first paragraph; dropping them is Agent E2's (its answer instructions).
+
+## D-114 Memory Wait on the Virtual Motherboard layer
+
+- **Date:** 2026-11-23
+- **Decision:** The VM's Virtual Motherboard layer shows **Memory Wait** (key `memory_wait_percent`) in place of Memory Contention: Memory Contention plus NVMe wait, the memory row of VM Performance in the vCommunity adapter (its pull request 98) and the Agent E2 catalog. Same limits (0.5, 1, 2). The mapping that renamed a planted `memory_wait_percent` to `memory_contention_percent` is removed. Taken from PR 43, which is otherwise superseded by D-112 and D-113.
+- **Reason:** One name per metric across the three repositories. With memory tiering, cold pages go to NVMe instead of being compressed or swapped, so Memory Contention reads near 0 while the VM waits on NVMe; a layer that showed Memory Contention would hide that wait. The rename mapping also broke PCM scenario story M-5 (`test_vm_is_its_rows`: the layer looked up a key the PCM scenario story never produces).
+
+## D-115 Catalog names on a VM's layer cards
+
+- **Date:** 2026-11-23
+- **Decision:** The cards of a VM's two layers take the Agent E2 catalog names (thresholds-performance.yaml, VirtualMachine and Guest OS lines), as the Details parts already do: e.g. CPU Ready becomes "Peak CPU Ready among any vCPU", Run Queue "Peak vCPU run queue length", Memory Zip Swap "VM swapped + zipped memory". Context Switches has no catalog line and keeps its name. The naming rule of monitor.md changes: a sub-metric with a catalog line takes the catalog name as written there; Title Case only for other counters. Keys unchanged.
+- **Reason:** The author (2026-11-23): one name per sub-metric across the catalog, the adapter (its labels and docs) and PCM, the catalog names, since PCM already used them for the Details parts. Two names for one counter made the VM layer read as different metrics from the KPI parts and the adapter docs.
+
+## D-116 Whole percent on every trend chart
+
+- **Date:** 2026-11-23
+- **Decision:** Whole percent (D-101) reaches every trend chart's figures, tooltip and Agent E2 label: the Cluster, ESXi and VM Performance and Risk KPIs; the parts of Consumption on the Capacity tab (CPU Thread Utilization, Memory Consumed, Memory Ballooned, Memory Zip Swap); and the parts under a cluster or ESXi KPI (Details) whose band ends are all whole numbers. A part with a fractional band end (0.5%, 0.25%) keeps its decimals, because they are its band scale. A VM's counters keep theirs. The alignment of D-110 is unchanged.
+- **Reason:** The author: the parts still showed 47.9% and 0.00%, where the decimal is not significant. The D-101 change had only reached the KPIs on the Capacity tab.
+
+## D-117 The Agent E2 mark on Performance tab KPIs
+
+- **Date:** 2026-11-23
+- **Decision:** The Agent E2 mark is on every KPI at the top of a Performance tab (Cluster Performance, Cluster Risk, ESXi Performance and the KPI of the other objects under a cluster), as on the Capacity tab and a VM's Performance tab. The small mark on a card is dark with white "E2", like the top bar mark, without the status dot.
+- **Reason:** The mark was on the Capacity tab and the VM tab but not on the cluster and ESXi Performance tabs: the same KPI chart must offer the same question. A white small mark looked like a different control from the dark top bar mark; one dot in the top bar says whether Agent E2 is available.
+
+## D-118 Failure messages in the Agent E2 panel
+
+- **Date:** 2026-11-23
+- **Decision:** The Agent E2 panel names the failure and the next step instead of "Could not reach PCM": browser lost the connection (status 0), session ended (401, 403), PCM or the proxy cut the wait (502, 503, 504, or a reply that is not JSON), any other status with its code. nginx `proxy_read_timeout` is 200 s, above the 180 s PCM waits for the Agent E2 service.
+- **Reason:** The old message covered all three failures and was false: the page came from PCM, so PCM was up. A slow model behind a 120 s proxy timeout returned an HTML 504, the JSON parse failed and the catch printed the message. The person could not tell what failed or what to do.
+
+## D-119 Agent E2's lead paragraph
+
+- **Date:** 2026-11-23
+- **Decision:** An Agent E2 answer opens with Agent E2's `lead`: one paragraph in plain words, written by its code from its calculator's numbers (for a KPI: where it fell to and when, how far from its median, and whether that is a real drop). It shows as the first paragraph of the answer, like the text after it: no box, no border, no label. The text Agent E2's model writes follows it, from the cause on. `computed`, the calculator's own lines, is no longer shown; it stays in the response for review.
+- **Reason:** The author (2026-11-23, sg-api-1617, VM Performance): the box read "VM Performance across the window (288 points): median 67.95 ... KPI change level: 8 points. Verdict: worsened", machine words in a second format above the chat text, which repeated it. A VMware administrator sees one entity, Agent E2: one voice, one format. The figures stay exact: code writes them (Agent E2 plan, 2026-11-23). Revises D-114.
+
+## D-120 Object headers without the type line
+
+- **Date:** 2026-11-23
+- **Decision:** The object header of a cluster, an ESXi host and a VM drops the type line above the name ("CLUSTER"). The type shows as the inventory tree's icon at the left of the name; hovering over the icon or the name, or keyboard focus, pops up the type name. Other objects keep the type line.
+- **Reason:** The author (2026-11-23): the type line took a row of the header to say what the icon already says.
+
+## D-121 The Periodic Cluster Check diagram
+
+- **Date:** 2026-11-23
+- **Decision:** The L2 Capacity tab explains the Periodic Cluster Check as a diagram with the check's own values, in place of the paragraph under the verdict. Three paths into Open or Closed: Consumption, Performance, "Both orange?" then Risk. Each node: the value, its closure level, the distance in whole points; a node past its level and its arrow are red; Risk is greyed "not checked" when the gate fails. One Risk level (orange, above 60%) for every cluster, as vCommunity: no production and non-production split. The last hour is not in the diagram. The "Contention now" chip takes the band colour of its value (orange or red), no longer always red.
+- **Reason:** The author (2026-11-23): "Open for new VMs" beside "Contention now" read as a contradiction, and the paragraph was hard to read. They are two clocks and two levels: the check (24 hours, worst 5% left out, closes below 20%, or below 40% with Consumption above 60%) and the last hour (below 50%). The paragraph said "Nothing is red" beside three values in the orange display band, and used "orange" for both the display band and the closure level. A diagram with the numbers in it shows which level each value is measured against. A red chip for 46% over-alarmed.
+
+## D-122 Clean-up of a cluster's Capacity tab
+
+- **Date:** 2026-11-23
+- **Decision:** The L2 Capacity tab of a cluster is cleaner. (1) The page starts with the three Remaining cards: no "Summary" title (other objects keep it). (2) The "Key Trends" note (last 24 hours, one point every 5 minutes, worst value) is removed. (3) The "Contention now" chip and its sentence beside the verdict are removed; the verdict stays. (4) What makes up Consumption moves into a closed Details fold under the Cluster Consumption chart.
+- **Reason:** The author (2026-11-23): the title adds no information; the note is confusing because a point is not always the worst value; the chip and sentence confuse beside the verdict. The parts explain one KPI, so they sit under it, hidden until asked. Supersedes the chip in D-121 on this page; the Contention now chip stays on the group and NOC views.
+
+## D-123 Deletion of an Agent E2 conversation
+
+- **Date:** 2026-11-23
+- **Decision:** A conversation in the Agent E2 panel can be deleted: "Delete" in the head, then "Delete? Yes / No". It removes that context's questions and answers from the browser and shows the suggestions again; other contexts keep theirs. It does not touch the action history, which keeps a record of each question (D-050), and sends nothing to Agent E2.
+- **Reason:** Author, during development: some answers are outdated or no longer correct, and the panel had no way to remove them. The audit record must stay whole, so the delete is the screen's copy only.
+
+## D-124 Suggested questions of a whole page
+
+- **Date:** 2026-11-23
+- **Decision:** The suggested questions of a whole page follow its situation, read by **Agent E2**. On the four pages of release 1.0 (cluster Performance and Capacity, ESXi host Performance, VM Performance) PCM sends Agent E2 the page's KPI series and shows the three questions it returns (`POST /api/l2/agent/suggest`, Agent E2 `POST /v1/suggest`). Agent E2 reads a level (good, medium, bad) and a movement (declining, dip, rising) with its calculator and catalog, and chooses from its own question table. Other pages keep the general questions; so does a page when Agent E2 does not answer. KPI and metric cards keep their templated questions.
+- **Reason:** The author: "Are the VMs in this cluster served well?" makes no sense when Cluster Performance is very good, and SG-S-01, falling all morning, should be asked "Why is performance declining?". Which situation a page is in is domain knowledge (bands, KPI change level, the close-for-business rule), so it is Agent E2's, not PCM's (D-078, D-103).
+
+## D-125 Hourly KPI parts sent with a question
+
+- **Date:** 2026-11-23
+- **Decision:** A KPI question on a Performance tab also sends the KPI's parts once an hour over the window (`parts_hourly`) and the tab's other KPIs with their series, compact. Agent E2 finds the moment the KPI changed level, scores the parts before and after it, and says whether the other KPI followed. PCM scenario story M-5's release (17.5 hours before now: 6 VMs with reservations on sg-esx-110) is on the calendar as a `release` entry.
+- **Reason:** The author's demo question on SG-S-01, "Risk went up from green to yellow, but Performance did not drop. Explain to me why.", was answered at Risk's worst point (19 Oct, 10:00), when Performance had already dropped: PCM sent the parts at the worst point only, and Cluster Performance without its series. The moment that matters is the step at about 17:00 the day before. Values only: the step and the scoring are Agent E2's (D-078).
+
+## D-126 A VM's own counters on its Capacity tab
+
+- **Date:** 2026-11-23
+- **Decision:** A VM's Capacity tab shows the VM's own counters, not its cluster's. Summary (Capacity Remaining, Time Remaining), then Key Trends: **CPU** (VM Net Run; Guest OS CPU Run Queue, per vCPU) and **Memory** (Guest OS Used Memory; Peak Guest OS Paging activity). Net Run and the run queue carry the catalog band ends (95, 97, 99; 2, 4, 8); paging takes the page-out rate ends (1000, 2000, 4000); Used Memory has no catalog row, so no band. Same points as the Performance tab for the counters they share; Used Memory is configured memory minus Guest OS free memory. The cluster's verdict, charts and hosts leave a VM's page: one sentence links to the cluster's Capacity tab. A host keeps the cluster's page. Revises D-094 and D-100 for a VM.
+- **Reason:** The author: the VM page showed cluster metrics; VM capacity must use VM metrics. Guest OS sizing reads the run queue and paging, not hypervisor counters. Open: the exact Agent E2 name and band of "Peak Guest OS Paging activity" (the catalog has Memory page-out rate).
+
+## D-127 Three demo fixes
+
+- **Date:** 2026-11-23
+- **Decision:** Three demo fixes. (1) The first suggested question of a card (a KPI, a metric, a case link or layer) is Agent E2's showcase question for that card, chosen from the card's figures (`POST /api/l2/agent/suggest` with the card's context; Agent E2 `POST /v1/suggest` with `card`): e.g. on Cluster Risk, "Risk went from green to yellow, but Performance did not drop. Explain to me why." only when Risk stepped while Performance held. The card's own questions follow, three in all. A capacity KPI question also sends what Consumption is made of. (2) A VM metric in % is never above 100 (CPU Net Run showed 299% on sg-db-1001). (3) Agent E2 gives each metric's band from its catalog limits (a computed line), not the model's reading.
+- **Reason:** The author's demo: the card questions must show what Agent E2 does best, not what the eye already sees, and a question such as the Cluster Risk one fits only the situation it was written for. Which question fits is domain knowledge, so it is Agent E2's (D-078, D-124). A 299% CPU Net Run is impossible and the model explained it wrongly. The model called Co-stop 7.7% orange; its limits make it red.
+
+## D-128 The whole conversation in each question
+
+- **Date:** 2026-11-24
+- **Decision:** Agent E2 is asked with the whole conversation. Every question from the Agent E2 panel goes with all the earlier questions and answers of its context, oldest first, uncut (`history`, each turn {question, answer}; the answer is what the person read: the opening, then the text). The panel keeps every turn of a context for the browser session; no turn is dropped. A turn that failed, a draft and the pending turn of a clarifying round (sent as `turns`) are not in `history`.
+- **Reason:** A model call holds no memory: it reads only what is sent with it. PCM sent only the new question, so "I don't understand. Explain again" reached Agent E2 with the page's facts and nothing else, and got a summary of the page. Agent E2 stays stateless (D-078); PCM owns the conversation as it owns the screen. No cap: the hardware is enterprise GPU, up to four large GPUs (Agent E2 MISSION.md), and Agent E2 flags a prompt above its model's window.
+
+## D-129 Topics and turns in a conversation
+
+- **Date:** 2026-11-24
+- **Decision:** A conversation holds topics; a topic holds turns. Agent E2 decides whether a question continues the current topic (Agent E2 `harness/topic_decision.py`: the person's choice, then code for a question that points back or is too short to stand alone, then one model call); PCM sends only the current topic's turns, uncut, with `topic_choice` (auto, new, continue). The panel shows the decision: a "New topic" divider, or "Continuing: “{first question}”" above the answer; the newest answer has one button to flip it, which asks the question again. "New topic" beside Ask forces the next question to start one. A suggested question starts a new topic. Refines D-128, which sent every turn of the context.
+- **Reason:** Two kinds of follow-up: the same topic needs the earlier turns; a new topic is better read alone, or an earlier topic crowds its reading and its answer. The panel is too small for a list of conversations, so topics live inside the one conversation of a context. Asking the person every time is friction most would skip; Agent E2 decides, and a wrong decision costs one click. Measured in Agent E2 `benchmark/runner/topic_check.py` on 32 labelled pairs: always continue 21 of 32; with the decision 28 of 32 and no lost context, the worse error.
+
+## D-130 The topic decision before the answer
+
+- **Date:** 2026-11-24
+- **Decision:** The topic decision shows before the answer. For a question typed with a topic in progress, PCM first asks Agent E2 for the decision alone (Agent E2 `POST /v1/topic`; PCM `/api/l2/agent/topic`, `/api/noc/agent/topic`) and shows it in the waiting area with the one button to flip it; the answer request then carries topic_choice new or continue. A flip while waiting drops the answer being written and asks again. With no decision from Agent E2, a question sent with the topic's turns continues the topic. Refines D-129.
+- **Reason:** The flip of D-129 came only after the answer, so a wrong decision cost a whole wrong answer and its wait before the person could act (author, 2026-11-24). Decided apart, the decision costs no extra time: the answer call no longer decides. The fallback fixes a real fault: an Agent E2 service older than topics returned no decision, and the panel read that as a new topic.
+
+## D-131 Percentile labels by statistical rank
+
+- **Date:** 2026-11-24
+- **Decision:** A percentile is labelled by its statistical rank, counted from the lowest value, so its name follows the direction of the metric. Beside a trend chart, the value 95% of the points were better than reads **5th percentile** where higher is better (the Performance scores, Guest OS free memory) and **95th percentile** where higher is worse. The check value follows: Cluster Performance's reads "5th percentile, 24 hours to 08:00", Consumption's and Risk's "95th percentile". The API field `percentile_95` keeps its name in both directions. Refines D-095.
+- **Reason:** The author chose this rule (option B of three; A was to keep "95th percentile" everywhere, C a phrase such as "95% of the time"). On SG-S-01 the card read "95th percentile 48.2%" under a median of 85%: a 95th percentile below the median looks impossible to anyone who reads statistics. The same statistic also had three names: "95th percentile" on one object's card, "10th percentile" across clusters, "5th percentile" in Agent E2's Capacity opening. Across objects PCM already names it by rank (10th, 90th, D-091). Cost: the label differs between a Performance card and a Risk card on the same tab.
+
+## D-132 The term PCM scenario story
+
+- **Date:** 2026-11-27
+- **Decision:** A condition planted in the synthetic ACME data, with the result each workspace must show, is a **PCM scenario story**. The word replaces "story" in every file: design notes, decisions, spec, tests and generated code. Its IDs stay (N-2, O-1, M-5). The rename is done with the folder renames of R-REPO-007 and R-REPO-008, in workspace milestone M2.
+- **Reason:** The author, 2026-11-27. "Story" alone reads as a planning item, beside release, milestone and requirement; `l2_story_m5.py` was read as milestone 5.
+
+## D-133 File layout by workspace
+
+- **Date:** 2026-11-27
+- **Decision:** PCM's files are grouped by workspace. `pcm/` is the application and its Python package: one folder per workspace, named in full (`executive`, `noc`, `l2`, `capacity`, `docs`), and `core` for the parts every workspace uses. Each folder holds its design notes, its specification in `spec/`, and the server code, page code (`pages/`) and tests (`tests/`) generated from them. "Design" names a design note only; the visual design system is the visual style (`pcm/core/spec/visual-style.md`). `spec/` keeps the specification's front page and the requirements. Revises the layout in D-070 and D-071.
+- **Reason:** Q-WS-134 (round 4: "Yes, by workspace."), WD-030: one folder is the whole context of a task on one workspace, and every name says what it holds. See Rationale.
+
+## D-134 Decision blocks and the style baseline
+
+- **Date:** 2026-11-28
+- **Decision:** This file holds one block per decision: a heading with the ID and a title, then the date, the decision and the reason, as the workspace's [DECISIONS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md) does. The index at the top lists every decision with a link to its block; the workspace's [tools/spec_check.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/spec_check.py) reads the decision IDs from its rows. The other files in [style-baseline.yaml](style-baseline.yaml), most of them design notes, keep their counts and are fixed when next edited.
+- **Reason:** The author's answer to Q-PCM-1, the style baseline of 249 problems (2026-11-28, "Agree"): option (b) for this file, whose table was read most and whose cells ran to over 100 words, and option (a) for the design notes, which change with each workspace.
 
 ## Rationale
 
@@ -199,13 +1013,21 @@ Longer reasons for decisions that need them.
 
 **The L1 action set in release 1.0**
 
-| Action | Scope | Why it is safe for L1 |
-|---|---|---|
-| Acknowledge, annotate, escalate | Any alert | Escalation carries the evidence automatically: the L1 exit criteria are the L2 entry criteria. PCM routes it to the right L2 group (platform, storage, network) by object type. |
-| Close an alert | Any alert | Only with a root cause chosen from a list. SP5: close when the cause is known, not when the symptom goes away. |
-| Stop provisioning (close a cluster), then reopen it | Cluster | No running VM is touched. It stops new load from landing on a cluster whose VMs are already waiting for resources. SP5 names this as a NOC action. |
-| Time-boxed limit on a "villain" VM | Non-production VMs only | Limits are the classic forgotten setting: an old limit causes mystery contention months later. PCM sets the limit with an expiry, removes it itself, and logs both actions. On production VMs a limit is L2's call. |
-| Restart an unresponsive VM | Non-production VMs only, and only when VMware Tools heartbeat is lost | A hung non-production VM is an availability fix of the kind an SOP covers. A production restart needs the application owner, so it goes to L2. |
+- **Acknowledge, annotate, escalate**
+  - Scope: any alert.
+  - Why it is safe for L1: Escalation carries the evidence automatically: the L1 exit criteria are the L2 entry criteria. PCM routes it to the right L2 group (platform, storage, network) by object type.
+- **Close an alert**
+  - Scope: any alert.
+  - Why it is safe for L1: Only with a root cause chosen from a list. SP5: close when the cause is known, not when the symptom goes away.
+- **Stop provisioning (close a cluster), then reopen it**
+  - Scope: cluster.
+  - Why it is safe for L1: No running VM is touched. It stops new load from landing on a cluster whose VMs are already waiting for resources. SP5 names this as a NOC action.
+- **Time-boxed limit on a "villain" VM**
+  - Scope: non-production VMs only.
+  - Why it is safe for L1: Limits are the classic forgotten setting: an old limit causes mystery contention months later. PCM sets the limit with an expiry, removes it itself, and logs both actions. On production VMs a limit is L2's call.
+- **Restart an unresponsive VM**
+  - Scope: non-production VMs only, and only when VMware Tools heartbeat is lost.
+  - Why it is safe for L1: A hung non-production VM is an availability fix of the kind an SOP covers. A production restart needs the application owner, so it goes to L2.
 
 **Not for L1, and why**
 - **Manual vMotion.** In a fully automated DRS cluster, DRS moves the VM back. Moving to another cluster touches networks, storage, licensing and affinity rules.
@@ -361,7 +1183,7 @@ Source: Cost n Price n Value (in `author-papers/`).
 - It is counted per location. Spare memory in Singapore does not serve VMs in Frankfurt.
 - The Capacity waste page (Capacity design, 3.11) and the Executive cost card (Executive design, 4.6) show it this way.
 
-### D-063 Action history in 1.0, audit log in phase 2
+### D-063 Action history in 1.0, audit log (phase 2)
 
 - The author parked the audit log with security and compliance (D-022, D-044).
 - Several 1.0 decisions still need a record of each action. Without it, they do not work:
@@ -402,7 +1224,7 @@ Source: Cost n Price n Value (in `author-papers/`).
 - **The tests read the specification directly.** The expected values in each workspace's `spec/acceptance-tests.yaml` are not copied into test code. Changing a test means changing the specification, which keeps D-070's rule that the specification is the only place anyone edits.
 - **Not the product stack.** At 30,000 VMs and 13 months of history, the product needs a real database and a real server (PCM core, 3.3). That choice waits for the live system (D-062).
 
-### D-076 Agent E2 in the demo, through Vercel AI Gateway
+### D-076 Agent E2 in the demo (through Vercel AI Gateway)
 
 - **Why the gateway for demos.** The prototype runs on a laptop or a cloud session with no GPU. The gateway gives the same OpenAI-compatible interface the local server will give, so the code path is the one customers run. Only the endpoint changes. Agent E2's benchmark and lab already work this way.
 - **Why this does not break "customer data stays on site" (D-004).** The demo sends only synthetic ACME data. Agent E2's lab already holds the same exception for the author's own lab data. Customer sites keep a local model and the rule.
@@ -454,7 +1276,7 @@ Source: Cost n Price n Value (in `author-papers/`).
   - After 1.0, the Operations Manager reviews it (D-045).
 - **Rollback of a policy** is publishing the previous version again.
 
-**The record per action type stays, as evidence only.** Approvals, rejections and rollbacks help L2 decide whether to propose a change. They never unlock anything by themselves.
+**The record per action type stays, as evidence only.** Approvals, rejections and rollbacks help L2 decide whether to propose a change. They never let an action run automatically by themselves.
 
 **Accountability (D-050) for automatic runs:** the second field is the policy owner and the policy version, for example "policy move-vms v2, owner l2-engineer-1". There is no approval record for an automatic run, because no one approved it: the policy did.
 
@@ -483,7 +1305,7 @@ Source: Cost n Price n Value (in `author-papers/`).
 **What it does not decide**
 - The product database stays open (PCM core, section 5). The schema uses only TEXT, INTEGER and REAL, and ISO 8601 times, so it ports to a relational product database without redesign. The append-only trigger has a direct equivalent there.
 
-### D-082 PCM documents its own objects; private-cloud-explained documents the private cloud
+### D-082 Documentation split between PCM and private-cloud-explained
 
 **Why not one documentation product**
 - The two products have opposite sources of truth. private-cloud-explained takes what people wrote (email, Confluence, Office files, meetings). PCM takes the live estate.
@@ -570,7 +1392,7 @@ Source: Cost n Price n Value (in `author-papers/`).
 **Out of scope for 1.0**
 - Kubernetes: a logical entity with its own view.
 
-### D-092 The VM's Performance tab: two layers, with their statistic
+### D-092 VM Performance tab: two layers and their statistic
 
 **What was wrong**
 - Guest OS and VM sat side by side, as if they were peers. The Guest OS runs on the Virtual Motherboard.
@@ -610,7 +1432,7 @@ Source: Cost n Price n Value (in `author-papers/`).
 - The API still returns the run line's data. The page no longer shows it.
 - The NOC and Capacity workspaces keep their pills. This is L2 only.
 
-### D-094 The Capacity tab: three KPIs over time, and the check that closes a cluster
+### D-094 Capacity tab: three KPIs and the closure check
 
 **What was wrong**
 - The tab was one table of today's numbers: CPU and memory, average and 95th percentile across hosts, and an "imbalance". No time axis anywhere.
@@ -695,10 +1517,16 @@ Source: Cost n Price n Value (in `author-papers/`).
 
 **The rule**
 
-| Axis | Point | Figures | Status | Source |
-|---|---|---|---|---|
-| Over time, one object | The worst value in its slot | Now; Worst, with its time; the percentile figure: 5th percentile where higher is better, 95th where higher is worse (D-131) | That figure over the window, and the worse of that and its last hour | D-088, D-091, D-092 |
-| Across objects, one time | One value per object | The worst object; the 10th percentile (higher is better) or 90th (higher is worse) | Each object keeps its own | D-091 |
+- **Over time, one object**
+  - Point: the worst value in its slot.
+  - Figures: Now; Worst, with its time; the percentile figure: 5th percentile where higher is better, 95th where higher is worse (D-131).
+  - Status: that figure over the window, and the worse of that and its last hour.
+  - Source: D-088, D-091, D-092.
+- **Across objects, one time**
+  - Point: one value per object.
+  - Figures: the worst object; the 10th percentile (higher is better) or 90th (higher is worse).
+  - Status: each object keeps its own.
+  - Source: D-091.
 
 - **Nearest rank** everywhere, as vCommunity: sort, take the value at position p% of the count, rounded up.
 - **The check value is a 95th percentile of the check period.** With a 24-hour period and Worst Percent 5, it equals the 95th percentile of that day's 5-minute points.
