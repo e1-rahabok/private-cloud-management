@@ -36,3 +36,23 @@ Milestone: M8.
 
 Test scenarios:
 - T-PUBLIC-002a (anywhere, automated by a check, to write): the build of the public demo twice from one commit gives the same files; a page of the PCM server missing from the build fails the check.
+
+### R-PUBLIC-003 Visitors can ask Agent E2 in the public demo, within limits
+
+Why: the demo shows PCM at its best when its explanations answer a visitor's own question, as isvara.io's Ask does today. Ask on isvara.io already receives spam, and an open endpoint costs money on every call, so an unlimited one is a bill and an abuse route.
+
+Source: the author, 2026-11-28 ("look at Ask.io today at isvara.io. It is already answering live question. That's why I said it got spam"); R-PROTECT-001 to R-PROTECT-006 in isvara's [protection.md](https://github.com/e1-rahabok/isvara/blob/main/spec/requirements/protection.md) (the limits chosen for Ask, reused here); RISK-10 (one vendor for hosting and the gateway).
+
+Milestone: M8.
+
+- Given a visitor of the public demo asks Agent E2 a question
+- When the question is sent
+- Then Agent E2 answers about the synthetic ACME data only, through the same API as PCM, and the demo holds no key of the gateway or the lab
+- And the platform's flood limit, a bot check and a per-address question limit apply before any model call, set no looser than isvara.io's Ask
+- And a daily spending ceiling of its own, apart from isvara.io's, stops the model calls for the rest of the day when reached, and the visitor sees a plain notice and the stored explanations
+- And one switch closes the questions at once, leaving the rest of the demo open
+- And a question's text is kept no longer than isvara.io keeps Ask's, and no visitor identifier is stored
+
+Test scenarios:
+- T-PUBLIC-003a (anywhere, automated by a page test and a fake Agent E2, to write): a question gets an answer; the fake records that it received only synthetic data; the page holds no key.
+- T-PUBLIC-003b (anywhere, automated, to write): more questions than the per-address limit from one address get the limit notice and no model call; with the ceiling reached, the next question gets the notice and no model call; with the switch closed, the question box shows the notice.
