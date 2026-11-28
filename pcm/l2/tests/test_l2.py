@@ -777,8 +777,8 @@ class SpecRules(unittest.TestCase):
                 self.assertTrue({"question", "role", "cadence"} <= set(yaml.safe_load(b)), f.name)
 
     def test_reads_name_catalog_entries(self):
-        from pcm.docs import docs
-        self.assertEqual(docs.dangling_reads(), [])
+        from pcm.definitions import definitions
+        self.assertEqual(definitions.dangling_reads(), [])
 
 
 if __name__ == "__main__":

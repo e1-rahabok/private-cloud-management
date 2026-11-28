@@ -1,4 +1,4 @@
-/* GENERATED from pcm/core/spec/visual-style.md and pcm/docs/spec/pages/. Do not edit by hand (D-070). */
+/* GENERATED from pcm/core/spec/visual-style.md and pcm/definitions/spec/pages/. Do not edit by hand (D-070). */
 .lead { color: var(--text-muted); margin: -8px 0 16px; }
 .search { font: inherit; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); width: 100%; max-width: 520px; margin-bottom: 16px; color: var(--text); background: #fff; }
 section.block { background: #fff; border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; }

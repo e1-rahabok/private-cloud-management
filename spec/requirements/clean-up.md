@@ -44,12 +44,14 @@ Test scenarios:
 
 Milestone: M2.
 
-Source: Q-WS-134 (round 4: "Yes, by workspace."); WD-030.
+Source: Q-WS-134 (round 4: "Yes, by workspace."); WD-030; D-135 (the Docs workspace's folder).
 
 - Given PCM's five workspaces (executive, NOC, L2, capacity, docs) and the parts they share
 - When a session works on one workspace
 - Then one folder per workspace holds everything that workspace needs: its design note, its API, catalog and test specifications, its server code, its page code and its tests
-- And each workspace folder has the workspace's full name, for example `executive` and not `exec`, and the page code for Agent E2 is named `agent-e2` and not `e2`
+- And each workspace folder but the Docs workspace's has the workspace's full name, for example `executive` and not `exec`
+- And the Docs workspace's folder is `definitions`, named for the definitions of PCM's own objects it holds; its route stays `/docs` (D-135)
+- And the page code for Agent E2 is named `agent-e2` and not `e2`
 - And the parts every workspace uses (the server, the store, the object model, the database schema, the shared catalog files, the demo data generator, the fonts) sit in one shared folder named for what it holds
 - And `build/` no longer exists, and the moves are done in the same change as R-REPO-007, so no file moves twice
 - And PCM's decision log records the layout as a PCM decision

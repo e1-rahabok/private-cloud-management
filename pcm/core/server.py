@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import generator
 from ..capacity import capacity
-from ..docs import docs
+from ..definitions import definitions
 from ..executive import api
 from ..l2 import l2, agent_e2_panel as l2_agent_e2_panel, cases as l2_cases, inventory_tree as l2_inventory_tree, improve as l2_improve, monitor as l2_monitor
 from ..noc import noc, agent_e2_panel as noc_agent_e2_panel
@@ -28,7 +28,7 @@ from ..noc import noc, agent_e2_panel as noc_agent_e2_panel
 PCM = Path(__file__).resolve().parents[1]
 # The first part of a page address names the folder that serves it: each workspace's pages, and the shared ones in core.
 PAGE_FOLDERS = {"exec": PCM / "executive/pages", "noc": PCM / "noc/pages", "l2": PCM / "l2/pages", "capacity": PCM / "capacity/pages",
-                "docs": PCM / "docs/pages", "agent-e2": PCM / "core/pages/agent-e2", "fonts": PCM / "core/pages/fonts",
+                "docs": PCM / "definitions/pages", "agent-e2": PCM / "core/pages/agent-e2", "fonts": PCM / "core/pages/fonts",
                 "demo": PCM / "core/pages/demo"}
 
 
@@ -54,9 +54,9 @@ def route(path: str, query: dict):
     if parts[:2] == ["api", "docs"]:
         rest = parts[2:]
         if not rest:
-            return docs.index(enable)
-        if len(rest) == 2 and rest[0] in docs.KINDS:
-            return docs.detail(rest[0], rest[1], enable)
+            return definitions.index(enable)
+        if len(rest) == 2 and rest[0] in definitions.KINDS:
+            return definitions.detail(rest[0], rest[1], enable)
         return None
     if parts[:2] == ["api", "capacity"]:
         return capacity_get(parts[2:], now, enable, query)

@@ -1,9 +1,9 @@
-"""Docs workspace: read-only documentation of PCM's own objects (pcm/docs/design-note.md, D-082).
+"""Docs workspace: read-only documentation of PCM's own objects (pcm/definitions/design-note.md, D-082).
 
 GENERATED from every workspace's spec/ folder, pcm/core/spec/catalog/ and the action record. Do not edit by hand (D-070).
 
 Export for private-cloud-explained (Docs design, 2.7):
-    python3 -m pcm.docs.docs --export <folder> [--now 2026-10-19T10:05:00+08:00]
+    python3 -m pcm.definitions.definitions --export <folder> [--now 2026-10-19T10:05:00+08:00]
 """
 from __future__ import annotations
 
