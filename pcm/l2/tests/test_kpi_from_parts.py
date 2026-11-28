@@ -42,6 +42,9 @@ class KpiFromPartsTest(unittest.TestCase):
         layers = M.vm_layers(E.nodes["sg-api-1617"], NOW, "24h", X.active_scenario_stories(()), own)
         vm = {m["key"]: m for m in layers[1]["metrics"]}
         self.assertEqual(len(vm), 10)                           # nine rows and the score
+        self.assertEqual(len(layers[1]["metrics"]), 10)         # and no metric shows twice
+        base = {k: lab for k, lab, *_x in M.LAYER_METRICS[1][2]}
+        self.assertEqual({k: m["label"] for k, m in vm.items()}, base)  # under the catalog's names
         names = {"cpu_ready_percent": "cpu_ready", "co_stop_percent": "co_stop", "memory_wait_percent": "memory_wait", "disk_latency_ms": "disk_latency"}
         names.update({k: r for k, *_x, r in S.VM_EXTRA_ROWS})
         for i in range(0, 288, 7):

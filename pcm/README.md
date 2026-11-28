@@ -143,7 +143,7 @@ Third L2 build: the workspace is rebuilt around three activities, **Monitor, Tro
 |---|---|---|
 | Catalog | LCAT-1 to LCAT-16 | all passed |
 | PCM scenario story | LST-1 to LST-30, plus tree, stale, realms, generic complaint, agent and money checks | all passed |
-| Page | LPG-1 to LPG-23 | 22 browser checks and the specification check passed |
+| Page | LPG-1 to LPG-32 | 31 browser checks passed |
 | Demo rehearsal | 21 steps, 8 of them L2 | all OK |
 
 - **The whole estate is in the tree:** 1,200 hosts, 106 clusters, about 27,900 VMs, built from `pcm/core/spec/demo-data/estate.yaml` (`l2_tree`). Every object a PCM scenario story names sits where the PCM scenario story says. Five views: Compute, Storage, Network, Class of service, Management.
@@ -153,6 +153,9 @@ Third L2 build: the workspace is rebuilt around three activities, **Monitor, Tro
 - **Found in review and fixed:** the 24-hour 95th percentile hid FR-S-02's fall of 20 minutes ago; rows now show the window and the last hour, and the status is the worse of the two. Case work (proposals, confirmations) flooded the timeline and the L1 evidence; it is now kept on the case. Security, capacity, configuration and inventory findings opened cases; only availability and performance are troubleshot (SP5), the rest go to Improve.
 - **Speed:** the specification files were parsed again on every call, about 0.3 s each. They are now parsed once per change. The estate summary answers in about 1.5 s, other L2 calls in 0.1 to 0.5 s.
 - **Still planted:** the chains for planted PCM scenario stories come from the PCM scenario story file, because Agent E2's flow executor is not called yet. A complaint about any other VM runs a generic SP5 order on that VM's counters.
+
+**The live demo's walk of Agent E2 (R-LIVE-036, LPG-31, LPG-32):** the author's live demo script clicks every Agent E2 mark on a cluster's Performance and Capacity tabs, a host's and a VM's Performance tab, and asks every suggested question. LPG-31 does the same on the synthetic demo, whose screens the live demo shares: 28 marks, 81 questions, each sent with the card clicked. LPG-32 stops the Agent E2 service mid-conversation: the panel says so, the page stays, and the next question after it returns gets an answer.
+- **Found by the walk and fixed:** on sg-api-1617 (PCM scenario story M-5) the Virtual Motherboard layer showed five metrics twice, the second time under names that are not the catalog's ("Network Dropped Tx" for "Peak network TX dropped packets"), and Agent E2 heard the catalog name. Each metric now shows once, under the catalog's name; `test_vm_is_its_rows` checks it. The answer's opening (D-119) was wrapped in a block of its own; it is now the answer's first paragraph, which LPG-20 expects (LPG-20 failed on main before this change).
 
 **The Capacity tab (D-094, D-095, D-096):** `pcm/l2/capacity_tab.py`. The snapshot table (CPU and memory average and 95th across hosts, "imbalance") is gone.
 - **On a cluster:** the verdict of the PCM adapter's Periodic Cluster Check in words, with the rule that matched ("Closed for new VMs since the check of 19 Oct. Consumption 82% is above 80%."), beside "Contention now" from the last hour. Three charts in the rule's order (Cluster Consumption, Performance, Risk) with the closure levels, Now, Worst, 95th percentile and the check value named by its percentile ("95th percentile, 24 hours to 19 Oct, 00:00 UTC"). The check strip, one cell per check. What consumption is made of, usable capacity (total, HA, buffer), the spread between hosts (highest and lowest, no average), the hosts worst first. A host or VM shows its cluster's page with its host marked.
