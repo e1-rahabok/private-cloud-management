@@ -123,7 +123,7 @@ cd /opt/agent-e2 && git pull && systemctl restart agent-e2
 
 - **Design:** TLS ends at nginx, not in PCM. Browser to nginx on port 443 is encrypted. nginx to PCM on `127.0.0.1:8080` is plain HTTP inside the VM.
 - **Why:** one place holds the certificate and its renewal. PCM stays free of key handling.
-- **The lab VM (moltbot29), checked with `nginx -T` and `ss -ltn` on 2026-11-23:** nginx listens on 443 with TLS, certificate `/etc/ssl/certs/pcm.crt`, key `/etc/ssl/private/pcm.key`, and forwards to `http://127.0.0.1:8080`. Nothing listens on port 80. PCM listens on `0.0.0.0:8080`, so 8080 is still reachable over plain HTTP; `tools/lab/Test-Lab.ps1` checks both 443 and 8080.
+- **The lab VM, checked with `nginx -T` and `ss -ltn` on 2026-11-23:** nginx listens on 443 with TLS, certificate `/etc/ssl/certs/pcm.crt`, key `/etc/ssl/private/pcm.key`, and forwards to `http://127.0.0.1:8080`. Nothing listens on port 80. PCM listens on `0.0.0.0:8080`, so 8080 is still reachable over plain HTTP; `tools/lab/Test-Lab.ps1` checks both 443 and 8080.
 
 Install nginx and put the certificate and key where the lab VM has them (the lab's own CA, or a self-signed pair for a trial). The key is mode 600, owned by root:
 
@@ -193,13 +193,13 @@ This section follows the lab VM. If the VM's nginx file changes, the VM is the s
 With ufw, replacing the network with your lab's. Open 443:
 
 ```bash
-ufw allow from 192.168.10.0/24 to any port 443 proto tcp
+ufw allow from 10.20.0.0/24 to any port 443 proto tcp
 ```
 
 While PCM still listens on `0.0.0.0:8080`, limit 8080 to the lab network too. Once it is closed (section Close port 8080), remove the rule:
 
 ```bash
-ufw delete allow from 192.168.10.0/24 to any port 8080 proto tcp
+ufw delete allow from 10.20.0.0/24 to any port 8080 proto tcp
 ```
 
 ## Update

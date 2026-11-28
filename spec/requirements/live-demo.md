@@ -1,6 +1,6 @@
 # Requirements: PCM live demo
 
-PCM's live demo is the L2 workspace reading the author's lab VCF Operations (https://10.115.1.81) through its Suite API. It is a separate demo with its own entry in the demo drop-down. The synthetic ACME demo stays as it is. The scope is performance and capacity management only. These requirements come from [SCOPE-5, the live demo decision](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/brief.md), and from the author's answers to Q-WS-20 to Q-WS-39 in the [interview, round 1](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-1.md). Other short names are explained in the [glossary](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md).
+PCM's live demo is the L2 workspace reading the author's lab VCF Operations (its address in `$HOME\.secrets\lab.json` and `/etc/pcm/pcm.env`, DESIGN-9) through its Suite API. It is a separate demo with its own entry in the demo drop-down. The synthetic ACME demo stays as it is. The scope is performance and capacity management only. These requirements come from [SCOPE-5, the live demo decision](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/brief.md), and from the author's answers to Q-WS-20 to Q-WS-39 in the [interview, round 1](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-1.md). Other short names are explained in the [glossary](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md).
 
 Milestone ([ROADMAP.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md)): every requirement here belongs to M8, the PCM live demo. Its first slice is one lab cluster's Cluster Performance on the L2 Performance tab: R-LIVE-001, R-LIVE-024 and R-LIVE-030.
 
@@ -30,7 +30,7 @@ Milestone: M8, first slice.
 
 Test scenarios:
 - T-LIVE-001a (anywhere, automated by pcm/l2/tests/live.page.test.mjs::test_demo_entry, to write). Data: PCM started against the fake Suite API (pcm/l2/tests/fake_suite_api.py, to write). Steps: open `/exec`, open the drop-down, choose the live entry. Expected: the entry is listed once; choosing it opens `/live/l2`; the synthetic entries are unchanged in order and URL.
-- T-LIVE-001b (lab, automated by pcm/l2/tests/live.lab.test.mjs::test_demo_entry, to write). Data: PCM on the lab VM (https://10.114.1.29) with the live connection configured. Steps: as in 001a. Expected: the live L2 page opens and its tree shows objects from the lab VCF Operations; a screenshot is saved for review.
+- T-LIVE-001b (lab, automated by pcm/l2/tests/live.lab.test.mjs::test_demo_entry, to write). Data: PCM on the lab VM with the live connection configured. Steps: as in 001a. Expected: the live L2 page opens and its tree shows objects from the lab VCF Operations; a screenshot is saved for review.
 
 ### R-LIVE-002 Live and synthetic data never meet
 
