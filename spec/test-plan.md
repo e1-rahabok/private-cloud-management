@@ -71,7 +71,7 @@ The live demo is built in M8, the workspace's milestone for it ([ROADMAP.md](htt
 ## Pass criteria
 
 - A pull request merges when every unit and page test passes and its text lists the lab scenarios it could not run.
-- M8 is done when `Test-Live.ps1` exits 0 on the lab with every scenario passed, the synthetic tests still pass unchanged (R-LIVE-032), the screenshots are in the pull request, and the author approves the milestone.
+- M8 is done when `Test-Live.ps1` exits 0 on the lab with every scenario passed, the synthetic tests still pass unchanged (R-LIVE-032), the screenshots are in the pull request, and the author has reviewed the milestone.
 
 ## Not covered
 
