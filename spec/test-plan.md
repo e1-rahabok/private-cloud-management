@@ -29,6 +29,8 @@ Design choices:
 - **The reference script shares no code with PCM's live reader.** Why: a bug in a shared reader would put the same wrong value on both sides, and the comparison would pass. Rejected: calling PCM's reader from the test, because it then tests PCM against itself; reading the values off the VCF Operations screen, because a screen scrape breaks with each VCF Operations release. Serves: R-LIVE-024, R-LIVE-025, R-LIVE-026, R-LIVE-027.
 - **The reference script imports the adapter's scoring code and does not copy it.** Why: the adapter computes the KPI that VCF Operations stores, so its code is the definition of "the part that lost the most points". A copy would drift from it. Rejected: a second scoring in PCM's tests, for the same reason. Serves: R-LIVE-030.
 - **The reference script is itself tested on a fixed series.** Why: an oracle with a bug passes a wrong PCM. T-LIVE-024c runs it on the 288 samples of T-LIVE-024b and expects the values computed by hand. Serves: R-LIVE-024.
+- **Relevance of a suggested question is decided by Agent E2's written rule, computed by the reference.** Why: "relevant" (Q-PCM-3) needs an oracle a test can run; the rule in Agent E2's `user_suggestions.py` defines the page's situation from its KPI series, and its question table lists what fits each situation. The reference computes the situation from its own reads by that written rule, and the test checks the shown questions come from that situation's list. Rejected: a model judging relevance, because it would pass a fluent question about the wrong situation; a fixed list of expected questions, because the lab's situation changes from day to day. Serves: R-LIVE-038.
+- **Correctness of an answer has three layers.** Why: no single check catches every wrong answer. Each figure in the answer is compared with the reference (a wrong number fails at once); the grader of R-E2-005 scores the answer against key points written from the reference (a wrong reason fails); and the author rates every answer at the M8 rehearsal (what neither check sees). Rejected: the grader alone, because a grader can accept a wrong figure stated with a right reason; the author alone, because about 80 answers per walk is too many to read on every run. Serves: R-LIVE-039.
 - **Values are compared at whole percent, or at a part's own decimals.** Why: PCM shows whole percent, and a part's limits set its decimals (R-LIVE-025). Rejected: an exact comparison of floating-point values, because rounding on two sides would fail a correct page.
 
 ## Safety
@@ -44,7 +46,7 @@ Design choices:
 
 | Step | What it checks | Scenarios | On failure |
 | :--- | :--- | :--- | :--- |
-| 1. Access | VPN, sign-ins and the lab VM's pages answer ([Test-Lab.ps1](../tools/lab/Test-Lab.ps1)) | none of its own | Stop |
+| 1. Access | VPN, sign-ins and the lab VM's pages answer; only 443 and SSH are open ([Test-Lab.ps1](../tools/lab/Test-Lab.ps1)) | T-LIVE-037a | Stop |
 | 2. The adapter collects | The VCF vCommunity Adapter's [validate.ps1](https://github.com/e1-rahabok/PCM-Adapter/blob/main/tools/validate/validate.ps1) exits 0 | none of its own | Stop: the pack is not collecting, which is the adapter's fault |
 | 3. Sign-in and rights | The read-only account, the lab certificate, no refused call; the lab's VCF Operations version is printed | T-LIVE-007c, T-LIVE-008b, T-LIVE-009b, T-LIVE-031a | Stop |
 | 4. The key list | Every key PCM reads exists on the lab and is fresh | T-LIVE-023a, T-LIVE-023c | Stop: a missing key fails every figure after it |
@@ -53,7 +55,10 @@ Design choices:
 | 7. Absent data | A powered-off VM shows "No data" | T-LIVE-015b | Go on |
 | 8. Page time | A cluster's Performance and Capacity tabs show within 5 seconds with an empty cache | T-LIVE-033b | Go on |
 | 9. Agent E2 | "Why the worst?" names the oracle's part | T-LIVE-030a | Go on |
-| 10. The demo end to end | The live demo script, step by step, as the author shows it | T-LIVE-036a | Go on |
+| 10. The demo end to end | The live demo script, every Agent E2 mark and question | T-LIVE-036a, T-LIVE-038a, T-LIVE-039a, T-LIVE-040b | Go on; a failed health check makes every question NOT RUN |
+| 11. The author's walk | The author walks the same script and rates every answer | T-LIVE-039b, T-LIVE-037b | Manual, recorded in the M8 pull request |
+
+Step 10 walks the script of [demo/README.md](../demo/README.md), section The live demo: the demo cluster's Performance and Capacity tabs, then one host's and one VM's Performance tab, with every Agent E2 mark and every suggested question on each, about 80 answers (81 on the synthetic demo, LPG-31). It checks Agent E2's health first.
 
 After release 1.0: T-LIVE-034a, the tiering parts, once the lab has a tiered cluster (SCOPE-17).
 

@@ -71,10 +71,11 @@ Source: answer to Q-WS-33 ("All these are out of scope in 1.0. Focus on performa
 - When it opens on any object
 - Then it shows the Monitor activity with the Performance and Capacity tabs only, on a cluster, an ESXi host, a VM and each object above the cluster in the tree
 - And it shows no Troubleshoot, Improve, Rules or Calendar entry, no other pillar tab, no PCM scenario story, no case and no action button
+- And an object opens on its Performance tab; the live demo has no Summary tab (Q-PCM-3, step 2: "I'd ignore this in Release 1.0")
 - And the live API refuses every write path with 404
 
 Test scenarios:
-- T-LIVE-004a (anywhere, automated by pcm/l2/tests/live.page.test.mjs::test_tabs_only, to write). Data: the fake Suite API. Steps: open a cluster, a host, a VM and the VCF instance. Expected: only Performance and Capacity tabs, on each; no Troubleshoot, Improve, Rules or Calendar entry; no action button.
+- T-LIVE-004a (anywhere, automated by pcm/l2/tests/live.page.test.mjs::test_tabs_only, to write). Data: the fake Suite API. Steps: open a cluster, a host, a VM and the VCF instance. Expected: each opens on its Performance tab; only Performance and Capacity tabs, on each, and no Summary tab; no Troubleshoot, Improve, Rules or Calendar entry; no action button.
 - T-LIVE-004b (anywhere, automated by pcm/l2/tests/test_live.py::test_no_writes, to write). Steps: POST to each L2 write path under the live prefix (cases, proposals, decisions, policies, thresholds, calendar). Expected: 404 for each, and nothing written to PCM's database.
 
 ### R-LIVE-005 No clock and no planted PCM scenario stories in the live demo
@@ -574,20 +575,102 @@ Test scenarios:
 
 Why: each lab scenario proves one page, but the audience sees one walk through the live demo; a step that leads nowhere, or a number that changes between two steps, breaks the demo even when every page passes on its own.
 
-Source: answer to Q-WS-37 ("You forgot you have live access"); answer to Q-WS-35 (the audience compares with VCF Operations); [GOAL-4, release 1.0 success](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/brief.md); SCOPE-5. The steps are the live demo script in [demo/README.md](../../demo/README.md), section The live demo, to write from Q-PCM-3 in [OPEN-QUESTIONS.md](../../OPEN-QUESTIONS.md).
+Source: answer to Q-PCM-3 (the author's live demo script, 16 steps: "Same structure and UI as the synthetic demo, except the data is live"; recorded in the workspace's [round 6](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-6.md)); answer to Q-WS-37 ("You forgot you have live access"); [GOAL-4, release 1.0 success](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/brief.md); SCOPE-5. The steps are the live demo script in [demo/README.md](../../demo/README.md), section The live demo.
 
 Milestone: M8.
 
-- Given the live demo on the lab VM and the live demo script
-- When the live rehearsal walks the script's steps in a browser, from the demo drop-down to the last step
-- Then each step's screen shows what the script says, and each number on it equals the reference script's value for the same object and window
-- And the same object shows the same value on every step that shows it
-- And Agent E2's answer names the reference's part, and its rating is kept (R-LIVE-030, R-LIVE-035)
-- And a screenshot of each step is saved, as `demo/rehearse.mjs` does for the synthetic demo
+- Given the live demo on the lab VM, the 24-hour window, and the demo cluster: the cluster named `demo_cluster` in `$HOME\.secrets\lab.json`, else the first cluster in the tree
+- When the live rehearsal walks the script in a browser, from the demo drop-down, through the tree to the demo cluster
+- Then the cluster opens on its Performance tab (R-LIVE-004)
+- And on each page of the walk it opens Agent E2 from the top bar mark, then from every Agent E2 mark on the page, and asks every suggested question of each (R-LIVE-038, R-LIVE-039)
+- And the pages of the walk, in order: the cluster's Performance tab; its Capacity tab; the first host in its list of hosts, worst first, on its Performance tab; the first VM of that host, worst first, on its Performance tab
+- And each number on a page equals the reference script's value for the same object and window, and the same object shows the same value on every step that shows it
+- And a screenshot of each page and of each answer is saved, as `demo/rehearse.mjs` does for the synthetic demo
 
 Test scenarios:
-- T-LIVE-036a (lab, automated by demo/rehearse.mjs --live, run as step 10 of tools/lab/Test-Live.ps1, to write). Data: the lab VCF Operations and the reference script. Steps: walk every step of the live demo script. Expected: every step passes; one line per step, and a screenshot per step in the run's folder.
-- T-LIVE-036b (anywhere, automated by demo/rehearse.mjs --live against the fake Suite API, to write). Data: the fake Suite API with one cluster, one host and one VM. Steps: as 036a. Expected: every step's link leads to the next step's page, and the fake's values show on each.
+- T-LIVE-036a (lab, automated by demo/rehearse.mjs --live, run as step 10 of tools/lab/Test-Live.ps1, to write). Data: the lab VCF Operations, the reference script, Agent E2 on the lab VM with the gateway key. Steps: walk the script. Expected: every step passes; one line per step and per question, with the answer's time and tokens; a screenshot per page and per answer in the run's folder.
+- T-LIVE-036b (anywhere, automated by demo/rehearse.mjs --live against the fake Suite API and the stub Agent E2, to write). Data: the fake Suite API with one cluster, two hosts and three VMs. Steps: as 036a. Expected: the walk reaches each of the four pages by its links; every mark on them opens the panel and every suggested question reaches the stub with the context of the mark clicked.
+- T-LIVE-036c (anywhere, automated by pcm/l2/tests/l2.page.test.mjs, LPG-31). Data: the synthetic demo and the stub Agent E2. Steps: on SG-S-01's Performance and Capacity tabs, sg-esx-110's Performance tab and sg-api-1617's Performance tab, open the panel from the top bar mark and from every Agent E2 mark, and click every suggested question. Expected: each mark opens the panel with one to three suggestions and its own context line; each click reaches the stub once, with the context of the mark clicked; each shows an answer. The synthetic UI is the live UI (R-LIVE-032), so this proves the walk's clicks before the lab.
+
+### R-LIVE-037 The lab VM is reached only through TLS, from the VPN, and stays patched
+
+Why: PCM has no sign-in in release 1.0, so the VPN is its only gate (ASSUMPTION-9); a plain-HTTP port would carry the live data unencrypted on the lab network, and an unpatched VM is the easiest way past the VPN (OWASP ASVS V9 and V14).
+
+Source: ASSUMPTION-9 and DESIGN-24 (the security baseline, in the workspace's [system design](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/design/system.md)); DESIGN-25 (unattended upgrades on the lab VM); [deploy/README.md](../../deploy/README.md), section HTTPS with nginx, Close port 8080.
+
+Milestone: M8.
+
+- Given the lab VM that runs PCM and the Agent E2 service
+- When a lab browser or another host on the network connects to it
+- Then only port 443 (nginx, TLS) and SSH answer from the network
+- And PCM listens on `127.0.0.1:8080` only (`PCM_HOST=127.0.0.1` in `/etc/pcm/pcm.env`), and the Agent E2 service on `127.0.0.1:8090` only
+- And the VM's firewall accepts 443 and SSH only from the lab and VPN networks
+- And `unattended-upgrades` installs security updates every day
+- And no port of the VM answers from outside the VPN
+
+Test scenarios:
+- T-LIVE-037a (lab, automated by tools/lab/Test-Lab.ps1, to write). Steps: from the laptop on the VPN, connect to 443, 8080 and 8090 on the lab VM; on the VM, run `ss -ltn` and `systemctl is-enabled unattended-upgrades`. Expected: 443 answers with TLS; 8080 and 8090 refuse; `ss` lists 8080 and 8090 on `127.0.0.1` only; unattended upgrades are enabled.
+- T-LIVE-037b (lab, manual once, recorded in the M8 pull request). Steps: with the VPN off, connect to 443 and SSH on the lab VM's address. Expected: neither answers.
+
+### R-LIVE-038 The suggested questions fit the page and the card
+
+Why: the author clicks every suggested question in front of the audience (Q-PCM-3, steps 6 and 9: "The default OOTB questions must be relevant"); a question about a situation the screen does not show, or about another object, tells the audience the assistant is not reading the page.
+
+Source: answer to Q-PCM-3; D-124 and D-127 (the page's and the card's suggestions), in [pcm/l2/spec/pages/frame.md](../../pcm/l2/spec/pages/frame.md), section Suggested questions; Agent E2's rule in [harness/user_suggestions.py](https://github.com/e1-rahabok/agent-e2/blob/main/harness/user_suggestions.py) and its questions in [harness/user_suggestions.yaml](https://github.com/e1-rahabok/agent-e2/blob/main/harness/user_suggestions.yaml).
+
+Milestone: M8.
+
+- Given a page of the walk of R-LIVE-036 and its live KPI series
+- When the panel opens from the top bar mark
+- Then the suggestions come from Agent E2 (`source` service), not from the general fallback
+- And the situation Agent E2 returns (level and movement) equals the one the reference script computes from the same series by the rule written in `user_suggestions.py`
+- And each question is one that `user_suggestions.yaml` lists for that situation and that kind of object, with `{time}` the worst point's time as the page writes it
+- And when the panel opens from a card's mark, the first question is Agent E2's showcase question for that card, or none; every figure it names equals the card's; the others are the card's own questions of frame.md
+- And no question names another object or a KPI that is not on the page
+
+Test scenarios:
+- T-LIVE-038a (lab, automated by demo/rehearse.mjs --live with tools/lab/live_reference.py, to write). Steps: on each page of the walk, read the suggestions and the situation from `/api/l2/agent/suggest`; the reference computes the situation from its own reads. Expected: equal situations; every question from the situation's list; every figure in a showcase question equals the card's.
+- T-LIVE-038b (anywhere, automated by pcm/l2/tests/test_live.py::test_suggest_live, to write). Data: the fake Suite API with a series falling all morning, and the real Agent E2 rule in mock mode. Expected: situation declining; the questions are the declining questions of the cluster.
+
+### R-LIVE-039 Every suggested question gets a correct answer
+
+Why: the author checks each answer in front of the audience (Q-PCM-3, step 7: "verifying their answer is correct"), and a confident wrong answer is the main risk (RISK-1).
+
+Source: answer to Q-PCM-3; [GOAL-4 and RISK-1](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/brief.md); the grader of [R-E2-005](https://github.com/e1-rahabok/agent-e2/blob/main/project/requirements/answer-service.md#r-e2-005-an-automated-grader-scores-every-answer); R-LIVE-030 for the part that moved the KPI.
+
+Milestone: M8.
+
+- Given each suggested question asked in the walk of R-LIVE-036
+- When its answer is shown
+- Then the answer is an answer: not a clarifying question, not an error, and it arrives within Agent E2's job limit (R-E2-008)
+- And each figure it states for the page's object (a KPI's Now, Worst, its time, the percentile figure, a part's value) equals the reference script's value at whole percent, or at the part's own decimals
+- And it names the page's object, and no object of the synthetic demo
+- And a question that asks why the KPI moved names the reference's part as the main cause, as R-LIVE-030 states
+- And the grader scores it 2 or 3, given the question, the facts PCM sent, and key points written from the reference: the object, the level and movement, and the part where the question asks for a cause
+- And a fact marked "no data" (R-LIVE-028) is said to be missing, and no value is given for it
+
+Test scenarios:
+- T-LIVE-039a (lab, automated by demo/rehearse.mjs --live with tools/lab/live_reference.py and Agent E2's grader, to write). Steps: for every answer of the walk, compare its figures with the reference, then grade it. Expected: every figure equal; every score 2 or 3; one line per answer with its score and the grader's reason. A score below 2 is a type of question that fails: it goes to agent-e2's [screen_answer_check.yaml](https://github.com/e1-rahabok/agent-e2/blob/main/benchmark/runner/screen_answer_check.yaml) with 20 wordings, by agent-e2's rule.
+- T-LIVE-039b (lab, manual, at the M8 rehearsal). Steps: the author walks the script and rates every answer (R-LIVE-035). Expected: every rating is up; each rating down is reported with its question and answer, and treated as in 039a.
+
+### R-LIVE-040 A failure of Agent E2 or the gateway during the demo
+
+Why: the walk asks about 80 questions through the cloud gateway (81 on the synthetic demo, LPG-31) (SCOPE-5); one failed call must not end the demo or be mistaken for a pass.
+
+Source: answer to Q-PCM-3 ("The answer is coming live from Vercel the AI gateway, just like in synthetic demo. No difference at all"); R-E2-020 (the waiting, not-responding and unavailable states); CONSTRAINT-1 (the gateway budget).
+
+Milestone: M8.
+
+- Given the live demo and Agent E2 on the lab VM
+- When it runs
+- Then Agent E2 uses the same service, model and gateway key as the synthetic demo, and `/api/l2/agent/health` reports the same model in both
+- And when Agent E2 or the gateway cannot be reached, the panel says so (R-E2-020), the page and its numbers stay, and the next question can be asked
+- And the rehearsal checks the health endpoint before the walk, reports every question after a failed call as NOT RUN, and never as a pass
+- And the rehearsal prints the walk's model calls, tokens and cost, which the first lab run measures against the gateway budget
+
+Test scenarios:
+- T-LIVE-040a (anywhere, automated by pcm/l2/tests/l2.page.test.mjs, LPG-32). Data: the synthetic demo; the stub Agent E2 stopped after the first answer. Steps: ask a second question. Expected: the panel shows the unavailable state; the page's charts and figures are unchanged; after the stub restarts, the next question gets an answer.
+- T-LIVE-040b (lab, automated by demo/rehearse.mjs --live, to write). Steps: run the walk with the gateway key removed from the Agent E2 service. Expected: the rehearsal stops at the health check and reports every question as NOT RUN.
 
 ## Changes to PCM's own specification
 
@@ -616,7 +699,7 @@ Each line is a change to make in private-cloud-manager in a later pull request. 
 | [spec/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/spec/README.md#L49) | Add the live demo to the status table; move each verified assumption out of "to verify". |
 | [pcm/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/README.md#L279) | Remove the gap "No VCF Operations connector in 1.0"; add the live tests. |
 | [deploy/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/deploy/README.md#L3) and [deploy/pcm.env.example](https://github.com/e1-rahabok/private-cloud-manager/blob/main/deploy/pcm.env.example) | The live demo connects read-only to VCF Operations; add its variables to `pcm.env`. |
-| [demo/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/demo/README.md#L21) | The drop-down has the live entry; add the live demo script of R-LIVE-036, from Q-PCM-3. |
+| [demo/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/demo/README.md#L21) | The drop-down has the live entry. The live demo script of R-LIVE-036 is in its section The live demo. |
 | [tools/lab/Test-Lab.ps1](https://github.com/e1-rahabok/private-cloud-manager/blob/main/tools/lab/Test-Lab.ps1#L2) | Read the DPAPI files of DESIGN-9 in place of Windows Credential Manager (Q-WS-40). |
 
 ## Agent E2's progress on screen

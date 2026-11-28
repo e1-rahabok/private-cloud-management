@@ -187,8 +187,6 @@ def vm_layers(n: dict, now: datetime, window: str, act: dict, own: float) -> lis
     layers = []
     for lk, title, metrics in LAYER_METRICS:
         out = []
-        if m5 and lk == "virtual_motherboard":
-            metrics = metrics[:-1] + tuple((k, lab, "%", "lower", dec, None, ends) for k, lab, _u, dec, ends, _r in S5.VM_EXTRA_ROWS) + metrics[-1:]
         for key, label, unit, better, dec, scale, ends in metrics:
             if m5 and key == "vm_performance":
                 vals = S5.slot_values(S5.scenario_story()["vm_performance"], now.timestamp(), start, L, count, "higher")

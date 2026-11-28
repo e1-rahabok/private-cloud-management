@@ -543,3 +543,16 @@ page:
       topic_choice new or continue, as decided. A click on the button while waiting asks again with the other choice, and only that answer
       is kept. When Agent E2 gives no decision, the question continues the topic.
     decisions: [D-130]
+  - id: LPG-31
+    rule: >
+      The live demo's walk of Agent E2 (R-LIVE-036, T-LIVE-036c), on the synthetic demo, whose screens the live demo shares. On a
+      cluster's Performance and Capacity tabs, an ESXi host's Performance tab and a VM's Performance tab (SG-S-01, sg-esx-110,
+      sg-api-1617): the top bar mark and every Agent E2 mark on the page each open the panel with one to three suggested questions;
+      every suggested question, clicked, reaches Agent E2 once, with the card that was clicked (no card for the top bar mark), and an
+      answer shows. Delete, then Yes, brings the suggestions back for the next one.
+    decisions: [D-097, D-123, D-124, D-127]
+  - id: LPG-32
+    rule: >
+      Agent E2 stops during a demo (R-LIVE-040, T-LIVE-040a): after an answer, the service stops; the next question shows the
+      unavailable state, and the page's charts and figures stay as they were. Once the service is back, the next question gets an answer.
+    decisions: [D-097]

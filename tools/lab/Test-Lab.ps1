@@ -6,7 +6,8 @@
 # The lab's addresses come from $HOME\.secrets\lab.json (tools\lab\Lab-Config.ps1, DESIGN-9).
 #
 # Checks: the lab VM's key login and sudo log, VCF Operations login, vCenter login,
-# and the PCM pages on the VM (https 443 and http 8080).
+# the PCM pages on the VM over https 443, and the VM's hardening (T-LIVE-037a): 8080 and 8090 refused from the
+# network and bound to 127.0.0.1 only, and unattended upgrades enabled.
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -96,15 +97,29 @@ if ($null -eq $cred) {
     }
 }
 
-# 4. PCM on the VM: pages over https 443 and http 8080
+# 4. PCM on the VM: pages over https 443
 $pages = '/exec', '/noc/wall', '/noc', '/l2', '/capacity', '/docs'
 $clock = '?now=2026-10-19T10:05:00%2B08:00'
-foreach ($base in "https://$($lab.vm_host)", "http://$($lab.vm_host):8080") {
-    $codes = foreach ($p in $pages) {
-        curl.exe -sk -o NUL -w "%{http_code}" --max-time 10 ($base + $p + $clock)
-    }
-    $ok = (@($codes | Where-Object { $_ -eq '200' }).Count -eq $pages.Count)
-    Add-Result "PCM pages $base" $ok ("codes: " + ($codes -join ' '))
+$base = "https://$($lab.vm_host)"
+$codes = foreach ($p in $pages) {
+    curl.exe -sk -o NUL -w "%{http_code}" --max-time 10 ($base + $p + $clock)
+}
+$ok = (@($codes | Where-Object { $_ -eq '200' }).Count -eq $pages.Count)
+Add-Result 'PCM pages over https 443' $ok ("codes: " + ($codes -join ' '))
+
+# 5. The VM's hardening (R-LIVE-037, T-LIVE-037a): PCM and Agent E2 answer only inside the VM; security updates on
+foreach ($port in 8080, 8090) {
+    $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 5 ("http://$($lab.vm_host):$port/")
+    Add-Result "Port $port refused from the network" ($code -eq '000') ("http code: " + $code)
+}
+try {
+    $r = Invoke-Moltbot "ss -ltnH | awk '{print `$4}' | grep -E ':(8080|8090)$'"
+    $open = @(($r.Output -split "`n") | Where-Object { $_ -and $_ -notmatch '^127\.0\.0\.1:' })
+    Add-Result 'PCM and Agent E2 listen on 127.0.0.1 only' ($open.Count -eq 0 -and $r.Output) ("listening: " + (($r.Output -split "`n") -join ' '))
+    $u = Invoke-Moltbot 'systemctl is-enabled unattended-upgrades 2>&1'
+    Add-Result 'Unattended upgrades enabled' ($u.Output.Trim() -eq 'enabled') $u.Output.Trim()
+} catch {
+    Add-Result 'VM hardening read over SSH' $false $_.Exception.Message
 }
 
 $results | Format-Table -AutoSize -Wrap | Out-String -Width 200

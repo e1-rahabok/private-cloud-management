@@ -1,4 +1,4 @@
-// Page tests LPG-2 to LPG-30 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
+// Page tests LPG-2 to LPG-32 for /l2 (Monitor, Troubleshoot, Improve, Rules, Calendar), in a real browser.
 // GENERATED from pcm/l2/spec/acceptance-tests.yaml. Do not edit by hand (D-070).
 // Run from the repository root:  node pcm/l2/tests/l2.page.test.mjs
 import { spawn } from 'node:child_process';
@@ -510,6 +510,61 @@ try {
   const gone = (await page.$$('#e2 .e2turn')).length === 0 && !!(await page.$('#e2 [data-sugg]')) && !(await page.$('#e2 [data-e2del]'));
   await page.keyboard.press('Escape');
   check('LPG-27', noDelEmpty && /Delete\?/.test(asked) && keptAfterNo && gone, `${noDelEmpty}; ${asked.replace(/\s+/g, ' ')}; kept ${keptAfterNo}; gone ${gone}`);
+
+  // LPG-31 the live demo's walk of Agent E2 (R-LIVE-036, T-LIVE-036c): every mark, every suggested question, on the four release 1.0 pages
+  const WALK = ['/l2/monitor/compute/SG-S-01/performance', '/l2/monitor/compute/SG-S-01/capacity', '/l2/monitor/compute/sg-esx-110/performance', '/l2/monitor/compute/sg-api-1617/performance'];
+  const walk = [], walkBad = [];
+  const clearPanel = async () => { if (await page.$('#e2 [data-e2del="ask"]')) { await page.click('#e2 [data-e2del="ask"]'); await page.click('#e2 [data-e2del="yes"]'); } };
+  for (const p of WALK) {
+    await go(p); await page.waitForSelector('body[data-e2="up"]');
+    const nMarks = (await page.$$('main .e2mark')).length;
+    for (let m = -1; m < nMarks; m++) {
+      const mark = m < 0 ? '#e2top' : `main .e2mark >> nth=${m}`;
+      const card = m < 0 ? '' : (await page.getAttribute(mark, 'aria-label')).replace(/^Ask Agent E2 about (the )?/, '').replace(/ layer$/, '');
+      await page.click(mark); await page.waitForSelector('#e2 [data-sugg]', { timeout: 15000 });
+      await clearPanel(); await page.waitForSelector('#e2 [data-sugg]', { timeout: 15000 });
+      const ctx = await page.innerText('[data-e2ctx]');
+      const nS = (await page.$$('#e2 [data-sugg]')).length;
+      let asked = 0;
+      for (let q = 0; q < nS; q++) {
+        await clearPanel(); await page.waitForSelector('#e2 [data-sugg]', { timeout: 15000 });
+        const before = E2_SEEN.length, nA = (await page.$$('#e2 .e2a')).length;
+        await page.click(`#e2 [data-sugg] >> nth=${q}`);
+        await page.waitForFunction(n => document.querySelectorAll('#e2 .e2a').length > n && !document.querySelector('#e2 .e2wait'), nA, { timeout: 30000 });
+        const sent = E2_SEEN.slice(before), f = (sent[0] || {}).facts || {};
+        const about = Object.keys(f).filter(k => k.startsWith('asked_about_')).map(k => (f[k] || {}).name || (f[k] || {}).label || (f[k] || {}).layer || '');
+        const fits = m < 0 ? about.length === 0 : about.some(n => n && (card.includes(n) || n.includes(card)));
+        if (sent.length !== 1 || !fits) walkBad.push(`${p} ${card || 'top bar'} q${q + 1}: ${sent.length} sent, about [${about}]`);
+        asked++;
+      }
+      if (nS < 1 || nS > 3 || !/Performance|Capacity/.test(ctx)) walkBad.push(`${p} ${card || 'top bar'}: ${nS} suggestions, context ${ctx}`);
+      walk.push(asked);
+      await clearPanel();
+      await page.keyboard.press('Escape');
+    }
+  }
+  check('LPG-31', walk.length >= 8 && walkBad.length === 0, walkBad.slice(0, 4).join(' | ') || `${walk.length} marks on ${WALK.length} pages, ${walk.reduce((a, b) => a + b, 0)} questions asked, each with its card`);
+
+  // LPG-32 Agent E2 stops during a demo (R-LIVE-040, T-LIVE-040a): the panel says so, the page stays, and it answers again once back
+  await go('/l2/monitor/compute/SG-S-01/performance'); await page.waitForSelector('body[data-e2="up"]');
+  await page.click('#e2top'); await page.waitForSelector('#e2 [data-sugg]');
+  const askOne = async q => {
+    const n = (await page.$$('#e2 .e2a')).length;
+    await page.fill('#e2q', q); await page.press('#e2q', 'Enter');
+    await page.waitForFunction(m => document.querySelectorAll('#e2 .e2a').length > m && !document.querySelector('#e2 .e2wait'), n, { timeout: 30000 });
+    return page.$$eval('#e2 .e2a', as => as[as.length - 1].innerText);
+  };
+  const a1 = await askOne('Is this cluster healthy?');
+  const figs32 = await page.innerText('main');
+  const stopped = new Promise(r => stub.close(r)); stub.closeAllConnections(); await stopped;
+  const a2 = await askOne('And the hosts?');
+  const sameFigs = (await page.innerText('main')) === figs32;
+  await new Promise(r => stub.listen(E2_PORT, '127.0.0.1', r));
+  const a3 = await askOne('Is this cluster healthy now?');
+  await clearPanel();
+  await page.keyboard.press('Escape');
+  check('LPG-32', !/not available/.test(a1) && /not available|cannot be reached/i.test(a2) && sameFigs && !/not available/.test(a3),
+    `first "${a1.split('\n')[0]}"; stopped "${a2.split('\n')[0]}"; page unchanged ${sameFigs}; back "${a3.split('\n')[0]}"`);
 
   // LPG-12 contrast and no foreign request
   const contrast = async () => page.evaluate(() => {

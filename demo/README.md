@@ -168,6 +168,27 @@ Each step: what to click, what to point at, and the one sentence to say. Say the
 
 **Why it matters:** an auditor's question answered without a meeting.
 
+## The live demo
+
+The live demo is the L2 workspace on the lab's VCF Operations: the same structure and screens as the synthetic demo, with live data (R-LIVE-001 to R-LIVE-040 in [live-demo.md](../spec/requirements/live-demo.md)). It is built in milestone M8. The steps are the author's script (Q-PCM-3), and the rehearsal `node demo/rehearse.mjs --live` (to write in M8) walks them before every showing.
+
+**Before:** Agent E2's mark in the top bar has a green dot. A grey mark means Agent E2 or the gateway cannot be reached; see "If something goes wrong".
+
+1. **Pick the cluster.** In the demo drop-down choose "Live L2", then open the tree down to the cluster. The lab has one.
+2. **The cluster opens on its Performance tab.** The live demo has no Summary tab in release 1.0.
+3. **Point at** the same charts as in the synthetic L2 demo: Cluster Performance and Cluster Risk, with Now, Worst and the percentile figure, read from VCF Operations now.
+4. **Click the Agent E2 mark in the top bar.** Agent E2 offers up to three questions chosen from the page's situation: good, medium or bad, and whether it is declining or had a dip.
+5. **Click each question** and check its answer: its numbers are the page's, it names this cluster, and a "why" names the part that moved the KPI. Answers come live through the gateway, as in the synthetic demo.
+6. **Click the small Agent E2 mark** beside Cluster Performance. Its first question is the showcase question for that chart; ask each, as in step 5.
+7. **Repeat for every small Agent E2 mark** on the tab.
+8. **Open the Capacity tab** and repeat steps 4 to 7.
+9. **Open the first host** in the cluster's list of hosts (worst first), on its Performance tab only, and repeat steps 4 to 7.
+10. **Open the first VM** in that host's list (worst first), on its Performance tab only, and repeat steps 4 to 7, also for each layer and each metric of the VM.
+
+**The checks behind each step:** the rehearsal compares every number with the reference script, checks each question against Agent E2's rule for the page's situation, and grades each answer (R-LIVE-038, R-LIVE-039). About 80 answers in all; the rehearsal prints their time, tokens and cost.
+
+**If Agent E2 stops answering** during the demo, the page and its numbers stay. Say "the assistant runs on a cloud model through the gateway; the numbers come from VCF Operations, not from it", and go on with the next page (R-LIVE-040).
+
 ## Close (1 minute)
 
 - **What is real in this demo:** every screen, every rule, every calculation, the database, the action record, Agent E2.

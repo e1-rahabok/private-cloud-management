@@ -5,13 +5,15 @@ The prototype runs on synthetic ACME data. It does not connect to vCenter or VCF
 ## Prerequisites
 
 - Linux with systemd, Python 3.9 or later, PyYAML, git.
-- One TCP port reachable from the browsers that will use it: 443 through nginx (section HTTPS with nginx), or 8080 for a quick trial without it.
+- One TCP port reachable from the browsers that will use it: 443 through nginx (section HTTPS with nginx), or 8080 for a quick trial without it (set `PCM_HOST=0.0.0.0` in `/etc/pcm/pcm.env` for the trial only).
 - nginx, for HTTPS. PCM itself needs no database server and no internet access, unless you want Agent E2 through the AI gateway (section Agent E2).
 
 ## Security, before you open the port
 
 - **There is no sign-in yet.** Anyone who reaches the port can use every workspace and press every button. Limit the port to the lab network with the VM's firewall.
 - **Browsers reach PCM over HTTPS on 443, through nginx.** PCM speaks plain HTTP and has no TLS code. nginx ends TLS and forwards to PCM on `127.0.0.1:8080`. On the lab VM, PCM also still listens on `0.0.0.0:8080`: plain HTTP from the network, without TLS. Close it once nothing needs it (section HTTPS with nginx, Close port 8080).
+- `pcm.env.example` sets `PCM_HOST=127.0.0.1`, so a new install listens only inside the VM, behind nginx (R-LIVE-037).
+- Turn on security updates: `apt install -y unattended-upgrades && dpkg-reconfigure -f noninteractive unattended-upgrades` (R-LIVE-037).
 - The service runs as its own user, `pcm`, with write access only to `/var/lib/pcm`.
 - The Agent E2 key, if used, lives in `/etc/pcm/pcm.env`, readable by root and the `pcm` group only.
 
