@@ -1,6 +1,6 @@
 # Requirements: clean-up of private-cloud-manager
 
-The clean-up of private-cloud-manager in milestone M2 of the workspace's [ROADMAP.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md): the product's name, and folders and files named for what they hold. Question IDs point at the interview ([round 1](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/interview-round-1.md), [round 2](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/interview-round-2.md), [round 3](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/interview-round-3.md), [round 4](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/interview-round-4.md)); other IDs are explained in the [glossary](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md).
+The clean-up of private-cloud-manager in milestone M2 of the workspace's [ROADMAP.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/ROADMAP.md): the product's name, and folders and files named for what they hold. Question IDs point at the interview ([round 1](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-1.md), [round 2](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-2.md), [round 3](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-3.md), [round 4](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/author-input/interview-round-4.md)); other IDs are explained in the [glossary](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/glossary.md).
 
 ## Names
 
@@ -8,7 +8,9 @@ The clean-up of private-cloud-manager in milestone M2 of the workspace's [ROADMA
 
 Milestone: M2.
 
-Source: Q-WS-60 (round 3: "Manager, not Management"); WD-028.
+Why: the author named the product Private Cloud Manager, and the books keep Private Cloud Management for the discipline (CONSTRAINT-3).
+
+Source: Q-WS-60 (round 3: "Manager, not Management"); CONSTRAINT-3.
 
 - Given PCM's documents and its decision log
 - When a reader meets the product's full name
@@ -22,7 +24,9 @@ Test scenarios:
 
 Milestone: M2.
 
-Source: WD-030; PCM D-132.
+Why: a name with a status word such as proto stops being true and misleads the next reader (DESIGN-6).
+
+Source: DESIGN-6; PCM D-132.
 
 - Given [private-cloud-manager](https://github.com/e1-rahabok/private-cloud-manager), whose folder `build/` holds the application's source code and `sources/` holds the author's papers
 - When a reader sees its folder tree
@@ -44,7 +48,9 @@ Test scenarios:
 
 Milestone: M2.
 
-Source: Q-WS-134 (round 4: "Yes, by workspace."); WD-030; D-135 (the Docs workspace's folder).
+Why: a session that works on one workspace finds everything it needs in one folder.
+
+Source: Q-WS-134 (round 4: "Yes, by workspace."); DESIGN-6; D-135 (the Docs workspace's folder).
 
 - Given PCM's five workspaces (executive, NOC, L2, capacity, docs) and the parts they share
 - When a session works on one workspace
