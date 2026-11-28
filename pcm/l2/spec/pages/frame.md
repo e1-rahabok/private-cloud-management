@@ -114,7 +114,7 @@ api: /api/l2/agent/ask
   - always: the object and its path, the tab, the window, the tab's status and score, the findings under the object (ten at most), the worst children (ten at most), the calendar entries in the window;
   - on the Summary tab: every pillar with its status and headline;
   - on a VM's Performance tab: both layers, each with its status and, per metric, Now, Worst with its time, the percentile figure and which way is better. No points: those go with a question about one metric.
-  - on the four pages of release 1.0 (a cluster's Performance and Capacity tabs, an ESXi host's and a VM's Performance tab): the page's KPI series with their points, the same ones the suggested questions are chosen from (D-124), so a question such as "Why is performance declining?" is answered from the numbers.
+  - on the four pages of release 1.0 (a cluster's Performance and Capacity tabs, an ESXi host's and a VM's Performance tab): the page's KPI series (`kpis`: each with its `label`, `better` and `points`), the same ones the suggested questions are chosen from (D-124), so a question such as "Why is performance declining?" is answered from the numbers.
 - **What PCM sends for a layer of a VM:** that layer's status and every metric with its points, Now, Worst, the percentile figure; the other layer's status and figures without points.
 - **What PCM sends with every question: the screen** (D-103), so Agent E2 speaks of what the person sees, never of the data behind it ("the provided JSON"):
   - who asks (an L2 platform engineer) and that they typed only the question;
