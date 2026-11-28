@@ -952,7 +952,7 @@ Every decision, with a link to its block. The workspace's [tools/spec_check.py](
 ## D-134 Decision blocks and the style baseline
 
 - **Date:** 2026-11-28
-- **Decision:** This file holds one block per decision: a heading with the ID and a title, then the date, the decision and the reason, as the workspace's [DECISIONS.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/DECISIONS.md) does. The index at the top lists every decision with a link to its block; the workspace's [tools/spec_check.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/spec_check.py) reads the decision IDs from its rows. The other files in [style-baseline.yaml](style-baseline.yaml), most of them design notes, keep their counts and are fixed when next edited.
+- **Decision:** This file holds one block per decision: a heading with the ID and a title, then the date, the decision and the reason. The index at the top lists every decision with a link to its block; the workspace's [tools/spec_check.py](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/tools/spec_check.py) reads the decision IDs from its rows. The other files in [style-baseline.yaml](style-baseline.yaml), most of them design notes, keep their counts and are fixed when next edited.
 - **Reason:** The author's answer to Q-PCM-1, the style baseline of 249 problems (2026-11-28, "Agree"): option (b) for this file, whose table was read most and whose cells ran to over 100 words, and option (a) for the design notes, which change with each workspace.
 
 ## D-135 The folder name of the Docs workspace

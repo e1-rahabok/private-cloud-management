@@ -11,7 +11,7 @@ The model is the VCF vCommunity Adapter's [Live Validation Test Plan](https://gi
 | Unit tests | `python3 -m unittest pcm.<workspace>.tests.test_<name> -v`, from the repository root ([pcm/README.md](../pcm/README.md), section Test) | Each workspace's code, the live reader and its figures, with the fake Suite API | Anywhere, before each commit |
 | Page tests | `node pcm/<workspace>/tests/<workspace>.page.test.mjs` | Each page's parts, states and links, in Chromium | Anywhere, before each commit |
 | Synthetic rehearsal | `node demo/rehearse.mjs` ([demo/README.md](../demo/README.md)) | The synthetic demo script, step by step, with a screenshot per step | Anywhere, before every demo |
-| Lab tests | `pwsh tools/lab/Test-Live.ps1` (R-LIVE-031, to write) | The live demo on the lab VM against the lab VCF Operations: every lab scenario of [live-demo.md](requirements/live-demo.md), then the live demo script end to end (R-LIVE-036) | The author's laptop on the VPN, from M8 |
+| Lab tests | `pwsh tools/lab/Test-Live.ps1` (R-LIVE-031, to write) | Every lab scenario of [live-demo.md](requirements/live-demo.md), then the live demo end to end | The author's laptop on the VPN, from M8 |
 
 A lab test is written only for what a fake cannot prove: the real Suite API, the real adapter's keys, the lab's certificate and account rights, and the time a page takes. Everything else is tested with the fake Suite API (`pcm/l2/tests/fake_suite_api.py`, to write).
 
@@ -44,12 +44,12 @@ Design choices:
 
 | Step | What it checks | Scenarios | On failure |
 | :--- | :--- | :--- | :--- |
-| 1. Access | The VPN, VCF Operations sign-in, vCenter sign-in and the PCM pages on the lab VM answer ([Test-Lab.ps1](../tools/lab/Test-Lab.ps1)) | none of its own | Stop |
+| 1. Access | VPN, sign-ins and the lab VM's pages answer ([Test-Lab.ps1](../tools/lab/Test-Lab.ps1)) | none of its own | Stop |
 | 2. The adapter collects | The VCF vCommunity Adapter's [validate.ps1](https://github.com/e1-rahabok/PCM-Adapter/blob/main/tools/validate/validate.ps1) exits 0 | none of its own | Stop: the pack is not collecting, which is the adapter's fault |
 | 3. Sign-in and rights | The read-only account, the lab certificate, no refused call; the lab's VCF Operations version is printed | T-LIVE-007c, T-LIVE-008b, T-LIVE-009b, T-LIVE-031a | Stop |
 | 4. The key list | Every key PCM reads exists on the lab and is fresh | T-LIVE-023a, T-LIVE-023c | Stop: a missing key fails every figure after it |
 | 5. The live entry and the tree | `/live/l2` opens; the tree is VCF Operations' inventory | T-LIVE-001b, T-LIVE-012b | Go on |
-| 6. Figures against the oracle | Cluster Performance; every other KPI and part on a cluster, a host and a VM; the lines across clusters; the 7-day window; Capacity Remaining, Time Remaining and VM Remaining; the Periodic Cluster Check and its labels; the part names | T-LIVE-024a, T-LIVE-025a, T-LIVE-026a, T-LIVE-017b, T-LIVE-027b, T-LIVE-021b, T-LIVE-022b, T-LIVE-018b | Go on |
+| 6. Figures against the oracle | Every KPI, part, line, remaining value and check equals the oracle | T-LIVE-024a, T-LIVE-025a, T-LIVE-026a, T-LIVE-017b, T-LIVE-027b, T-LIVE-021b, T-LIVE-022b, T-LIVE-018b | Go on |
 | 7. Absent data | A powered-off VM shows "No data" | T-LIVE-015b | Go on |
 | 8. Page time | A cluster's Performance and Capacity tabs show within 5 seconds with an empty cache | T-LIVE-033b | Go on |
 | 9. Agent E2 | "Why the worst?" names the oracle's part | T-LIVE-030a | Go on |
