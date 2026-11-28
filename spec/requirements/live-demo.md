@@ -521,7 +521,7 @@ Why: the synthetic demo is the main demo (ASSUMPTION-1), and the live demo must 
 Source: answer to Q-WS-20 ("The synthetic remains as they are"); SCOPE-4.
 
 - Given the live demo is added
-- When the existing synthetic tests run (executive, noc, l2, capacity, store, definitions, and the page tests in [pcm/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/README.md))
+- When the existing synthetic tests run (executive, noc, l2, capacity, store, docs_workspace, and the page tests in [pcm/README.md](https://github.com/e1-rahabok/private-cloud-manager/blob/main/pcm/README.md))
 - Then all pass, with no test or expected value changed
 
 Test scenarios:

@@ -1,7 +1,7 @@
 """Catalog and PCM scenario story tests for the Docs workspace.
 
-GENERATED. Do not edit by hand (D-070). Expected values come from pcm/definitions/spec/acceptance-tests.yaml.
-Run from the repository root:  python3 -m unittest pcm.definitions.tests.test_definitions -v
+GENERATED. Do not edit by hand (D-070). Expected values come from pcm/docs_workspace/spec/acceptance-tests.yaml.
+Run from the repository root:  python3 -m unittest pcm.docs_workspace.tests.test_docs_workspace -v
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from pathlib import Path
 import yaml
 
 from pcm.core import generator
-from pcm.definitions import definitions
+from pcm.docs_workspace import docs_workspace
 from pcm.l2 import l2
 from pcm.noc import noc
 
@@ -34,10 +34,10 @@ class Base(unittest.TestCase):
 
 class Catalog(Base):
     def test_DCAT_1_every_object_has_a_page(self):
-        c = definitions.index()["counts"]
+        c = docs_workspace.index()["counts"]
         self.assertEqual(list(c), T["DCAT-1"]["expect"]["kinds"])
         y = lambda p: yaml.safe_load((PCM / p).read_text())
-        self.assertEqual(c["measure"], sum(len(y(f"{f}/spec/catalog.yaml")["entries"]) for f in definitions.MEASURE_FILES))
+        self.assertEqual(c["measure"], sum(len(y(f"{f}/spec/catalog.yaml")["entries"]) for f in docs_workspace.MEASURE_FILES))
         self.assertEqual(c["sop"], len(list((PCM / "noc/spec/sops").glob("*.yaml"))))
         self.assertEqual(c["policy"], len(y("l2/spec/action-policies.yaml")["policies"]))
         self.assertEqual(c["threshold"], len(y("core/spec/catalog/thresholds.yaml")["thresholds"]))
@@ -45,11 +45,11 @@ class Catalog(Base):
         self.assertEqual(c["setting"], len(y("core/spec/catalog/settings.yaml")["settings"]))
 
     def test_DCAT_2_no_dangling_reads(self):
-        self.assertEqual(definitions.dangling_reads(), T["DCAT-2"]["expect"]["dangling_reads"])
+        self.assertEqual(docs_workspace.dangling_reads(), T["DCAT-2"]["expect"]["dangling_reads"])
 
     def test_DCAT_4_one_definition_per_id(self):
         seen, twice = {}, []
-        for f in definitions.MEASURE_FILES:
+        for f in docs_workspace.MEASURE_FILES:
             for k in yaml.safe_load((PCM / f"{f}/spec/catalog.yaml").read_text())["entries"]:
                 if k in seen:
                     twice.append(f"{k} in {seen[k]} and {f}")
@@ -69,11 +69,11 @@ class Catalog(Base):
 class ScenarioStory(Base):
     def test_DST_1_threshold_used_on_and_history(self):
         e = T["DST-1"]["expect"]
-        d = definitions.detail("threshold", "th-cluster-perf-red")
+        d = docs_workspace.detail("threshold", "th-cluster-perf-red")
         self.assertIn(e["used_on_includes"], [u["page"] for u in d["used_on"]])
         self.assertEqual(d["history"], [])
         l2.act(NOW, ["thresholds", "th-cluster-perf-red", "publish"], {"value": 60, "reason": "Replayed before publishing"})
-        d, x = definitions.detail("threshold", "th-cluster-perf-red"), e["after_l2_publishes_60"]
+        d, x = docs_workspace.detail("threshold", "th-cluster-perf-red"), e["after_l2_publishes_60"]
         self.assertEqual((d["version"], d["body"]["value"]), (x["version"], x["value"]))
         h = d["history"][0]
         self.assertEqual((h["before"], h["after"], h["actor_human"]), (x["history_before"], x["history_after"], x["by"]))
@@ -84,18 +84,18 @@ class ScenarioStory(Base):
         t = "move_vms_between_clusters"
         l2.act(NOW, ["policies", t, "replay"], prop)
         l2.act(NOW, ["policies", t, "publish"], {**prop, "reason": "Guardrails replace approval"})
-        d = definitions.detail("policy", t)
+        d = docs_workspace.detail("policy", t)
         self.assertEqual((d["version"], d["body"]["tier"]), (e["version"], e["tier"]))
         self.assertEqual([h["action"] for h in d["history"]], e["history_actions"])
 
     def test_DST_3_proposals_visible(self):
         for oid, status in T["DST-3"]["expect"].items():
-            self.assertEqual(definitions.detail("setting", oid)["status"], status, oid)
+            self.assertEqual(docs_workspace.detail("setting", oid)["status"], status, oid)
 
     def test_DST_4_export(self):
         e = T["DST-4"]["expect"]
         with tempfile.TemporaryDirectory() as tmp:
-            files = definitions.export(Path(tmp), NOW)
+            files = docs_workspace.export(Path(tmp), NOW)
             self.assertEqual(len([f for f in files if f.startswith("content/runbooks/")]), e["runbooks"])
             heads = {"runbook": e["runbook_headings"], "operations-plan": e["operations_plan_headings"], "bom": e["bom_headings"]}
             for f in files:
@@ -108,7 +108,7 @@ class ScenarioStory(Base):
                 self.assertNotRegex(text, r"\bD-\d{3}\b", f)
 
     def test_detail_has_no_decision_ids(self):
-        for o in definitions.objects():
+        for o in docs_workspace.objects():
             self.assertNotRegex(str(o), r"\bD-\d{3}\b", o["id"])
 
 

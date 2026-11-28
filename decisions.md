@@ -634,7 +634,7 @@ Every decision, with a link to its block. The workspace's [tools/spec_check.py](
 ## D-082 The Docs workspace and private-cloud-explained
 
 - **Date:** 2026-11-20
-- **Decision:** PCM `/docs` documents only what PCM owns and acts on: the definition of every number, SOPs, action policies, thresholds, configuration standards and settings, each with version, owner, where it is used and its change history. It is read-only: each object is changed in the workspace that owns it. Documentation for colleagues (architecture, decisions, guides, team structure, learning modes) is private-cloud-explained, a separate product. PCM exports its objects as Markdown into private-cloud-explained, through its review. Revised by D-135: the workspace's folder is `pcm/definitions`; its route stays `/docs`.
+- **Decision:** PCM `/docs` documents only what PCM owns and acts on: the definition of every number, SOPs, action policies, thresholds, configuration standards and settings, each with version, owner, where it is used and its change history. It is read-only: each object is changed in the workspace that owns it. Documentation for colleagues (architecture, decisions, guides, team structure, learning modes) is private-cloud-explained, a separate product. PCM exports its objects as Markdown into private-cloud-explained, through its review. Revised by D-135: the workspace's folder is `pcm/docs_workspace`; its route stays `/docs`.
 - **Reason:** See Rationale.
 
 ## D-083 The three L2 activities
@@ -946,7 +946,7 @@ Every decision, with a link to its block. The workspace's [tools/spec_check.py](
 ## D-133 File layout by workspace
 
 - **Date:** 2026-11-27
-- **Decision:** PCM's files are grouped by workspace. `pcm/` is the application and its Python package: one folder per workspace, named in full (`executive`, `noc`, `l2`, `capacity`, `docs`), and `core` for the parts every workspace uses. Each folder holds its design notes, its specification in `spec/`, and the server code, page code (`pages/`) and tests (`tests/`) generated from them. "Design" names a design note only; the visual design system is the visual style (`pcm/core/spec/visual-style.md`). `spec/` keeps the specification's front page and the requirements. Revises the layout in D-070 and D-071. Revised by D-135: the Docs workspace's folder is `definitions`, named for what it holds; its route stays `/docs`.
+- **Decision:** PCM's files are grouped by workspace. `pcm/` is the application and its Python package: one folder per workspace, named in full (`executive`, `noc`, `l2`, `capacity`, `docs`), and `core` for the parts every workspace uses. Each folder holds its design notes, its specification in `spec/`, and the server code, page code (`pages/`) and tests (`tests/`) generated from them. "Design" names a design note only; the visual design system is the visual style (`pcm/core/spec/visual-style.md`). `spec/` keeps the specification's front page and the requirements. Revises the layout in D-070 and D-071. Revised by D-135: the Docs workspace's folder is `docs_workspace`; its route stays `/docs`.
 - **Reason:** Q-WS-134 (round 4: "Yes, by workspace."), WD-030: one folder is the whole context of a task on one workspace, and every name says what it holds. See Rationale.
 
 ## D-134 Decision blocks and the style baseline
@@ -958,8 +958,8 @@ Every decision, with a link to its block. The workspace's [tools/spec_check.py](
 ## D-135 The folder name of the Docs workspace
 
 - **Date:** 2026-11-28
-- **Decision:** The Docs workspace's folder is `pcm/definitions`, named for the definitions of PCM's own objects it holds. Its module and tests are named after the folder, as in the other workspaces: `definitions.py`, `tests/test_definitions.py` and `tests/definitions.page.test.mjs`. The workspace keeps its name, Docs, on screen and in its route `/docs`. The files served under the route (`pages/docs.css`, `pages/docs.js`) and the screenshots (`docs-*.png`) keep their names, as the Executive workspace's screenshots carry its route (`exec-*.png`). `spec/` stays at the root of the repository. Revises D-082 and D-133.
-- **Reason:** The author's answer to Q-PCM-2, two folder names that a newcomer misread (2026-11-28, "Agree"): a fresh session read `pcm/docs` as PCM's documentation (T-WS-007b in the workspace's [workspace.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/requirements/workspace.md)). Users know the route `/docs`, so it stays. `spec/` holds the specification's front page and the requirement files that the workspace's tools read, and the front page says where the rest of the specification is.
+- **Decision:** The Docs workspace's folder is `pcm/docs_workspace`: the name its users know, Docs, and the word workspace, written with an underscore because the folder is a Python package and Python cannot import a name with a hyphen. Its module and tests are named after the folder, as in the other workspaces: `docs_workspace.py`, `tests/test_docs_workspace.py` and `tests/docs_workspace.page.test.mjs`. The workspace keeps its name, Docs, on screen and in its route `/docs`. The files served under the route (`pages/docs.css`, `pages/docs.js`) and the screenshots (`docs-*.png`) keep their names, as the Executive workspace's screenshots carry its route (`exec-*.png`). `spec/` stays at the root of the repository. Revises D-082 and D-133.
+- **Reason:** The author's answer to Q-PCM-4 (2026-11-28, "OK"): the workspace's users call it Docs. Rejected: `docs`, which a fresh session read as PCM's documentation (T-WS-007b in the workspace's [workspace.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/spec/requirements/workspace.md)); `definitions` (Q-PCM-2, "Agree"), which a second fresh session read as the KPI definitions, the term of contract C1 in the workspace's glossary; `docs-workspace`, which Python cannot import. Users know the route `/docs`, so it stays. `spec/` holds the specification's front page and the requirement files that the workspace's tools read, and the front page says where the rest of the specification is.
 
 ## Rationale
 
@@ -1692,7 +1692,7 @@ pcm/                 the application and its Python package
     pages/           fonts/, agent-e2/, demo/
     tests/
     *.py             the server, the store, the demo data generator, the Agent E2 client
-  executive/ noc/ l2/ capacity/ definitions/
+  executive/ noc/ l2/ capacity/ docs_workspace/
     design-note.md
     spec/            pages/, api.yaml, catalog.yaml, vocabulary.yaml, acceptance-tests.yaml, files only this workspace reads
     pages/           HTML, CSS and JavaScript

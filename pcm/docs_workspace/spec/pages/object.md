@@ -3,8 +3,8 @@ page: /docs/{kind}/{id}
 question: "What exactly does this mean, who owns it, and what would a change touch?"
 role: all
 cadence: [on_demand]
-vocabulary: pcm/definitions/spec/vocabulary.yaml
-design: pcm/definitions/design-note.md
+vocabulary: pcm/docs_workspace/spec/vocabulary.yaml
+design: pcm/docs_workspace/design-note.md
 decisions: [D-050, D-063, D-080, D-082]
 ---
 

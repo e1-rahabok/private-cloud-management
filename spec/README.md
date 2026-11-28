@@ -6,7 +6,7 @@ The specification sits beside the code generated from it, in one folder per work
 
 ## Layout
 
-`<workspace>` is one of `executive`, `noc`, `l2`, `capacity` and `definitions` (the Docs workspace's folder, D-135).
+`<workspace>` is one of `executive`, `noc`, `l2`, `capacity` and `docs_workspace` (the Docs workspace's folder, D-135).
 
 | Path | Holds | Format |
 |---|---|---|

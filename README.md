@@ -4,7 +4,7 @@ A web application for the operations roles of a private cloud on VMware Cloud Fo
 
 ## Files
 
-- [`pcm/`](pcm): the application, one folder per workspace ([`executive/`](pcm/executive), [`noc/`](pcm/noc), [`l2/`](pcm/l2), [`capacity/`](pcm/capacity), [`definitions/`](pcm/definitions) for the Docs workspace) and [`core/`](pcm/core) for the parts every workspace uses (D-133). Each folder holds a design note, the specification in `spec/`, and the code, pages and tests generated from them. AI generates all code from the specification (D-010); do not edit generated code by hand (D-070). How to run and test it: [pcm/README.md](pcm/README.md).
+- [`pcm/`](pcm): the application, one folder per workspace ([`executive/`](pcm/executive), [`noc/`](pcm/noc), [`l2/`](pcm/l2), [`capacity/`](pcm/capacity), [`docs_workspace/`](pcm/docs_workspace) for the Docs workspace) and [`core/`](pcm/core) for the parts every workspace uses (D-133). Each folder holds a design note, the specification in `spec/`, and the code, pages and tests generated from them. AI generates all code from the specification (D-010); do not edit generated code by hand (D-070). How to run and test it: [pcm/README.md](pcm/README.md).
 - [`spec/`](spec): the specification's front page ([spec/README.md](spec/README.md)), the requirements of PCM's work ([spec/requirements/](spec/requirements)) and the [test plan](spec/test-plan.md).
 - [decisions.md](decisions.md): the reasons behind the specification, with the design notes. Decision IDs are D-nnn. It takes no new entry: a new outcome goes in a requirement or a design note, with its reason.
 - [`author-papers/`](author-papers): the author's papers that PCM is designed from ([author-papers/README.md](author-papers/README.md)).
