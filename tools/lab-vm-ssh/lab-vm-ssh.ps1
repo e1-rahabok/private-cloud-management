@@ -1,7 +1,7 @@
-# lab-vm-ssh.ps1 - key-based SSH to the lab VM, the host moltbot29.
+# lab-vm-ssh.ps1 - key-based SSH to the lab VM.
 #
 # No passwords are stored or read here. Login uses the SSH key configured in
-# ~/.ssh/config under the host alias below. BatchMode is on, so ssh never
+# ~/.ssh/config under the host alias that $HOME\.secrets\lab.json names (vm_ssh_alias, DESIGN-9). BatchMode is on, so ssh never
 # prompts: if key login is refused, the call fails at once with the reason.
 #
 # Usage (dot-source, then call):
@@ -10,7 +10,8 @@
 #   Invoke-Moltbot 'uptime'           # run one command on the host
 #   Get-MoltbotSshdLog                # read the sshd log (needs passwordless sudo, see below)
 
-$script:MoltbotAlias = 'moltbot29-iwan-claw'
+. (Join-Path (Split-Path -Parent $PSScriptRoot) 'lab\Lab-Config.ps1')
+$script:MoltbotAlias = (Get-LabConfig).vm_ssh_alias
 
 function Invoke-Moltbot {
     param([Parameter(Mandatory)][string]$Command)

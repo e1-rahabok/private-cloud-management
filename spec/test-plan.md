@@ -35,7 +35,7 @@ Design choices:
 
 - Every lab call is read-only: Suite API `GET` calls and the token request, with the read-only account of DESIGN-9 (R-LIVE-007, R-LIVE-009). T-LIVE-009b proves that no call needs more rights.
 - Nothing in VCF Operations, vCenter or the lab VM's data is changed (R-LIVE-031). The one write is PCM's own record of each Agent E2 answer and its rating (R-LIVE-035), in PCM's database on the lab VM.
-- Credentials are read from the DPAPI files in `$HOME\.secrets\` (DESIGN-9) and are never printed, logged or saved in a screenshot. [tools/lab/Test-Lab.ps1](../tools/lab/Test-Lab.ps1) still reads Windows Credential Manager; [live-demo.md](requirements/live-demo.md), section "Changes to PCM's own specification", lists its move to the DPAPI files.
+- Credentials are read from the DPAPI files in `$HOME\.secrets\` (DESIGN-9) and are never printed, logged or saved in a screenshot. The lab's addresses and host names are read from `$HOME\.secrets\lab.json` ([tools/lab/Lab-Config.ps1](../tools/lab/Lab-Config.ps1)); no test, report or screenshot file name holds one (R-WS-010). [tools/lab/Test-Lab.ps1](../tools/lab/Test-Lab.ps1) still reads Windows Credential Manager; [live-demo.md](requirements/live-demo.md), section "Changes to PCM's own specification", lists its move to the DPAPI files.
 - Lab facts may reach the cloud model through the gateway (SCOPE-5); the VCF Operations password, token and URL never do (R-LIVE-029).
 
 ## Lab run order

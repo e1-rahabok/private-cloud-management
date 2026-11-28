@@ -1,0 +1,7 @@
+{
+  "vm_ssh_alias": "pcm-lab-vm",
+  "vm_user": "pcm-admin",
+  "vm_host": "10.20.0.29",
+  "vcf_operations_host": "10.20.0.81",
+  "vcenter_host": "10.20.0.87"
+}

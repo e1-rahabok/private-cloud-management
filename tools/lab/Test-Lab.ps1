@@ -3,12 +3,16 @@
 #
 #   pwsh -NoProfile -File tools\lab\Test-Lab.ps1
 #
-# Checks: moltbot29 key login and sudo log, VCF Operations login, vCenter login,
+# The lab's addresses come from $HOME\.secrets\lab.json (tools\lab\Lab-Config.ps1, DESIGN-9).
+#
+# Checks: the lab VM's key login and sudo log, VCF Operations login, vCenter login,
 # and the PCM pages on the VM (https 443 and http 8080).
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+. (Join-Path $root 'lab\Lab-Config.ps1')
 . (Join-Path $root 'lab-vm-ssh\lab-vm-ssh.ps1')
+$lab = Get-LabConfig
 
 Add-Type -TypeDefinition @"
 using System; using System.Runtime.InteropServices;
@@ -40,19 +44,19 @@ function Add-Result($name, $ok, $detail) {
     $results.Add([pscustomobject]@{ Check = $name; Result = $(if ($ok) { 'PASS' } else { 'FAIL' }); Detail = $detail })
 }
 
-# 1. moltbot29: key login, then the sudo log
+# 1. The lab VM: key login, then the sudo log
 try {
     $r = Invoke-Moltbot 'echo moltbot-ok; hostname'
     $ok = $r.Output -match 'moltbot-ok'
-    Add-Result 'moltbot29 key login' $ok ($(if ($ok) { 'key-only login works' } else { $r.Output }))
+    Add-Result 'Lab VM key login' $ok ($(if ($ok) { 'key-only login works' } else { $r.Output }))
     $log = Get-MoltbotSshdLog
-    Add-Result 'moltbot29 sshd log (sudo)' ($log.ExitCode -eq 0) ("exit " + $log.ExitCode)
+    Add-Result 'Lab VM sshd log (sudo)' ($log.ExitCode -eq 0) ("exit " + $log.ExitCode)
 } catch {
-    Add-Result 'moltbot29 key login' $false $_.Exception.Message
+    Add-Result 'Lab VM key login' $false $_.Exception.Message
 }
 
-# 2. VCF Operations: token from the suite API (credential target https://10.115.1.81/)
-$vcfHost = '10.115.1.81'
+# 2. VCF Operations: token from the suite API (credential target https://<its host>/)
+$vcfHost = $lab.vcf_operations_host
 $cred = [LabCred]::Read("https://$vcfHost/")
 if ($null -eq $cred) {
     Add-Result 'VCF Operations login' $false 'no credential in Credential Manager'
@@ -72,7 +76,7 @@ if ($null -eq $cred) {
 }
 
 # 3. vCenter: session from the REST API. The stored target carries the helper's suffix.
-$vcHost = '10.115.1.87'
+$vcHost = $lab.vcenter_host
 $cred = [LabCred]::Read("administrator@vsphere.local@$vcHost.dbh-insights-helper")
 if ($null -eq $cred) {
     Add-Result 'vCenter login' $false 'no credential in Credential Manager'
@@ -95,7 +99,7 @@ if ($null -eq $cred) {
 # 4. PCM on the VM: pages over https 443 and http 8080
 $pages = '/exec', '/noc/wall', '/noc', '/l2', '/capacity', '/docs'
 $clock = '?now=2026-10-19T10:05:00%2B08:00'
-foreach ($base in 'https://10.114.1.29', 'http://10.114.1.29:8080') {
+foreach ($base in "https://$($lab.vm_host)", "http://$($lab.vm_host):8080") {
     $codes = foreach ($p in $pages) {
         curl.exe -sk -o NUL -w "%{http_code}" --max-time 10 ($base + $p + $clock)
     }
