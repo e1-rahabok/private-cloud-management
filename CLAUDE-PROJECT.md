@@ -10,6 +10,7 @@ Rules, tools and paths of private-cloud-manager, the repository of PCM (Private 
 - Test plan of this repository: [spec/test-plan.md](spec/test-plan.md): test levels, the lab run order of `tools/lab/Test-Live.ps1`, and the reference script `tools/lab/live_reference.py`, both to write in M8, the workspace's milestone for the live demo.
 - Decisions inside this repository: [decisions.md](decisions.md), IDs D-nnn. Add no new block to it: put a new outcome in a requirement or a design note, with its reason.
 - Questions inside this repository: [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md), IDs Q-PCM-n (DESIGN-23).
+- Spending on Vercel AI Gateway: the workspace's [CLAUDE-PROJECT.md](https://github.com/e1-rahabok/private-cloud-workspace/blob/main/CLAUDE-PROJECT.md), section Spending (CONSTRAINT-1). A paid step under US$10 starts without asking once its need is named; a paid step of US$10 or more waits for the author's go.
 - Specification: one folder per workspace under [pcm/](pcm), each with its `spec/` folder; front page [spec/README.md](spec/README.md) (D-133). Reasons behind it: each workspace's `design-note.md`, the notes in [pcm/core/design-notes/](pcm/core/design-notes), and [decisions.md](decisions.md).
 
 ## Code
