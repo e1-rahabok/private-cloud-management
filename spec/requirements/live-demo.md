@@ -459,7 +459,7 @@ Source: answer to Q-WS-20 ("The synthetic remains as they are"); WD-003.
 - Then all pass, with no test or expected value changed
 
 Test scenarios:
-- T-LIVE-032a (anywhere, automated by the existing tests in every workspace's `tests/` folder). Steps: run every test listed in pcm/README.md on the branch that adds the live demo. Expected: all pass; `git diff` shows no change under spec/tests/ and build/tests/ other than new live files.
+- T-LIVE-032a (anywhere, automated by the existing tests in every workspace's `tests/` folder). Steps: run every test listed in pcm/README.md on the branch that adds the live demo. Expected: all pass; `git diff` shows no change to any workspace's `spec/acceptance-tests.yaml` or `tests/` folder other than new live files.
 
 ### R-LIVE-033 A live page opens within 5 seconds
 
